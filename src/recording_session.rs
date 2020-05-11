@@ -1,9 +1,11 @@
 use crate::config::DEFAULT_BUFFER_FILE;
 use crate::song::Song;
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::time::Duration;
 use std::vec::Vec;
 
+#[derive(Serialize, Deserialize, Debug)]
 pub struct RecordingSession {
     pub dir: PathBuf,
     pub timestamps: Vec<Duration>,

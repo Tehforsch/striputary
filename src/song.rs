@@ -1,6 +1,7 @@
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Song {
     pub artist: String,
     pub album: String,

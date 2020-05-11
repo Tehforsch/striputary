@@ -1,29 +1,29 @@
-use clap::{App, Arg, ArgMatches};
+use clap::Clap;
+use std::path::PathBuf;
 
-pub fn parse_args() -> ArgMatches {
-    App::new("Spotify Recorder")
-        .version("0.1")
-        .about("Record and tag music from spotify")
-        .subcommand(
-            App::new("load").arg(
-                Arg::with_name("session_dir")
-                    .index(1)
-                    .about("Sets the directory the session is stored in")
-                    .required(true),
-            ),
-        )
-        .subcommand(
-            App::new("record").arg(
-                Arg::with_name("session_dir")
-                    .index(1)
-                    .about("Sets the directory to store the session in")
-                    .required(true),
-            ),
-        )
-        .arg(
-            Arg::with_name("v")
-                .multiple(true)
-                .about("Sets the level of verbosity"),
-        )
-        .get_matches()
+#[derive(Clap)]
+pub struct Opts {
+    #[clap(subcommand)]
+    pub action: Action,
+    pub session_dir: PathBuf,
+    #[clap(short, long, parse(from_occurrences))]
+    pub verbose: i32,
+}
+
+#[derive(Clap)]
+pub enum Action {
+    Record,
+    Load,
+}
+
+pub fn parse_args() -> Opts {
+    let opts: Opts = Opts::parse();
+
+    match opts.verbose {
+        0 => println!("No verbose info"),
+        1 => println!("Some verbose info"),
+        2 => println!("Tons of verbose info"),
+        3 | _ => println!("Don't be crazy"),
+    }
+    opts
 }
