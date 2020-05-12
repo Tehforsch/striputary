@@ -36,9 +36,7 @@ pub fn handle_dbus_properties_changed_signal(
     if session.songs.len() == 0 || session.songs.last().unwrap() != &song {
         info!("Recording song: {:?}", song);
         session.songs.push(song);
-        session
-            .timestamps
-            .push(record_start_time.elapsed().as_millis());
+        session.timestamps.push(record_start_time.elapsed());
     }
 }
 

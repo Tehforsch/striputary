@@ -8,7 +8,7 @@ use std::vec::Vec;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RecordingSession {
     pub dir: PathBuf,
-    pub timestamps: Vec<u128>,
+    pub timestamps: Vec<Duration>,
     pub songs: Vec<Song>,
 }
 
