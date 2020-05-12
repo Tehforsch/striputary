@@ -8,13 +8,13 @@ pub mod song;
 pub mod yaml_session;
 
 use crate::args::parse_args;
+use crate::config::{DEFAULT_BUFFER_FILE, DEFAULT_SESSION_FILE};
 use crate::recording_session::RecordingSession;
-use std::path::Path;
 
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-
-use crate::config::{DEFAULT_BUFFER_FILE, DEFAULT_SESSION_FILE};
+use std::time::Instant;
 
 fn main() {
     let args = parse_args();
@@ -24,25 +24,29 @@ fn main() {
 
     // Set up logging
     log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
-    match args.action {
+    let session = match args.action {
         args::Action::Record => {
-            // Start recording
-            let recording_handles = recorder::record(&buffer_file);
-            // Check for dbus signals while recording until terminated
-            let session = polling_loop(&session_dir);
-            // When the user stopped the loop, kill the recording processes too
-            recorder::stop_recording(recording_handles);
-            yaml_session::save(yaml_file.as_path(), session)
+            let session = record_new_session(session_dir, buffer_file);
+            yaml_session::save(yaml_file.as_path(), &session);
+            session
         }
-        args::Action::Load => {
-            // println!("Loading ... this isnt actually implemented yet tho hello!");
-            let session = yaml_session::load(yaml_file.as_path());
-        }
-    }
-    // cut::cut_session(session);
+        args::Action::Load => yaml_session::load(yaml_file.as_path()),
+    };
+    cut::cut_session(session);
 }
 
-fn polling_loop(session_dir: &Path) -> RecordingSession {
+fn record_new_session(session_dir: PathBuf, buffer_file: PathBuf) -> RecordingSession {
+    // Start recording
+    let recording_handles = recorder::record(&buffer_file);
+    let record_start_time = Instant::now();
+    // Check for dbus signals while recording until terminated
+    let session = polling_loop(&record_start_time, &session_dir);
+    // When the user stopped the loop, kill the recording processes too
+    recorder::stop_recording(recording_handles);
+    session
+}
+
+fn polling_loop(record_start_time: &Instant, session_dir: &Path) -> RecordingSession {
     let running = Arc::new(AtomicBool::new(true));
     let r = running.clone();
 
@@ -58,7 +62,7 @@ fn polling_loop(session_dir: &Path) -> RecordingSession {
     .expect("Error setting Ctrl-C handler");
 
     while running.load(Ordering::SeqCst) {
-        dbus::collect_dbus_timestamps(&mut session);
+        dbus::collect_dbus_timestamps(record_start_time, &mut session);
     }
     return session;
 }

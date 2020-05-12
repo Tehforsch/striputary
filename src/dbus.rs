@@ -11,13 +11,12 @@ use std::time::Instant;
 
 use crate::song::Song;
 
-pub fn collect_dbus_timestamps(session: &mut RecordingSession) {
+pub fn collect_dbus_timestamps(record_start_time: &Instant, session: &mut RecordingSession) {
     let c = Connection::new_session().unwrap();
     // Add a match for this signal
     let mstr = PC::match_str(Some(&"org.mpris.MediaPlayer2.spotify".into()), None);
     c.add_match(&mstr).unwrap();
 
-    let record_start_time = Instant::now();
     // Wait for the signal to arrive.
     for msg in c.incoming(100) {
         if let Some(pc) = PC::from_message(&msg) {
@@ -27,7 +26,7 @@ pub fn collect_dbus_timestamps(session: &mut RecordingSession) {
 }
 
 pub fn handle_dbus_properties_changed_signal(
-    record_start_time: Instant,
+    record_start_time: &Instant,
     session: &mut RecordingSession,
     properties: PC,
 ) {
@@ -37,7 +36,9 @@ pub fn handle_dbus_properties_changed_signal(
     if session.songs.len() == 0 || session.songs.last().unwrap() != &song {
         info!("Recording song: {:?}", song);
         session.songs.push(song);
-        session.timestamps.push(record_start_time.elapsed());
+        session
+            .timestamps
+            .push(record_start_time.elapsed().as_millis());
     }
 }
 

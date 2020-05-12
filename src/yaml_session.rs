@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 
-pub fn save(filename: &Path, session: RecordingSession) {
-    let data = serde_yaml::to_string(&session).expect("Unable to convert session to yaml");
+pub fn save(filename: &Path, session: &RecordingSession) {
+    let data = serde_yaml::to_string(session).expect("Unable to convert session to yaml");
     fs::write(filename, data).expect("Unable to write session file");
 }
 

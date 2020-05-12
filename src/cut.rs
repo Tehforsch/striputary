@@ -9,7 +9,7 @@ pub fn cut_session(session: RecordingSession) {
     dbg!(&session.timestamps);
     for ((start_time, end_time), song) in start_iter.zip(end_iter).zip(session.songs.iter()) {
         dbg!(song, start_time, end_time);
-        // cut_song(session.get_buffer_file(), song, 0.0, 0.0);
+        cut_song(session.get_buffer_file(), song, 0.0, 0.0);
     }
 }
 
