@@ -2,6 +2,7 @@ pub mod args;
 pub mod config;
 pub mod cut;
 pub mod dbus;
+pub mod ogg;
 pub mod recorder;
 pub mod recording_session;
 pub mod song;
