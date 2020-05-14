@@ -2,13 +2,13 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Song {
     pub artist: String,
     pub album: String,
     pub title: String,
     pub track_number: i64,
-    pub length: u64,
+    pub length: f64,
 }
 
 impl Song {

@@ -36,7 +36,9 @@ pub fn handle_dbus_properties_changed_signal(
     if session.songs.len() == 0 || session.songs.last().unwrap() != &song {
         info!("Recording song: {:?}", song);
         session.songs.push(song);
-        session.timestamps.push(record_start_time.elapsed());
+        session
+            .timestamps
+            .push(record_start_time.elapsed().as_secs_f64());
     }
 }
 
@@ -67,7 +69,7 @@ fn get_song_from_dbus_properties(properties: PC) -> Song {
         album: dict["xesam:album"].as_str().unwrap().to_string(),
         title: dict["xesam:title"].as_str().unwrap().to_string(),
         track_number: dict["xesam:trackNumber"].as_i64().unwrap(),
-        length: dict["mpris:length"].as_u64().unwrap(),
+        length: (dict["mpris:length"].as_u64().unwrap() as f64) * 1e-6, // convert s -> µs
     };
     song
 }

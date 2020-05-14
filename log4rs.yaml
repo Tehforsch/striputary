@@ -3,7 +3,7 @@ appenders:
   stdout:
     kind: console
 root:
-  level: debug
+  level: info
   appenders:
     - stdout
 loggers:

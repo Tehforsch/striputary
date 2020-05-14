@@ -1,4 +1,5 @@
 pub mod args;
+pub mod audio_excerpt;
 pub mod config;
 pub mod cut;
 pub mod dbus;
@@ -12,6 +13,7 @@ use crate::args::parse_args;
 use crate::config::{DEFAULT_BUFFER_FILE, DEFAULT_SESSION_FILE};
 use crate::recording_session::RecordingSession;
 
+use log::{error, info};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -33,7 +35,12 @@ fn main() {
         }
         args::Action::Load => yaml_session::load(yaml_file.as_path()),
     };
-    cut::cut_session(session);
+    match cut::cut_session(session) {
+        Ok(_) => {
+            info!("Succesfully finished cutting.");
+        }
+        Err(err) => error!("Cutting resulted in error: {}", err),
+    }
 }
 
 fn record_new_session(session_dir: PathBuf, buffer_file: PathBuf) -> RecordingSession {
