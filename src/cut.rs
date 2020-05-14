@@ -1,5 +1,5 @@
 use crate::audio_excerpt::AudioExcerpt;
-use crate::config::{MAX_OFFSET, MAX_SEEK_ERROR};
+use crate::config::{MAX_OFFSET, MAX_SEEK_ERROR, NUM_OFFSETS_TO_TRY};
 use crate::ogg::get_audio_excerpt;
 use crate::recording_session::RecordingSession;
 use crate::song::Song;
@@ -25,7 +25,9 @@ pub fn determine_cut_offset(
     // It might be preferable to choose top hat functions instead of dirac deltas to
     // make the convolution continuous
     let mut audio_samples: Vec<AudioExcerpt> = Vec::new();
+    info!("Reading excerpts");
     for cut_time in cut_timestamps.iter() {
+        info!("Reading excerpt at {:.2}", cut_time);
         let listen_start_time = cut_time - MAX_OFFSET;
         let listen_end_time = cut_time + MAX_OFFSET;
         audio_samples.push(get_audio_excerpt(
@@ -34,9 +36,10 @@ pub fn determine_cut_offset(
             listen_end_time,
         )?);
     }
+    info!("Listening to excerpts");
     let mut min: Option<(f64, f64)> = None;
-    for i in -100..100 {
-        let offset = i as f64 * 0.01 * (MAX_OFFSET - MAX_SEEK_ERROR);
+    for i in -NUM_OFFSETS_TO_TRY / 2..NUM_OFFSETS_TO_TRY / 2 {
+        let offset = i as f64 * (1.0 / NUM_OFFSETS_TO_TRY as f64) * (MAX_OFFSET - MAX_SEEK_ERROR);
         let total_volume: f64 = cut_timestamps
             .iter()
             .zip(audio_samples.iter())
@@ -49,6 +52,7 @@ pub fn determine_cut_offset(
         } else {
             min = Some((total_volume, offset));
         };
+        println!("PLOT {} {}", offset, total_volume);
     }
     Ok(min.unwrap().1)
 }
