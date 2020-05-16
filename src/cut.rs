@@ -7,7 +7,6 @@ use hound;
 use log::{debug, info};
 use std::fs::create_dir_all;
 use std::path::Path;
-use std::path::PathBuf;
 use std::process::Command;
 
 pub fn cut_session(session: RecordingSession) -> Result<(), hound::Error> {

@@ -11,9 +11,13 @@ pub mod wav;
 pub mod yaml_session;
 
 use crate::args::parse_args;
-use crate::config::{DEFAULT_BUFFER_FILE, DEFAULT_SESSION_FILE, TIME_BEFORE_SESSION_START};
-use crate::dbus::{previous_song, start_playback};
+use crate::config::{
+    DEFAULT_BUFFER_FILE, DEFAULT_SESSION_FILE, POLLING_LOOP_TIMEOUT, TIME_AFTER_SESSION_END,
+    TIME_BEFORE_SESSION_START, WAIT_TIME_BEFORE_FIRST_SONG,
+};
+use crate::dbus::{previous_song, start_playback, stop_playback};
 use crate::recording_session::RecordingSession;
+use log::info;
 use std::fs::create_dir_all;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -66,26 +70,27 @@ fn polling_loop(record_start_time: &Instant, session_dir: &Path) -> RecordingSes
     })
     .expect("Error setting Ctrl-C handler");
 
-    let start_time = Instant::now();
-    let mut session_started = false;
-    let mut playback_stopped = false;
-    // We run until either interrupted via Ctrl+c or playback in spotify is stopped.
-    // When playback was stopped we will assume the last song ran until completion!
+    // This ensures that spotify starts playing something, thus registering the
+    // pulse audio sink.
+    info!("Beginning pre-session phase");
     start_playback();
+    thread::sleep(Duration::from_secs_f64(TIME_BEFORE_SESSION_START));
+    stop_playback();
+    info!("Going to beginning of song");
+    previous_song();
+    let mut playback_stopped = false;
+    thread::sleep(Duration::from_secs_f64(WAIT_TIME_BEFORE_FIRST_SONG));
+    info!("Starting playback.");
+    start_playback();
+    // We run until either interrupted via Ctrl+c or playback in spotify is stopped.
+    // When playback was stopped we will assume the last song ran until completion.
+    // However, when spotify reports that playback has been stopped it also reports
     while !playback_stopped && running.load(Ordering::SeqCst) {
-        if session_started {
-            playback_stopped = dbus::collect_dbus_timestamps(record_start_time, &mut session);
-        } else {
-            thread::sleep(Duration::from_secs_f64(0.01));
-            if start_time.elapsed().as_secs_f64() > TIME_BEFORE_SESSION_START {
-                session_started = true;
-                previous_song();
-            }
-        }
+        playback_stopped = dbus::collect_dbus_timestamps(record_start_time, &mut session);
     }
-    if !playback_stopped {
-        session.timestamps.pop();
-        session.songs.pop();
+    if playback_stopped {
+        info!("Playback was stopped. Waiting a few seconds to allow the recording to have a buffer at the end");
+        thread::sleep(Duration::from_secs_f64(TIME_AFTER_SESSION_END));
     }
     return session;
 }

@@ -35,15 +35,17 @@ pub fn handle_dbus_properties_changed_signal(
     properties: PC,
 ) -> bool {
     let playback_stopped = is_playback_stopped(&properties);
-    let song = get_song_from_dbus_properties(properties);
-    // We get multiple dbus messages on every song change for every property that changes.
-    // Find out whether the song actually changed (or whether we havent recorded anything so far)
-    if session.songs.len() == 0 || session.songs.last().unwrap() != &song {
-        info!("Recording song: {:?}", song);
-        session.songs.push(song);
-        session
-            .timestamps
-            .push(record_start_time.elapsed().as_secs_f64());
+    if !playback_stopped {
+        let song = get_song_from_dbus_properties(properties);
+        // We get multiple dbus messages on every song change for every property that changes.
+        // Find out whether the song actually changed (or whether we havent recorded anything so far)
+        if session.songs.len() == 0 || session.songs.last().unwrap() != &song {
+            info!("Recording song: {:?}", song);
+            session.songs.push(song);
+            session
+                .timestamps
+                .push(record_start_time.elapsed().as_secs_f64());
+        }
     }
     playback_stopped
 }
@@ -106,4 +108,8 @@ pub fn previous_song() {
 
 pub fn start_playback() {
     dbus_playback_status_command("Play");
+}
+
+pub fn stop_playback() {
+    dbus_playback_status_command("Pause");
 }
