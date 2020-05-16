@@ -74,7 +74,7 @@ pub fn cut_session_lengths(session: RecordingSession) -> Result<(), hound::Error
     info!("Determined offset: {:.3}", offset);
     let mut start_time = session.timestamps[0] + offset;
     for (i, song) in session.songs.iter().enumerate() {
-        let end_time = start_time.clone() + song.length;
+        let end_time = start_time + song.length;
         cut_song(&session, song, start_time, end_time, i);
         start_time = end_time;
     }

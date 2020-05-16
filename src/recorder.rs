@@ -61,7 +61,7 @@ pub fn redirect_sink(index: i32) {
     Command::new("pactl")
         .arg("move-sink-input")
         .arg(format!("{}", index))
-        .arg(format!("{}", SINK_NAME))
+        .arg(SINK_NAME)
         .output()
         .expect("Failed to execute sink redirection command");
 }
@@ -73,7 +73,7 @@ pub fn check_sink_exists() -> bool {
         .expect("Failed to execute sink list command.");
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    return stdout.contains(SINK_NAME);
+    stdout.contains(SINK_NAME)
 }
 
 pub fn create_sink() {

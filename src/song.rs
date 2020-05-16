@@ -38,5 +38,5 @@ impl fmt::Display for Song {
 }
 
 fn sanitize_string(s: &str) -> String {
-    return s.replace("/", "").replace(" ", "");
+    s.replace("/", "").replace(" ", "")
 }

@@ -39,7 +39,7 @@ pub fn handle_dbus_properties_changed_signal(
         let song = get_song_from_dbus_properties(properties);
         // We get multiple dbus messages on every song change for every property that changes.
         // Find out whether the song actually changed (or whether we havent recorded anything so far)
-        if session.songs.len() == 0 || session.songs.last().unwrap() != &song {
+        if session.songs.is_empty() || session.songs.last().unwrap() != &song {
             info!("Recording song: {:?}", song);
             session.songs.push(song);
             session
@@ -60,6 +60,7 @@ fn is_playback_stopped(properties: &PC) -> bool {
     }
 }
 
+#[allow(clippy::needless_return)] // This return is actually not needless.
 fn get_song_from_dbus_properties(properties: PC) -> Song {
     let metadata = &properties.changed_properties["Metadata"].0;
 
@@ -70,7 +71,7 @@ fn get_song_from_dbus_properties(properties: PC) -> Song {
         dict.insert(key.as_str().unwrap(), Box::new(value));
     }
 
-    let song = Song {
+    return Song {
         // I want to thank either spotify or the MediaPlayer2 specification for this wonderful piece of art. Note that spotify doesn't actually send a list of artists, but just the first artist in a nested list which is great.
         artist: dict["xesam:artist"]
             .as_iter()
@@ -89,7 +90,6 @@ fn get_song_from_dbus_properties(properties: PC) -> Song {
         track_number: dict["xesam:trackNumber"].as_i64().unwrap(),
         length: (dict["mpris:length"].as_u64().unwrap() as f64) * 1e-6, // convert s -> µs
     };
-    song
 }
 
 pub fn dbus_playback_status_command(command: &str) {

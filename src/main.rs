@@ -12,8 +12,8 @@ pub mod yaml_session;
 
 use crate::args::parse_args;
 use crate::config::{
-    DEFAULT_BUFFER_FILE, DEFAULT_SESSION_FILE, POLLING_LOOP_TIMEOUT, TIME_AFTER_SESSION_END,
-    TIME_BEFORE_SESSION_START, WAIT_TIME_BEFORE_FIRST_SONG,
+    DEFAULT_BUFFER_FILE, DEFAULT_SESSION_FILE, TIME_AFTER_SESSION_END, TIME_BEFORE_SESSION_START,
+    WAIT_TIME_BEFORE_FIRST_SONG,
 };
 use crate::dbus::{previous_song, start_playback, stop_playback};
 use crate::recording_session::RecordingSession;
@@ -92,5 +92,5 @@ fn polling_loop(record_start_time: &Instant, session_dir: &Path) -> RecordingSes
         info!("Playback was stopped. Waiting a few seconds to allow the recording to have a buffer at the end");
         thread::sleep(Duration::from_secs_f64(TIME_AFTER_SESSION_END));
     }
-    return session;
+    session
 }

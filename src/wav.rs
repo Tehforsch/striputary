@@ -4,9 +4,6 @@ use hound;
 use std::path::Path;
 
 pub fn get_volume_average_over_channels(samples: Vec<i16>) -> Vec<i16> {
-    if samples.len() == 0 {
-        dbg!("?!?!?!?");
-    }
     samples
         .chunks_exact(2)
         .map(|c| (c[0] / 2) + (c[1] / 2))
