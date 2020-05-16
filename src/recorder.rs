@@ -4,40 +4,42 @@ use std::path::Path;
 use std::process::Command;
 use subprocess::{Exec, Popen};
 
-use crate::config::{BITRATE, SINK_NAME, SINK_SOURCE_NAME};
+use crate::config::{SINK_NAME, SINK_SOURCE_NAME};
 
-pub fn record(output_file: &Path) -> Vec<Popen> {
+pub fn record(output_file: &Path) -> Popen {
     setup_recording();
     start_recording(output_file)
 }
 
-pub fn stop_recording(mut recording_handles: Vec<Popen>) {
-    recording_handles[0]
+pub fn stop_recording(mut recording_handles: Popen) {
+    recording_handles
         .terminate()
         .expect("Failed to terminate parec");
-    recording_handles[1]
-        .terminate()
-        .expect("Failed to terminate oggenc");
+    // recording_handles[1]
+    // .terminate()
+    // .expect("Failed to terminate oggenc");
     info!("Stopped recording.");
 }
 
-pub fn start_recording(output_file: &Path) -> Vec<Popen> {
+pub fn start_recording(output_file: &Path) -> Popen {
     let parec_cmd = Exec::cmd("parec")
         .arg("-d")
-        .arg(format!("{}.monitor", SINK_NAME));
+        .arg(format!("{}.monitor", SINK_NAME))
+        .arg("--file-format=wav")
+        .arg(output_file.to_str().unwrap());
 
-    let oggenc_cmd = Exec::cmd("oggenc")
-        .arg("-b")
-        .arg(format!("{}", BITRATE))
-        .arg("-o")
-        .arg(output_file.to_str().unwrap())
-        .arg("-Q")
-        .arg("--raw")
-        .arg("-");
+    // let oggenc_cmd = Exec::cmd("oggenc")
+    //     .arg("-b")
+    //     .arg(format!("{}", BITRATE))
+    //     .arg("-o")
+    //     .arg(output_file.to_str().unwrap())
+    //     .arg("-Q")
+    //     .arg("--raw")
+    //     .arg("-");
 
-    (parec_cmd | oggenc_cmd)
-        .popen()
-        .expect("Failed to execute record command")
+    // (parec_cmd | oggenc_cmd)
+    // .popen()
+    parec_cmd.popen().expect("Failed to execute record command")
 }
 
 pub fn setup_recording() {

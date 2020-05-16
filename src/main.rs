@@ -1,30 +1,31 @@
 pub mod args;
 pub mod audio_excerpt;
+pub mod audio_time;
 pub mod config;
 pub mod cut;
 pub mod dbus;
-pub mod ogg;
 pub mod recorder;
 pub mod recording_session;
 pub mod song;
+pub mod wav;
 pub mod yaml_session;
 
 use crate::args::parse_args;
-use crate::config::{DEFAULT_BUFFER_FILE, DEFAULT_SESSION_FILE};
+use crate::config::{DEFAULT_BUFFER_FILE, DEFAULT_SESSION_FILE, TIME_BEFORE_SESSION_START};
+use crate::dbus::{previous_song, start_playback};
 use crate::recording_session::RecordingSession;
-
-use log::{error, info};
+use std::fs::create_dir_all;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::time::Instant;
+use std::thread;
+use std::time::{Duration, Instant};
 
-fn main() {
+fn main() -> Result<(), hound::Error> {
     let args = parse_args();
     let session_dir = args.session_dir;
     let yaml_file = session_dir.join(DEFAULT_SESSION_FILE);
     let buffer_file = session_dir.join(DEFAULT_BUFFER_FILE);
-
     // Set up logging
     log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
     let session = match args.action {
@@ -35,15 +36,11 @@ fn main() {
         }
         args::Action::Load => yaml_session::load(yaml_file.as_path()),
     };
-    match cut::cut_session(session) {
-        Ok(_) => {
-            info!("Succesfully finished cutting.");
-        }
-        Err(err) => error!("Cutting resulted in error: {}", err),
-    }
+    cut::cut_session(session)
 }
 
 fn record_new_session(session_dir: PathBuf, buffer_file: PathBuf) -> RecordingSession {
+    create_dir_all(&session_dir).expect("Failed to create simulation dir");
     // Start recording
     let recording_handles = recorder::record(&buffer_file);
     let record_start_time = Instant::now();
@@ -69,8 +66,26 @@ fn polling_loop(record_start_time: &Instant, session_dir: &Path) -> RecordingSes
     })
     .expect("Error setting Ctrl-C handler");
 
-    while running.load(Ordering::SeqCst) {
-        dbus::collect_dbus_timestamps(record_start_time, &mut session);
+    let start_time = Instant::now();
+    let mut session_started = false;
+    let mut playback_stopped = false;
+    // We run until either interrupted via Ctrl+c or playback in spotify is stopped.
+    // When playback was stopped we will assume the last song ran until completion!
+    start_playback();
+    while !playback_stopped && running.load(Ordering::SeqCst) {
+        if session_started {
+            playback_stopped = dbus::collect_dbus_timestamps(record_start_time, &mut session);
+        } else {
+            thread::sleep(Duration::from_secs_f64(0.01));
+            if start_time.elapsed().as_secs_f64() > TIME_BEFORE_SESSION_START {
+                session_started = true;
+                previous_song();
+            }
+        }
+    }
+    if !playback_stopped {
+        session.timestamps.pop();
+        session.songs.pop();
     }
     return session;
 }

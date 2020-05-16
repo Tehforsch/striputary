@@ -1,17 +1,18 @@
 use crate::recording_session::RecordingSession;
+use crate::song::Song;
 use dbus::arg::RefArg;
 use dbus::ffidisp::stdintf::org_freedesktop_dbus::PropertiesPropertiesChanged as PC;
 use dbus::ffidisp::Connection;
 use dbus::message::SignalArgs;
-
 use log::info;
-
 use std::collections::HashMap;
+use std::process::Command;
 use std::time::Instant;
 
-use crate::song::Song;
-
-pub fn collect_dbus_timestamps(record_start_time: &Instant, session: &mut RecordingSession) {
+pub fn collect_dbus_timestamps(
+    record_start_time: &Instant,
+    session: &mut RecordingSession,
+) -> bool {
     let c = Connection::new_session().unwrap();
     // Add a match for this signal
     let mstr = PC::match_str(Some(&"org.mpris.MediaPlayer2.spotify".into()), None);
@@ -20,16 +21,20 @@ pub fn collect_dbus_timestamps(record_start_time: &Instant, session: &mut Record
     // Wait for the signal to arrive.
     for msg in c.incoming(100) {
         if let Some(pc) = PC::from_message(&msg) {
-            handle_dbus_properties_changed_signal(record_start_time, session, pc);
+            let playback_stopped =
+                handle_dbus_properties_changed_signal(record_start_time, session, pc);
+            return playback_stopped;
         }
     }
+    false
 }
 
 pub fn handle_dbus_properties_changed_signal(
     record_start_time: &Instant,
     session: &mut RecordingSession,
     properties: PC,
-) {
+) -> bool {
+    let playback_stopped = is_playback_stopped(&properties);
     let song = get_song_from_dbus_properties(properties);
     // We get multiple dbus messages on every song change for every property that changes.
     // Find out whether the song actually changed (or whether we havent recorded anything so far)
@@ -39,6 +44,17 @@ pub fn handle_dbus_properties_changed_signal(
         session
             .timestamps
             .push(record_start_time.elapsed().as_secs_f64());
+    }
+    playback_stopped
+}
+
+fn is_playback_stopped(properties: &PC) -> bool {
+    let has_playback_status_entry = properties.changed_properties.contains_key("PlaybackStatus");
+    if has_playback_status_entry {
+        let variant = &properties.changed_properties["PlaybackStatus"];
+        (variant.0).as_str().unwrap() == "Paused"
+    } else {
+        false
     }
 }
 
@@ -72,4 +88,22 @@ fn get_song_from_dbus_properties(properties: PC) -> Song {
         length: (dict["mpris:length"].as_u64().unwrap() as f64) * 1e-6, // convert s -> µs
     };
     song
+}
+
+pub fn dbus_playback_status_command(command: &str) {
+    Command::new("dbus-send")
+        .arg("--print-reply")
+        .arg("--dest=org.mpris.MediaPlayer2.spotify")
+        .arg("/org/mpris/MediaPlayer2")
+        .arg(format!("org.mpris.MediaPlayer2.Player.{}", command))
+        .output()
+        .expect("Failed to send dbus command to spotify");
+}
+
+pub fn previous_song() {
+    dbus_playback_status_command("Previous");
+}
+
+pub fn start_playback() {
+    dbus_playback_status_command("Play");
 }

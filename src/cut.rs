@@ -1,23 +1,23 @@
 use crate::audio_excerpt::AudioExcerpt;
-use crate::config::{MAX_OFFSET, MAX_SEEK_ERROR, NUM_OFFSETS_TO_TRY};
-use crate::ogg::get_audio_excerpt;
+use crate::config::{MAX_OFFSET, MIN_OFFSET, NUM_OFFSETS_TO_TRY, READ_BUFFER};
 use crate::recording_session::RecordingSession;
 use crate::song::Song;
-use lewton::VorbisError;
+use crate::wav::get_audio_excerpt;
+use hound;
 use log::{debug, info};
 use std::fs::create_dir_all;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 
-pub fn cut_session(session: RecordingSession) -> Result<(), VorbisError> {
+pub fn cut_session(session: RecordingSession) -> Result<(), hound::Error> {
     cut_session_lengths(session)
 }
 
 pub fn determine_cut_offset(
     buffer_file_name: &Path,
     cut_timestamps: Vec<f64>,
-) -> Result<f64, VorbisError> {
+) -> Result<f64, hound::Error> {
     // When there are enough songs recorded in the recording session we can assume that some of them begin or end
     // with silence. If that is the case then the offset of all the cuts should be chosen by finding an offset that
     // puts as many of the cuts at positions where the recording is silent. In other words, the offset is given by
@@ -28,8 +28,8 @@ pub fn determine_cut_offset(
     info!("Reading excerpts");
     for cut_time in cut_timestamps.iter() {
         info!("Reading excerpt at {:.2}", cut_time);
-        let listen_start_time = cut_time - MAX_OFFSET;
-        let listen_end_time = cut_time + MAX_OFFSET;
+        let listen_start_time = cut_time + MIN_OFFSET - READ_BUFFER;
+        let listen_end_time = cut_time + MAX_OFFSET + READ_BUFFER;
         audio_samples.push(get_audio_excerpt(
             buffer_file_name,
             listen_start_time,
@@ -38,8 +38,9 @@ pub fn determine_cut_offset(
     }
     info!("Listening to excerpts");
     let mut min: Option<(f64, f64)> = None;
-    for i in -NUM_OFFSETS_TO_TRY / 2..NUM_OFFSETS_TO_TRY / 2 {
-        let offset = i as f64 * (1.0 / NUM_OFFSETS_TO_TRY as f64) * (MAX_OFFSET - MAX_SEEK_ERROR);
+    for i in 0..NUM_OFFSETS_TO_TRY {
+        let offset =
+            (i as f64) / (NUM_OFFSETS_TO_TRY as f64) * (MAX_OFFSET - MIN_OFFSET) + MIN_OFFSET;
         let total_volume: f64 = cut_timestamps
             .iter()
             .zip(audio_samples.iter())
@@ -57,7 +58,7 @@ pub fn determine_cut_offset(
     Ok(min.unwrap().1)
 }
 
-pub fn cut_session_lengths(session: RecordingSession) -> Result<(), VorbisError> {
+pub fn cut_session_lengths(session: RecordingSession) -> Result<(), hound::Error> {
     let mut cut_timestamps: Vec<f64> = Vec::new();
     cut_timestamps.append(
         &mut session
@@ -73,18 +74,18 @@ pub fn cut_session_lengths(session: RecordingSession) -> Result<(), VorbisError>
     // let offset = 0.0;
     info!("Determined offset: {:.3}", offset);
     let mut start_time = session.timestamps[0] + offset;
-    for song in session.songs.iter() {
+    for (i, song) in session.songs.iter().enumerate() {
         let end_time = start_time.clone() + song.length;
-        cut_song(session.get_buffer_file(), song, start_time, end_time);
+        cut_song(&session, song, start_time, end_time, i);
         start_time = end_time;
     }
     Ok(())
 }
 
-pub fn cut_song(source_file: PathBuf, song: &Song, start_time: f64, end_time: f64) {
+pub fn cut_song(session: &RecordingSession, song: &Song, start_time: f64, end_time: f64, i: usize) {
     let difference = end_time - start_time;
-    let music_dir = Path::new("music");
-    let target_file = song.get_target_file(&music_dir);
+    let source_file = session.get_buffer_file();
+    let target_file = song.get_target_file(&session.get_music_dir(), i);
     create_dir_all(target_file.parent().unwrap())
         .expect("Failed to create subfolders of target file");
     info!(
@@ -101,8 +102,8 @@ pub fn cut_song(source_file: PathBuf, song: &Song, start_time: f64, end_time: f6
         .arg(format!("{}", difference))
         .arg("-i")
         .arg(source_file.to_str().unwrap())
-        .arg("-acodec")
-        .arg("copy")
+        // .arg("-acodec")
+        // .arg("copy")
         .arg("-y")
         .arg(target_file.to_str().unwrap())
         .output()
