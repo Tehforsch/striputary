@@ -15,7 +15,7 @@ impl Song {
     pub fn get_target_file(&self, music_dir: &Path, i: usize) -> PathBuf {
         let file_name = format!(
             // "{:02}_{}.ogg",
-            "{:02}_{:02}_{}.wav",
+            "{:02}_{:02}_{}.flac",
             i,
             self.track_number,
             &sanitize_string(&self.title)
