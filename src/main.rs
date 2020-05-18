@@ -4,6 +4,7 @@ pub mod audio_time;
 pub mod config;
 pub mod cut;
 pub mod dbus;
+pub mod errors;
 pub mod recorder;
 pub mod recording_session;
 pub mod song;
@@ -17,6 +18,7 @@ use crate::config::{
 };
 use crate::dbus::{previous_song, start_playback, stop_playback};
 use crate::recording_session::RecordingSession;
+use log::error;
 use log::info;
 use std::fs::create_dir_all;
 use std::path::{Path, PathBuf};
@@ -25,7 +27,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
-fn main() -> Result<(), hound::Error> {
+fn main() {
     let args = parse_args();
     let session_dir = args.session_dir;
     let yaml_file = session_dir.join(DEFAULT_SESSION_FILE);
@@ -34,17 +36,25 @@ fn main() -> Result<(), hound::Error> {
     log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
     let session = match args.action {
         args::Action::Record => {
-            let session = record_new_session(session_dir, buffer_file);
-            yaml_session::save(yaml_file.as_path(), &session);
-            session
+            let maybe_session = record_new_session(session_dir, buffer_file);
+            if let Some(session) = maybe_session {
+                yaml_session::save(yaml_file.as_path(), &session);
+                session
+            } else {
+                return;
+            }
         }
         args::Action::Load => yaml_session::load(yaml_file.as_path()),
     };
     cut::cut_session(session)
 }
 
-fn record_new_session(session_dir: PathBuf, buffer_file: PathBuf) -> RecordingSession {
+fn record_new_session(session_dir: PathBuf, buffer_file: PathBuf) -> Option<RecordingSession> {
     create_dir_all(&session_dir).expect("Failed to create simulation dir");
+    if buffer_file.exists() {
+        error!("Buffer file already exists, not recording a new session.");
+        return None;
+    }
     // Start recording
     let recording_handles = recorder::record(&buffer_file);
     let record_start_time = Instant::now();
@@ -52,7 +62,7 @@ fn record_new_session(session_dir: PathBuf, buffer_file: PathBuf) -> RecordingSe
     let session = polling_loop(&record_start_time, &session_dir);
     // When the user stopped the loop, kill the recording processes too
     recorder::stop_recording(recording_handles);
-    session
+    Some(session)
 }
 
 fn polling_loop(record_start_time: &Instant, session_dir: &Path) -> RecordingSession {
@@ -82,9 +92,6 @@ fn polling_loop(record_start_time: &Instant, session_dir: &Path) -> RecordingSes
     thread::sleep(Duration::from_secs_f64(WAIT_TIME_BEFORE_FIRST_SONG));
     info!("Starting playback.");
     start_playback();
-    // We run until either interrupted via Ctrl+c or playback in spotify is stopped.
-    // When playback was stopped we will assume the last song ran until completion.
-    // However, when spotify reports that playback has been stopped it also reports
     while !playback_stopped && running.load(Ordering::SeqCst) {
         playback_stopped = dbus::collect_dbus_timestamps(record_start_time, &mut session);
     }
