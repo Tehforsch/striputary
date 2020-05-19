@@ -29,24 +29,22 @@ use std::time::{Duration, Instant};
 
 fn main() {
     let args = parse_args();
-    let session_dir = args.session_dir;
+    let session_dir = args.session_dir.clone();
     let yaml_file = session_dir.join(DEFAULT_SESSION_FILE);
     let buffer_file = session_dir.join(DEFAULT_BUFFER_FILE);
     // Set up logging
     log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
-    let session = match args.action {
+    match args.action {
         args::Action::Record => {
-            let maybe_session = record_new_session(session_dir, buffer_file);
-            if let Some(session) = maybe_session {
+            if let Some(session) = record_new_session(session_dir, buffer_file) {
                 yaml_session::save(yaml_file.as_path(), &session);
-                session
-            } else {
-                return;
             }
         }
-        args::Action::Load => yaml_session::load(yaml_file.as_path()),
+        args::Action::Cut { offset } => {
+            let session = yaml_session::load(yaml_file.as_path());
+            cut::cut_session(session, &offset);
+        }
     };
-    cut::cut_session(session)
 }
 
 fn record_new_session(session_dir: PathBuf, buffer_file: PathBuf) -> Option<RecordingSession> {

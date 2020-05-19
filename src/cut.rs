@@ -1,3 +1,4 @@
+use crate::args::OffsetOpts;
 use crate::audio_excerpt::AudioExcerpt;
 use crate::config::{MAX_OFFSET, MIN_OFFSET, NUM_OFFSETS_TO_TRY, READ_BUFFER};
 use crate::recording_session::RecordingSession;
@@ -8,8 +9,31 @@ use std::fs::create_dir_all;
 use std::path::Path;
 use std::process::Command;
 
-pub fn cut_session(session: RecordingSession) {
-    cut_session_lengths(session)
+pub fn cut_session(session: RecordingSession, offset_args: &OffsetOpts) {
+    let cut_timestamps: Vec<f64> = get_cut_timestamps_from_song_lengths(&session);
+    let (audio_excerpts, valid_songs) =
+        get_audio_excerpts_and_valid_songs(&session, &cut_timestamps);
+    let offset = match offset_args {
+        OffsetOpts::Auto => {
+            info!("Calculating optimal offset guess");
+            determine_cut_offset(audio_excerpts, cut_timestamps)
+        }
+        OffsetOpts::Interactive => get_offset_interactively(&session, audio_excerpts),
+    };
+    info!("Using offset: {:.3}", offset);
+    let mut start_time = session.timestamps[0] + offset;
+    for (i, song) in valid_songs.iter().enumerate() {
+        let end_time = start_time + song.length;
+        cut_song(&session, song, start_time, end_time, i);
+        start_time = end_time;
+    }
+}
+
+pub fn get_offset_interactively(
+    session: &RecordingSession,
+    audio_excerpts: Vec<AudioExcerpt>,
+) -> f64 {
+    -5.0
 }
 
 pub fn get_excerpt(buffer_file_name: &Path, cut_time: f64) -> Option<AudioExcerpt> {
@@ -81,20 +105,6 @@ pub fn get_cut_timestamps_from_song_lengths(session: &RecordingSession) -> Vec<f
             Some(*acc)
         })
         .collect()
-}
-
-pub fn cut_session_lengths(session: RecordingSession) {
-    let cut_timestamps: Vec<f64> = get_cut_timestamps_from_song_lengths(&session);
-    let (audio_excerpts, valid_songs) =
-        get_audio_excerpts_and_valid_songs(&session, &cut_timestamps);
-    let offset = determine_cut_offset(audio_excerpts, cut_timestamps);
-    info!("Determined offset: {:.3}", offset);
-    let mut start_time = session.timestamps[0] + offset;
-    for (i, song) in valid_songs.iter().enumerate() {
-        let end_time = start_time + song.length;
-        cut_song(&session, song, start_time, end_time, i);
-        start_time = end_time;
-    }
 }
 
 pub fn cut_song(session: &RecordingSession, song: &Song, start_time: f64, end_time: f64, i: usize) {
