@@ -8,6 +8,7 @@ use log::{debug, info};
 use std::fs::create_dir_all;
 use std::path::Path;
 use std::process::Command;
+use text_io::read;
 
 pub fn cut_session(session: RecordingSession, offset_args: &OffsetOpts) {
     let cut_timestamps: Vec<f64> = get_cut_timestamps_from_song_lengths(&session);
@@ -18,7 +19,7 @@ pub fn cut_session(session: RecordingSession, offset_args: &OffsetOpts) {
             info!("Calculating optimal offset guess");
             determine_cut_offset(audio_excerpts, cut_timestamps)
         }
-        OffsetOpts::Interactive => get_offset_interactively(&session, audio_excerpts),
+        OffsetOpts::Manual => get_offset_manually(&session, audio_excerpts),
     };
     info!("Using offset: {:.3}", offset);
     let mut start_time = session.timestamps[0] + offset;
@@ -29,11 +30,12 @@ pub fn cut_session(session: RecordingSession, offset_args: &OffsetOpts) {
     }
 }
 
-pub fn get_offset_interactively(
+pub fn get_offset_manually(
     session: &RecordingSession,
     audio_excerpts: Vec<AudioExcerpt>,
 ) -> f64 {
-    -5.0
+    println!("Enter offset (usually between -2 and 1): ");
+    read!()
 }
 
 pub fn get_excerpt(buffer_file_name: &Path, cut_time: f64) -> Option<AudioExcerpt> {

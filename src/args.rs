@@ -6,7 +6,7 @@ arg_enum! {
     #[derive(Debug)]
     pub enum OffsetOpts {
         Auto,
-        Interactive,
+        Manual,
     }
 }
 

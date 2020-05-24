@@ -1,4 +1,3 @@
-use hound;
 use std::convert;
 use std::error::Error;
 use std::fmt;
