@@ -184,8 +184,6 @@ pub fn cut_song(session: &RecordingSession, song: &Song, start_time: f64, end_ti
         .arg(format!("albumartist={}", &song.artist))
         .arg("-metadata")
         .arg(format!("track={}", &song.track_number))
-        .arg("-metadata")
-        .arg("genre=quarantine")
         .arg("-y")
         .arg(target_file.to_str().unwrap())
         .output()
