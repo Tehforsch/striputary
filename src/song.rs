@@ -12,11 +12,9 @@ pub struct Song {
 }
 
 impl Song {
-    pub fn get_target_file(&self, music_dir: &Path, i: usize) -> PathBuf {
+    pub fn get_target_file(&self, music_dir: &Path) -> PathBuf {
         let file_name = format!(
-            // "{:02}_{}.ogg",
-            "{:02}_{:02}_{}.flac",
-            i,
+            "{:02}_{}.flac",
             self.track_number,
             &sanitize_string(&self.title)
         );

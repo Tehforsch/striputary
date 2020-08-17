@@ -50,22 +50,22 @@ pub fn cut_group(group: RecordingSession, offset_args: &OffsetOpts) {
     };
     info!("Using offset: {:.3}", offset);
     let mut start_time = group.timestamps[0] + offset;
-    for (i, song) in valid_songs.iter().enumerate() {
+    for song in valid_songs.iter() {
         let end_time = start_time + song.length;
-        cut_song(&group, song, start_time, end_time, i);
+        cut_song(&group, song, start_time, end_time);
         start_time = end_time;
     }
-    match offset_args {
-        OffsetOpts::Manual => {
-            if !user_happy_with_offset() {
-                cut_group(group, offset_args);
-            }
-        }
-        _ => {}
+    if !user_happy_with_offset(&group) {
+        cut_group(group, &OffsetOpts::Manual);
     }
 }
 
-pub fn user_happy_with_offset() -> bool {
+pub fn user_happy_with_offset(session: &RecordingSession) -> bool {
+    let out = Command::new("vlc")
+        .arg(&session.get_music_dir().to_str().unwrap())
+        .output()
+        .expect("Failed to execute song playback command");
+
     println!("Are the results good? y/n");
     let answer: Result<String, text_io::Error> = try_read!();
     if let Ok(s) = answer {
@@ -152,10 +152,10 @@ pub fn get_cut_timestamps_from_song_lengths(session: &RecordingSession) -> Vec<f
         .collect()
 }
 
-pub fn cut_song(session: &RecordingSession, song: &Song, start_time: f64, end_time: f64, i: usize) {
+pub fn cut_song(session: &RecordingSession, song: &Song, start_time: f64, end_time: f64) {
     let difference = end_time - start_time;
     let source_file = session.get_buffer_file();
-    let target_file = song.get_target_file(&session.get_music_dir(), i);
+    let target_file = song.get_target_file(&session.get_music_dir());
     create_dir_all(target_file.parent().unwrap())
         .expect("Failed to create subfolders of target file");
     info!(
