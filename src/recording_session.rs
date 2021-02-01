@@ -13,6 +13,14 @@ pub struct RecordingSession {
 }
 
 impl RecordingSession {
+    pub fn new(path: &Path) -> RecordingSession {
+        RecordingSession {
+            dir: path.to_owned(),
+            timestamps: vec![],
+            songs: vec![],
+        }
+    }
+
     pub fn get_buffer_file(&self) -> PathBuf {
         self.dir.join(DEFAULT_BUFFER_FILE)
     }

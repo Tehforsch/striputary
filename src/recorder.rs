@@ -1,4 +1,3 @@
-use log::{error, info};
 use regex::Regex;
 use std::path::Path;
 use std::process::Command;
@@ -6,58 +5,44 @@ use subprocess::{Exec, Popen};
 
 use crate::config::{SINK_NAME, SINK_SOURCE_NAME};
 
-pub fn record(output_file: &Path) -> Popen {
+pub fn start_recording(output_file: &Path) -> Popen {
     setup_recording();
-    start_recording(output_file)
+    start_recording_command(output_file)
 }
 
 pub fn stop_recording(mut recording_handles: Popen) {
     recording_handles
         .terminate()
         .expect("Failed to terminate parec");
-    // recording_handles[1]
-    // .terminate()
-    // .expect("Failed to terminate oggenc");
-    info!("Stopped recording.");
+    println!("Stopped recording.");
 }
 
-pub fn start_recording(output_file: &Path) -> Popen {
+fn start_recording_command(output_file: &Path) -> Popen {
     let parec_cmd = Exec::cmd("parec")
         .arg("-d")
         .arg(format!("{}.monitor", SINK_NAME))
         .arg("--file-format=wav")
         .arg(output_file.to_str().unwrap());
-
-    // let oggenc_cmd = Exec::cmd("oggenc")
-    //     .arg("-b")
-    //     .arg(format!("{}", BITRATE))
-    //     .arg("-o")
-    //     .arg(output_file.to_str().unwrap())
-    //     .arg("-Q")
-    //     .arg("--raw")
-    //     .arg("-");
-
-    // (parec_cmd | oggenc_cmd)
-    // .popen()
     parec_cmd.popen().expect("Failed to execute record command")
 }
 
-pub fn setup_recording() {
+fn setup_recording() {
     if !check_sink_exists() {
-        info!("Creating sink");
+        println!("Creating sink");
         create_sink();
     } else {
-        info!("Sink already exists. Not creating sink");
+        println!("Sink already exists. Not creating sink");
     }
     let index = get_sink_input_index();
     if let Some(index_) = index {
         redirect_sink(index_);
     } else {
-        error!("Failed to find sink index");
+        // todo!(); // error
+        println!("Failed to find sink index");
     }
 }
 
-pub fn redirect_sink(index: i32) {
+fn redirect_sink(index: i32) {
     Command::new("pactl")
         .arg("move-sink-input")
         .arg(format!("{}", index))
@@ -66,7 +51,7 @@ pub fn redirect_sink(index: i32) {
         .expect("Failed to execute sink redirection command");
 }
 
-pub fn check_sink_exists() -> bool {
+fn check_sink_exists() -> bool {
     let output = Command::new("pacmd")
         .arg("list-sinks")
         .output()
@@ -76,7 +61,7 @@ pub fn check_sink_exists() -> bool {
     stdout.contains(SINK_NAME)
 }
 
-pub fn create_sink() {
+fn create_sink() {
     let output = Command::new("pactl")
         .arg("load-module")
         .arg("module-null-sink")
@@ -86,7 +71,7 @@ pub fn create_sink() {
     assert!(output.status.success());
 }
 
-pub fn get_sink_input_index() -> Option<i32> {
+fn get_sink_input_index() -> Option<i32> {
     let output = Command::new("pacmd")
         .arg("list-sink-inputs")
         .output()

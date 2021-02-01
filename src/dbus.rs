@@ -4,7 +4,6 @@ use dbus::arg::RefArg;
 use dbus::ffidisp::stdintf::org_freedesktop_dbus::PropertiesPropertiesChanged as PC;
 use dbus::ffidisp::Connection;
 use dbus::message::SignalArgs;
-use log::info;
 use std::collections::HashMap;
 use std::process::Command;
 use std::time::Instant;
@@ -40,7 +39,7 @@ pub fn handle_dbus_properties_changed_signal(
         // We get multiple dbus messages on every song change for every property that changes.
         // Find out whether the song actually changed (or whether we havent recorded anything so far)
         if session.songs.is_empty() || session.songs.last().unwrap() != &song {
-            info!("Recording song: {:?}", song);
+            println!("Recording song: {:?}", song);
             session.songs.push(song);
             session
                 .timestamps

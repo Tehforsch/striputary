@@ -2,7 +2,6 @@ use crate::audio_excerpt::AudioExcerpt;
 use crate::config::NUM_SAMPLES_PER_AVERAGE;
 use lewton::inside_ogg::OggStreamReader;
 use lewton::VorbisError;
-use log::debug;
 use std::collections::VecDeque;
 use std::fs::File;
 use std::path::Path;

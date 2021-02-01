@@ -1,34 +1,33 @@
-use clap::arg_enum;
+use clap::Clap;
 use std::path::PathBuf;
-use structopt::StructOpt;
 
-arg_enum! {
-    #[derive(Debug)]
-    pub enum OffsetOpts {
-        Auto,
-        Manual,
-    }
+#[derive(Clap, Debug)]
+pub struct OffsetPosition {
+    pub position: f64,
 }
 
-#[derive(StructOpt, Debug)]
-pub struct Opts {
-    #[structopt(subcommand)]
-    pub action: Action,
-    pub session_dir: PathBuf,
-    // #[clap(short, long, parse(from_occurrences))]
-    // pub verbose: i32,
+#[derive(Clap, Debug)]
+pub enum OffsetOpts {
+    Auto,
+    Manual(OffsetPosition),
 }
 
-#[derive(StructOpt, Debug)]
-#[structopt(name = "Action", about = "What to do")]
+#[derive(Clap, Debug)]
+pub struct CutOpts {
+    #[clap(subcommand)]
+    pub offset: OffsetOpts,
+}
+
+#[derive(Clap, Debug)]
 pub enum Action {
-    #[structopt(name = "record")]
+    Run(CutOpts),
     Record,
-    #[structopt()]
-    Cut { offset: OffsetOpts },
+    Cut(CutOpts),
 }
 
-pub fn parse_args() -> Opts {
-    let opts: Opts = Opts::from_args();
-    opts
+#[derive(Clap, Debug)]
+pub struct Opts {
+    pub session_dir: PathBuf,
+    #[clap(subcommand)]
+    pub action: Action,
 }
