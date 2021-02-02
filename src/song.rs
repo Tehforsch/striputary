@@ -18,10 +18,13 @@ impl Song {
             self.track_number,
             &sanitize_string(&self.title)
         );
+        self.get_album_folder(music_dir).join(Path::new(&file_name))
+    }
+
+    pub fn get_album_folder(&self, music_dir: &Path) -> PathBuf {
         music_dir
             .join(Path::new(&sanitize_string(&self.artist)))
             .join(Path::new(&sanitize_string(&self.album)))
-            .join(Path::new(&file_name))
     }
 }
 

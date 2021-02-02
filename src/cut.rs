@@ -11,7 +11,34 @@ use crate::recording_session::RecordingSession;
 use crate::song::Song;
 use crate::wav::extract_audio;
 
-pub fn group_songs(session: &RecordingSession) -> Vec<(RecordingSession, String)> {
+pub fn cut_session(session: RecordingSession, cut_args: &CutOpts) -> Result<()> {
+    // In practice I find that determining the offset works really well for single albums but the needed offset
+    // will increase for songs further into the recording. I think this might be due to some pause that is
+    // inserted after an album is finished? So for now lets determine the offset for each album individually.
+    // print_timestamps_vs_song_lengths(&session);
+    for (group, album_title) in group_songs_by_album(&session).iter() {
+        println!("Cutting album {}", album_title);
+        cut_group(group, cut_args)?;
+    }
+    Ok(())
+}
+
+fn print_timestamps_vs_song_lengths(session: &RecordingSession) -> () {
+    let mut acc_length = 0.0;
+    let initial_timestamp = session.timestamps[0];
+    for (song, timestamp) in session.songs.iter().zip(session.timestamps.iter()) {
+        println!(
+            "{:.2} {:.2} {:.2}",
+            (acc_length - (timestamp - initial_timestamp)),
+            acc_length,
+            timestamp - initial_timestamp
+        );
+        acc_length += song.length;
+    }
+    todo!()
+}
+
+pub fn group_songs_by_album(session: &RecordingSession) -> Vec<(RecordingSession, String)> {
     let mut sessions = vec![];
     if session.songs.len() == 0 {
         return sessions;
@@ -31,18 +58,9 @@ pub fn group_songs(session: &RecordingSession) -> Vec<(RecordingSession, String)
     sessions
 }
 
-pub fn cut_session(session: RecordingSession, cut_args: &CutOpts) -> Result<()> {
-    for (group, album) in group_songs(&session) {
-        println!("Cutting album {}", album);
-        cut_group(group, cut_args)?;
-    }
-    Ok(())
-}
-
-pub fn cut_group(group: RecordingSession, cut_args: &CutOpts) -> Result<()> {
-    let cut_timestamps: Vec<f64> = get_cut_timestamps_from_song_lengths(&group);
-    let (audio_excerpts, valid_songs) =
-        get_audio_excerpts_and_valid_songs(&group, &cut_timestamps)?;
+pub fn cut_group(group: &RecordingSession, cut_args: &CutOpts) -> Result<()> {
+    let cut_timestamps: Vec<f64> = get_cut_timestamps_from_song_lengths(group);
+    let (audio_excerpts, valid_songs) = get_audio_excerpts_and_valid_songs(group, &cut_timestamps)?;
     let offset = match &cut_args.offset {
         OffsetOpts::Auto => {
             println!("Calculating ideal offset");
@@ -54,10 +72,10 @@ pub fn cut_group(group: RecordingSession, cut_args: &CutOpts) -> Result<()> {
     let mut start_time = group.timestamps[0] + offset;
     for song in valid_songs.iter() {
         let end_time = start_time + song.length;
-        cut_song(&group, song, start_time, end_time)?;
+        cut_song(group, song, start_time, end_time)?;
         start_time = end_time;
     }
-    if !user_happy_with_offset(&group)? {
+    if !user_happy_with_offset(group)? {
         cut_group(group, &get_manual_cut_options())?;
     }
     Ok(())
@@ -83,8 +101,9 @@ fn user_happy_with_offset(session: &RecordingSession) -> Result<bool> {
 }
 
 fn playback_session(session: &RecordingSession) -> Result<()> {
+    let album_folder = session.songs[0].get_album_folder(&session.get_music_dir());
     Command::new("vlc")
-        .arg(&session.get_music_dir().to_str().unwrap())
+        .arg(album_folder.to_str().unwrap())
         .output()
         .map(|_| ())
         .context("Failed to run playback program")
@@ -106,9 +125,6 @@ pub fn determine_cut_offset(audio_excerpts: Vec<AudioExcerpt>, cut_timestamps: V
     // If that is the case then the offset of the cuts should be chosen by finding an offset that
     // puts as many of the cuts at positions where the recording is silent. In other words, the offset is given by
     // the local minimum of the convolution of the volume with a sum of dirac deltas at every cut position.
-    // In practice I find that this works really well for single albums but the needed offset will increase for
-    // songs further into the recording. I think this might be due to some pause that spotify inserts
-    // after an album is finished? So for now lets determine the offset for each album individually.
     let mut min: Option<(f64, f64)> = None;
     for i in 0..NUM_OFFSETS_TO_TRY {
         let offset =
@@ -125,7 +141,6 @@ pub fn determine_cut_offset(audio_excerpts: Vec<AudioExcerpt>, cut_timestamps: V
         } else {
             min = Some((total_volume, offset));
         };
-        // println!("PLOT {} {}", offset, total_volume);
     }
     min.unwrap().1
 }
@@ -155,7 +170,6 @@ pub fn get_audio_excerpts_and_valid_songs<'a>(
 }
 
 pub fn get_cut_timestamps_from_song_lengths(session: &RecordingSession) -> Vec<f64> {
-    // let mut cut_timestamps: Vec<f64> = Vec::new();
     session
         .songs
         .iter()
@@ -191,8 +205,6 @@ pub fn cut_song(
         .arg(format!("{}", difference))
         .arg("-i")
         .arg(source_file.to_str().unwrap())
-        // .arg("-acodec")
-        // .arg("copy")
         .arg("-metadata")
         .arg(format!("title={}", &song.title))
         .arg("-metadata")
