@@ -28,6 +28,7 @@ pub enum Action {
 #[derive(Clap, Debug)]
 pub struct Opts {
     pub session_dir: PathBuf,
+    pub service_name: Option<String>,
     #[clap(subcommand)]
     pub action: Action,
 }

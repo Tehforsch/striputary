@@ -4,10 +4,11 @@ use std::path::Path;
 use std::process::Command;
 use subprocess::{Exec, Popen};
 
-use crate::config::{SINK_NAME, SINK_SOURCE_NAME};
+use crate::config::STRIPUTARY_SINK_NAME;
+use crate::service_config::ServiceConfig;
 
-pub fn start_recording(output_file: &Path) -> Result<Popen> {
-    setup_recording()?;
+pub fn start_recording(output_file: &Path, service_config: &ServiceConfig) -> Result<Popen> {
+    setup_recording(service_config)?;
     start_recording_command(output_file)
 }
 
@@ -22,7 +23,7 @@ pub fn stop_recording(mut recording_handles: Popen) -> Result<()> {
 fn start_recording_command(output_file: &Path) -> Result<Popen> {
     let parec_cmd = Exec::cmd("parec")
         .arg("-d")
-        .arg(format!("{}.monitor", SINK_NAME))
+        .arg(format!("{}.monitor", STRIPUTARY_SINK_NAME))
         .arg("--file-format=wav")
         .arg(output_file.to_str().unwrap());
     parec_cmd
@@ -30,14 +31,14 @@ fn start_recording_command(output_file: &Path) -> Result<Popen> {
         .context("Failed to execute record command")
 }
 
-fn setup_recording() -> Result<()> {
+fn setup_recording(service_config: &ServiceConfig) -> Result<()> {
     if !check_sink_exists()? {
         println!("Creating sink");
         create_sink()?;
     } else {
         println!("Sink already exists. Not creating sink");
     }
-    let mb_index = get_sink_input_index()?;
+    let mb_index = get_sink_input_index(service_config)?;
     match mb_index {
         Some(index) => redirect_sink(index).map(|_| ()),
         None => Err(anyhow!("Failed to find sink index")),
@@ -48,7 +49,7 @@ fn redirect_sink(index: i32) -> Result<()> {
     Command::new("pactl")
         .arg("move-sink-input")
         .arg(format!("{}", index))
-        .arg(SINK_NAME)
+        .arg(STRIPUTARY_SINK_NAME)
         .output()
         .context("Failed to execute sink redirection via pactl move-sink-input")?;
     Ok(())
@@ -61,21 +62,21 @@ fn check_sink_exists() -> Result<bool> {
         .context("Failed to execute sink list command (pacmd list-sinks).")?;
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    Ok(stdout.contains(SINK_NAME))
+    Ok(stdout.contains(STRIPUTARY_SINK_NAME))
 }
 
 fn create_sink() -> Result<()> {
     let output = Command::new("pactl")
         .arg("load-module")
         .arg("module-null-sink")
-        .arg(format!("sink_name={}", SINK_NAME))
+        .arg(format!("sink_name={}", STRIPUTARY_SINK_NAME))
         .output()
         .context("Failed to execute sink creation command.")?;
     assert!(output.status.success());
     Ok(())
 }
 
-fn get_sink_input_index() -> Result<Option<i32>> {
+fn get_sink_input_index(service_config: &ServiceConfig) -> Result<Option<i32>> {
     let output = Command::new("pacmd")
         .arg("list-sink-inputs")
         .output()
@@ -88,7 +89,7 @@ fn get_sink_input_index() -> Result<Option<i32>> {
     captures
         .filter(|capture| {
             get_sink_source_name_from_pacmd_output_capture(capture)
-                .map(|name| name == SINK_SOURCE_NAME)
+                .map(|name| name == service_config.sink_name)
                 .unwrap_or(false)
         })
         .next()

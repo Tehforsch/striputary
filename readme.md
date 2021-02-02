@@ -6,7 +6,7 @@ Striputary relies on
 * ffmpeg for cutting the audio buffer into songs, adding metadata and converting to the different audio formats
 * D-Bus (via the [dbus-rs crate](https://github.com/diwic/dbus-rs)) to read song information (such as artist, album, title and song length) that is sent from the media player and to control playback
 
-The problem striputary tries to solve is cutting the stream into individual songs. Getting this exactly right is somewhat tricky. Striputary records D-bus information while recording and will therefore know exactly which songs were recorded in which order. However, the D-bus signal does not come at the exact millisecond a song begins. For song transitions with very little silence, this is unacceptable. Fortunately, the signal includes the exact song length. That means that if we knew exactly where any song begins in the audio stream, we know where to cut all others as well. Therefore, the problem comes down to finding the offset for all the cuts.
+The problem striputary tries to solve is cutting the stream into individual songs. Getting this exactly right is somewhat tricky. Striputary records D-bus information while recording and will therefore know exactly which songs were recorded in which order. However, the D-bus signal does not come at the exact millisecond a song begins. For song transitions with very little silence, this is unacceptable. Fortunately, the signal includes the exact song length. That means that if we knew exactly where a single song begins in the audio stream, we know where to cut all others as well. Therefore, the problem comes down to finding the offset for all the cuts.
 
 Currently there are two ways to find this offset:
 
@@ -45,16 +45,17 @@ striputary outputDirectory cut manual -0.5
 When all goes well, striputary should create a music folder in outputDirectory that should contain your music in .flac format. I recommend listening to a few songs to see if the recording is OK. 
 
 ### Meta-data
-Keep in mind that the meta-data is certainly not perfect. The only meta-data the resulting files contain will be the 
+The meta-data added is very rudimentary. The only meta-data the resulting files contain will be the 
 * Title
 * Album
 * First Artist
 * Track number
 in spotify.
-If this is unsatisfactory for you, I recommend using [beets](http://beets.io/) to organize your music. In practice I find that beets recognizes my albums immediately upon running
+Since this is unsatisfactory for most people, I recommend using [beets](http://beets.io/) to add meta data your music. So far, every album recorded with striputary has been recognized by beets immediately upon running
 ```
 beet import outputDirectory/music
 ```
 
-
-
+## Notes
+### Other services
+Implementing this for other services comes down to simply adding the corresponding dbus bus name and the pulse audio sink name entry in src/service_config.rs.

@@ -1,4 +1,5 @@
 use crate::recording_session::RecordingSession;
+use crate::service_config::ServiceConfig;
 use crate::song::Song;
 use anyhow::{Context, Result};
 use dbus::arg::RefArg;
@@ -12,10 +13,12 @@ use std::time::Instant;
 pub fn collect_dbus_timestamps(
     record_start_time: &Instant,
     session: &mut RecordingSession,
+    service_config: &ServiceConfig,
 ) -> bool {
     let c = Connection::new_session().unwrap();
     // Add a match for this signal
-    let mstr = PC::match_str(Some(&"org.mpris.MediaPlayer2.spotify".into()), None);
+    let bus_name = service_config.dbus_bus_name.clone();
+    let mstr = PC::match_str(Some(&bus_name.into()), None);
     c.add_match(&mstr).unwrap();
 
     // Wait for the signal to arrive.
@@ -60,7 +63,6 @@ fn is_playback_stopped(properties: &PC) -> bool {
     }
 }
 
-#[allow(clippy::needless_return)] // This return is actually not needless.
 fn get_song_from_dbus_properties(properties: PC) -> Song {
     let metadata = &properties.changed_properties["Metadata"].0;
 
@@ -72,7 +74,7 @@ fn get_song_from_dbus_properties(properties: PC) -> Song {
     }
 
     return Song {
-        // I want to thank either spotify or the MediaPlayer2 specification for this wonderful piece of art. Note that spotify doesn't actually send a list of artists, but just the first artist in a nested list which is great.
+        // I want to thank what is probably a combination of spotify and the MediaPlayer2 specification for this wonderful piece of art. Note that spotify doesn't actually send a list of artists, but just the first artist in a nested list which is just great.
         artist: dict["xesam:artist"]
             .as_iter()
             .unwrap()
@@ -92,10 +94,13 @@ fn get_song_from_dbus_properties(properties: PC) -> Song {
     };
 }
 
-pub fn dbus_set_playback_status_command(command: &str) -> Result<()> {
+pub fn dbus_set_playback_status_command(
+    service_config: &ServiceConfig,
+    command: &str,
+) -> Result<()> {
     Command::new("dbus-send")
         .arg("--print-reply")
-        .arg("--dest=org.mpris.MediaPlayer2.spotify")
+        .arg(format!("--dest={}", &service_config.dbus_bus_name))
         .arg("/org/mpris/MediaPlayer2")
         .arg(format!("org.mpris.MediaPlayer2.Player.{}", command))
         .output()
@@ -103,14 +108,14 @@ pub fn dbus_set_playback_status_command(command: &str) -> Result<()> {
         .map(|_| ()) // We do not need the output, let's not suggest that it is useful for the caller
 }
 
-pub fn previous_song() -> Result<()> {
-    dbus_set_playback_status_command("Previous")
+pub fn previous_song(service_config: &ServiceConfig) -> Result<()> {
+    dbus_set_playback_status_command(service_config, "Previous")
 }
 
-pub fn start_playback() -> Result<()> {
-    dbus_set_playback_status_command("Play")
+pub fn start_playback(service_config: &ServiceConfig) -> Result<()> {
+    dbus_set_playback_status_command(service_config, "Play")
 }
 
-pub fn stop_playback() -> Result<()> {
-    dbus_set_playback_status_command("Pause")
+pub fn stop_playback(service_config: &ServiceConfig) -> Result<()> {
+    dbus_set_playback_status_command(service_config, "Pause")
 }

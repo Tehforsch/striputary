@@ -1,7 +1,9 @@
-pub static SINK_NAME: &str = "spotifyrec";
-pub static SINK_SOURCE_NAME: &str = "Spotify";
+pub static STRIPUTARY_SINK_NAME: &str = "striputary";
+
 pub static DEFAULT_BUFFER_FILE: &str = "buffer.wav";
 pub static DEFAULT_SESSION_FILE: &str = "session.yaml";
+
+pub static DEFAULT_SERVICE: &str = "spotify";
 // This should be more than 3-4 seconds at least
 pub static TIME_BEFORE_SESSION_START: f64 = 5.0;
 pub static WAIT_TIME_BEFORE_FIRST_SONG: f64 = 1.0;
