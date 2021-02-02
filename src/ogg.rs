@@ -32,7 +32,7 @@ pub fn get_audio_excerpt(
     start_time: f64,
     end_time: f64,
 ) -> Result<AudioExcerpt, VorbisError> {
-    let f = File::open(&file_path).expect("Can't open file");
+    let f = File::open(&file_path).context("While opening file")?;
     let mut srr = OggStreamReader::new(f)?;
 
     let mut samples: Vec<f64> = Vec::new();

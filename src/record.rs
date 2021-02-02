@@ -13,19 +13,19 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 pub fn record_new_session(session_dir: &Path, buffer_file: &Path) -> Result<RecordingSession> {
-    create_dir_all(&session_dir).expect("Failed to create simulation dir");
+    create_dir_all(&session_dir).context("Failed to create session directory")?;
     if buffer_file.exists() {
         return Err(anyhow!(
             "Buffer file already exists, not recording a new session."
         ));
     }
-    // Start recording
-    let recording_handles = recorder::start_recording(&buffer_file);
+    let recording_handles = recorder::start_recording(&buffer_file)?;
     let record_start_time = Instant::now();
     // Check for dbus signals while recording until terminated
     let session = polling_loop(&record_start_time, &session_dir)?;
-    // When the user stopped the loop, kill the recording processes too
-    recorder::stop_recording(recording_handles);
+    // Whether the loop ended because of the user interrupt (ctrl-c) or
+    // because the playback was stopped doesn't matter - kill the recording processes
+    recorder::stop_recording(recording_handles)?;
     Ok(session)
 }
 
@@ -37,42 +37,42 @@ fn polling_loop(record_start_time: &Instant, session_dir: &Path) -> Result<Recor
     let is_running_clone = is_running.clone();
     set_ctrl_handler(is_running_clone)?;
 
-    initial_buffer_phase();
-    record_phase(&mut session, record_start_time, is_running);
+    initial_buffer_phase()?;
+    recording_phase(&mut session, record_start_time, is_running)?;
     final_buffer_phase();
     Ok(session)
 }
 
-fn initial_buffer_phase() -> () {
+fn initial_buffer_phase() -> Result<()> {
     // Add a small time buffer before starting the playback properly.
     // This ensures that spotify starts playing something, thus registering the
     // pulse audio sink.
     println!("Begin pre-session phase");
-    start_playback();
+    start_playback()?;
     thread::sleep(Duration::from_secs_f64(TIME_BEFORE_SESSION_START));
-    stop_playback();
+    stop_playback()?;
     println!("Go to beginning of song");
-    previous_song();
+    previous_song()?;
     thread::sleep(Duration::from_secs_f64(WAIT_TIME_BEFORE_FIRST_SONG));
+    Ok(())
 }
 
-fn record_phase(
+fn recording_phase(
     session: &mut RecordingSession,
     record_start_time: &Instant,
     is_running: Arc<AtomicBool>,
-) {
+) -> Result<()> {
     let mut playback_stopped = false;
     println!("Start playback.");
-    start_playback();
+    start_playback()?;
     while !playback_stopped && is_running.load(Ordering::SeqCst) {
         playback_stopped = collect_dbus_timestamps(record_start_time, session);
     }
+    Ok(())
 }
 
 fn final_buffer_phase() {
-    println!(
-        "Recording finished. Wait a few seconds to allow the recording to have a buffer at the end"
-    );
+    println!("Recording finished. Record final buffer for a few seconds");
     thread::sleep(Duration::from_secs_f64(TIME_AFTER_SESSION_END));
 }
 

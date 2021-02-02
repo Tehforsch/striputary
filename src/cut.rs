@@ -176,7 +176,7 @@ pub fn cut_song(
     let source_file = session.get_buffer_file();
     let target_file = song.get_target_file(&session.get_music_dir());
     create_dir_all(target_file.parent().unwrap())
-        .expect("Failed to create subfolders of target file");
+        .context("Failed to create subfolders of target file")?;
     println!(
         "Cutting song: {:.2}+{:.2}: {} to {}",
         start_time,

@@ -1,5 +1,6 @@
 use crate::recording_session::RecordingSession;
 use crate::song::Song;
+use anyhow::{Context, Result};
 use dbus::arg::RefArg;
 use dbus::ffidisp::stdintf::org_freedesktop_dbus::PropertiesPropertiesChanged as PC;
 use dbus::ffidisp::Connection;
@@ -91,24 +92,25 @@ fn get_song_from_dbus_properties(properties: PC) -> Song {
     };
 }
 
-pub fn dbus_playback_status_command(command: &str) {
+pub fn dbus_set_playback_status_command(command: &str) -> Result<()> {
     Command::new("dbus-send")
         .arg("--print-reply")
         .arg("--dest=org.mpris.MediaPlayer2.spotify")
         .arg("/org/mpris/MediaPlayer2")
         .arg(format!("org.mpris.MediaPlayer2.Player.{}", command))
         .output()
-        .expect("Failed to send dbus command to spotify");
+        .context("Failed to send dbus command to control playback")
+        .map(|_| ()) // We do not need the output, let's not suggest that it is useful for the caller
 }
 
-pub fn previous_song() {
-    dbus_playback_status_command("Previous");
+pub fn previous_song() -> Result<()> {
+    dbus_set_playback_status_command("Previous")
 }
 
-pub fn start_playback() {
-    dbus_playback_status_command("Play");
+pub fn start_playback() -> Result<()> {
+    dbus_set_playback_status_command("Play")
 }
 
-pub fn stop_playback() {
-    dbus_playback_status_command("Pause");
+pub fn stop_playback() -> Result<()> {
+    dbus_set_playback_status_command("Pause")
 }

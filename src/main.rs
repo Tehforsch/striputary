@@ -18,7 +18,7 @@ use anyhow::Result;
 use args::{CutOpts, Opts};
 use clap::Clap;
 use record::record_new_session;
-use std::path::Path;
+use std::{io::stdin, path::Path};
 
 fn main() -> Result<(), anyhow::Error> {
     let args = Opts::parse();
@@ -38,6 +38,7 @@ fn run_striputary(args: &Opts) -> Result<()> {
         args::Action::Run(cut_opts) => {
             let session =
                 record_session_and_save_session_file(&args.session_dir, &buffer_file, &yaml_file)?;
+            wait_for_user_after_recording()?;
             cut::cut_session(session, cut_opts)?;
         }
     };
@@ -57,4 +58,11 @@ pub fn record_session_and_save_session_file(
 fn load_session_and_cut_file(yaml_file: &Path, cut_opts: &CutOpts) -> Result<()> {
     let session = yaml_session::load(&yaml_file)?;
     cut::cut_session(session, cut_opts)
+}
+
+fn wait_for_user_after_recording() -> Result<()> {
+    println!("Recording finished. Press enter to cut songs");
+    let mut s = String::new();
+    stdin().read_line(&mut s)?;
+    Ok(())
 }
