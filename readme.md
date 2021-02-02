@@ -21,28 +21,22 @@ cargo build --release
 
 ## Usage
 ### Recording a stream
-Begin by opening spotify and start the first song of a playlist you want to record.
+Begin by opening spotify and starting the first song of a playlist you want to record.
 Then run
 ```
-striputary outputDirectory record
+striputary outputDirectory run auto
 ```
 
-Striputary should now begin by creating a new pulseaudio sink and redirecting the spotify output to that sink. This means you should not hear any audio from spotify anymore. (You should be able to listen to audio on your computer normally while striputary is recording, as long as you do not play back to the recording sink).
+Striputary should now begin by creating a new pulseaudio sink and redirecting the spotify output to that sink. This means you should not hear any audio from spotify anymore. (You can still listen to audio on your computer normally while striputary is recording without ruining the recording, as long as you do not play back to the recording sink.)
 Striputary will now begin recording and after a few seconds, you should see the song being rewinded to the beginning and playback should begin shortly after. (Don't worry, this happens only once and it is there to ensure we fully record the first song with some space around it in the audio buffer).
 
 Once the playlist is finished, striputary will realize that playback has stopped and stop recording. You can also interrupt the recording manually by either stopping the playback in spotify or pressing Ctrl+C in striputary. Any songs that were not recorded fully will be ignored from here on.
 
 ### Cutting into songs
-Run in automatic mode:
-```
-striputary outputDirectory cut auto
-```
-or, if you wanted to use manual mode with an offset of -0.5:
-```
-striputary outputDirectory cut manual -0.5
-```
+Striputary should now ask you for input (since cutting the song involves automatically playing back the songs to the user, it wants to make sure you're still here). Simply press enter - after some time, striputary should open your systems media player to play back the first album. If the results are ok, close the media player and answer "y". If they are not OK (cut too early/too late), answer "N" and keep entering new offsets until you are satisfied with the result.
+After you have answered "y", striputary will continue cutting the next album.
 
-When all goes well, striputary should create a music folder in outputDirectory that should contain your music in .flac format. I recommend listening to a few songs to see if the recording is OK. 
+The cut songs are contained in the outputDirectory/music. The songs are available in flac format. Note that for most streaming services, the available bitrate probably doesn't justify using this format, but since (as far as I know) it is impossible to cut a lossy format gaplessly and I value gapless playback more than saving disk space I chose the flac format. 
 
 ### Meta-data
 The meta-data added is very rudimentary. The only meta-data the resulting files contain will be the 
