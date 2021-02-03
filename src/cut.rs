@@ -16,9 +16,10 @@ pub fn cut_session(session: RecordingSession, cut_args: &CutOpts) -> Result<()> 
     // will increase for songs further into the recording. I think this might be due to some pause that is
     // inserted after an album is finished? So for now lets determine the offset for each album individually.
     // print_timestamps_vs_song_lengths(&session);
+    let mut offset_guess = 0.0;
     for (group, album_title) in group_songs_by_album(&session).iter() {
-        println!("Cutting album {}", album_title);
-        cut_group(group, cut_args)?;
+        println!("Cutting album {} {}", album_title, offset_guess);
+        offset_guess = cut_group(group, cut_args, offset_guess)?;
     }
     Ok(())
 }
@@ -57,16 +58,16 @@ pub fn group_songs_by_album(session: &RecordingSession) -> Vec<(RecordingSession
     sessions
 }
 
-pub fn cut_group(group: &RecordingSession, cut_args: &CutOpts) -> Result<()> {
-    let cut_timestamps: Vec<f64> = get_cut_timestamps_from_song_lengths(group);
+pub fn cut_group(group: &RecordingSession, cut_args: &CutOpts, offset_guess: f64) -> Result<f64> {
+    let cut_timestamps: Vec<f64> = get_cut_timestamps_from_song_lengths(group, offset_guess);
     let (audio_excerpts, valid_songs) = get_audio_excerpts_and_valid_songs(group, &cut_timestamps)?;
     let offset = match &cut_args.offset {
         OffsetOpts::Interactive => determine_cut_offset(audio_excerpts, cut_timestamps),
         OffsetOpts::Auto => determine_cut_offset(audio_excerpts, cut_timestamps),
         OffsetOpts::Manual(off) => off.position,
     };
-    println!("Using offset: {:.3}", offset);
-    let mut start_time = group.timestamps[0] + offset;
+    println!("Using offset: {:.3}", offset + offset_guess);
+    let mut start_time = group.timestamps[0] + offset + offset_guess;
     for song in valid_songs.iter() {
         let end_time = start_time + song.length;
         cut_song(group, song, start_time, end_time)?;
@@ -76,11 +77,11 @@ pub fn cut_group(group: &RecordingSession, cut_args: &CutOpts) -> Result<()> {
         OffsetOpts::Auto => {}
         _ => {
             if !user_happy_with_offset(group)? {
-                cut_group(group, &get_manual_cut_options())?;
+                return cut_group(group, &get_manual_cut_options(), offset_guess);
             }
         }
     }
-    Ok(())
+    Ok(offset + offset_guess)
 }
 
 fn get_manual_cut_options() -> CutOpts {
@@ -171,11 +172,14 @@ pub fn get_audio_excerpts_and_valid_songs<'a>(
     Ok((audio_excerpts, valid_songs))
 }
 
-pub fn get_cut_timestamps_from_song_lengths(session: &RecordingSession) -> Vec<f64> {
+pub fn get_cut_timestamps_from_song_lengths(
+    session: &RecordingSession,
+    offset_guess: f64,
+) -> Vec<f64> {
     session
         .songs
         .iter()
-        .scan(session.timestamps[0], |acc, song| {
+        .scan(session.timestamps[0] + offset_guess, |acc, song| {
             *acc += song.length;
             Some(*acc)
         })
