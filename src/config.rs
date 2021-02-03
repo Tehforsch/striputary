@@ -10,8 +10,8 @@ pub static WAIT_TIME_BEFORE_FIRST_SONG: f64 = 1.0;
 pub static TIME_AFTER_SESSION_END: f64 = 10.0;
 
 pub static BITRATE: i64 = 320;
-pub static MIN_OFFSET: f64 = -2.;
-pub static MAX_OFFSET: f64 = 0.;
+pub static MIN_OFFSET: f64 = -3.;
+pub static MAX_OFFSET: f64 = 3.;
 pub static READ_BUFFER: f64 = 0.5;
 pub static NUM_OFFSETS_TO_TRY: i64 = 1000;
 pub static NUM_SAMPLES_PER_AVERAGE_VOLUME: usize = 300;

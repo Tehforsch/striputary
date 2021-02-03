@@ -9,6 +9,7 @@ pub struct OffsetPosition {
 #[derive(Clap, Debug)]
 pub enum OffsetOpts {
     Auto,
+    Interactive,
     Manual(OffsetPosition),
 }
 

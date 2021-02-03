@@ -23,20 +23,19 @@ pub fn cut_session(session: RecordingSession, cut_args: &CutOpts) -> Result<()> 
     Ok(())
 }
 
-fn print_timestamps_vs_song_lengths(session: &RecordingSession) -> () {
-    let mut acc_length = 0.0;
-    let initial_timestamp = session.timestamps[0];
-    for (song, timestamp) in session.songs.iter().zip(session.timestamps.iter()) {
-        println!(
-            "{:.2} {:.2} {:.2}",
-            (acc_length - (timestamp - initial_timestamp)),
-            acc_length,
-            timestamp - initial_timestamp
-        );
-        acc_length += song.length;
-    }
-    todo!()
-}
+// fn print_timestamps_vs_song_lengths(session: &RecordingSession) -> () {
+//     let mut acc_length = 0.0;
+//     let initial_timestamp = session.timestamps[0];
+//     for (song, timestamp) in session.songs.iter().zip(session.timestamps.iter()) {
+//         println!(
+//             "{:.2} {:.2} {:.2}",
+//             (acc_length - (timestamp - initial_timestamp)),
+//             acc_length,
+//             timestamp - initial_timestamp
+//         );
+//         acc_length += song.length;
+//     }
+// }
 
 pub fn group_songs_by_album(session: &RecordingSession) -> Vec<(RecordingSession, String)> {
     let mut sessions = vec![];
@@ -62,10 +61,8 @@ pub fn cut_group(group: &RecordingSession, cut_args: &CutOpts) -> Result<()> {
     let cut_timestamps: Vec<f64> = get_cut_timestamps_from_song_lengths(group);
     let (audio_excerpts, valid_songs) = get_audio_excerpts_and_valid_songs(group, &cut_timestamps)?;
     let offset = match &cut_args.offset {
-        OffsetOpts::Auto => {
-            println!("Calculating ideal offset");
-            determine_cut_offset(audio_excerpts, cut_timestamps)
-        }
+        OffsetOpts::Interactive => determine_cut_offset(audio_excerpts, cut_timestamps),
+        OffsetOpts::Auto => determine_cut_offset(audio_excerpts, cut_timestamps),
         OffsetOpts::Manual(off) => off.position,
     };
     println!("Using offset: {:.3}", offset);
@@ -75,8 +72,13 @@ pub fn cut_group(group: &RecordingSession, cut_args: &CutOpts) -> Result<()> {
         cut_song(group, song, start_time, end_time)?;
         start_time = end_time;
     }
-    if !user_happy_with_offset(group)? {
-        cut_group(group, &get_manual_cut_options())?;
+    match &cut_args.offset {
+        OffsetOpts::Auto => {}
+        _ => {
+            if !user_happy_with_offset(group)? {
+                cut_group(group, &get_manual_cut_options())?;
+            }
+        }
     }
     Ok(())
 }
