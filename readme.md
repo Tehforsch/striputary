@@ -11,6 +11,7 @@ The problem striputary tries to solve is cutting the stream into individual song
 Currently there are two ways to find this offset:
 
 * Automatic mode: In this mode, striputary effectively calculates the volume averaged over all cut positions and chooses the offset such that it minimizes this average volume. This is based on the assumption that most song transition contain some silence. It works best when a lot of songs were recorded because that constrains the cut position better. I recommend trying this mode and to try manual mode if the result is unsatisfactory.
+![Average volume at cuts over cut offset](https://github.com/tehforsch/striputary/blob/master/pics/volumePlot.png?raw=true)
 * Manual mode: Striputary will ask the user for an offset and then use this for cutting the songs.
 
 ## Installation
