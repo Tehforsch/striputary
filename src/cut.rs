@@ -38,20 +38,6 @@ pub fn cut_session(session: &RecordingSession, cut_args: &CutOpts) -> Result<()>
     Ok(())
 }
 
-// fn print_timestamps_vs_song_lengths(session: &RecordingSession) -> () {
-//     let mut acc_length = 0.0;
-//     let initial_timestamp = session.timestamps[0];
-//     for (song, timestamp) in session.songs.iter().zip(session.timestamps.iter()) {
-//         println!(
-//             "{:.2} {:.2} {:.2}",
-//             (acc_length - (timestamp - initial_timestamp)),
-//             acc_length,
-//             timestamp - initial_timestamp
-//         );
-//         acc_length += song.length;
-//     }
-// }
-
 fn get_chunks<'a>(session: &'a RecordingSession) -> Vec<Chunk<'a>> {
     let mut chunks = vec![];
     if session.songs.len() == 0 {
@@ -64,12 +50,10 @@ fn get_chunks<'a>(session: &'a RecordingSession) -> Vec<Chunk<'a>> {
         let last_song_index = (i + 1) * chunk_size;
         chunks.push(get_chunk(session, first_song_index, last_song_index));
     }
-    // The last chunk is always the last CHUNK_SIZE songs. The first few might be overlapping with
-    // the previous chunk, but it doesn't matter, it's more important that the chunk isn't only very few songs
-    // because this might give a bad offset calculation
+    // The last chunk is the remaining songs
     chunks.push(get_chunk(
         session,
-        session.songs.len() - CHUNK_SIZE,
+        (num_chunks - 1) * chunk_size,
         session.songs.len(),
     ));
     chunks
@@ -79,7 +63,10 @@ fn get_chunk_size_and_num_chunks(num_songs: usize, chunk_size: usize) -> (usize,
     if num_songs <= chunk_size {
         (num_songs, 1 as usize)
     } else {
-        (chunk_size, (num_songs / chunk_size))
+        match num_songs % chunk_size {
+            0 => (chunk_size, num_songs / chunk_size),
+            _ => (chunk_size, (num_songs / chunk_size)),
+        }
     }
 }
 
@@ -191,6 +178,8 @@ fn determine_cut_offset(audio_excerpts: Vec<AudioExcerpt>, cut_timestamps: Vec<f
             min = Some((total_volume, offset));
         };
     }
+    let cut_quality_estimate = min.unwrap().0 / (audio_excerpts.len() as f64);
+    println!("Av. volume at cuts: {:.3}", cut_quality_estimate);
     min.unwrap().1
 }
 

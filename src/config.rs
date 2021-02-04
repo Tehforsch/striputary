@@ -16,4 +16,4 @@ pub static READ_BUFFER: f64 = 0.5;
 pub static NUM_OFFSETS_TO_TRY: i64 = 1000;
 pub static NUM_SAMPLES_PER_AVERAGE_VOLUME: usize = 300;
 
-pub static CHUNK_SIZE: usize = 10;
+pub static CHUNK_SIZE: usize = 5;
