@@ -4,22 +4,32 @@ use std::path::Path;
 use std::process::Command;
 use text_io::{read, try_read};
 
-use crate::args::{CutOpts, OffsetOpts, OffsetPosition};
 use crate::audio_excerpt::AudioExcerpt;
-use crate::config::{MAX_OFFSET, MIN_OFFSET, NUM_OFFSETS_TO_TRY, READ_BUFFER};
+use crate::config::{CHUNK_SIZE, MAX_OFFSET, MIN_OFFSET, NUM_OFFSETS_TO_TRY, READ_BUFFER};
 use crate::recording_session::RecordingSession;
 use crate::song::Song;
 use crate::wav::extract_audio;
+use crate::{
+    args::{CutOpts, OffsetOpts, OffsetPosition},
+    config,
+};
 
 pub fn cut_session(session: RecordingSession, cut_args: &CutOpts) -> Result<()> {
-    // In practice I find that determining the offset works really well for single albums but the needed offset
-    // will increase for songs further into the recording. I think this might be due to some pause that is
-    // inserted after an album is finished? So for now lets determine the offset for each album individually.
-    // print_timestamps_vs_song_lengths(&session);
+    // For reasons that I don't quite understand, the exact timings
+    // of the (accumulated) song lengths and the timings of the buffer audio file
+    // drift apart more and more as the recording grows in length.
+    // It might be that the bitrade of the audio isnt exactly what it should be,
+    // I don't know. This means that finding one cut offset for all songs at once
+    // isn't possible for very long recordings. For this reason I split the recording
+    // into chunks of N songs for which I determine the offset at once. The previous
+    // chunks offset is then used as a guess for the next chunk (this is relevant in practice
+    // because we only read small excerpts of the audio file around the cut position,
+    // not the entire audio file for the offset calculation - knowing the previous offset
+    // gives a good guess where to look for the audio excerpt that contains the cut.
     let mut offset_guess = 0.0;
-    for (group, album_title) in group_songs_by_album(&session).iter() {
-        println!("Cutting album {} {}", album_title, offset_guess);
-        offset_guess = cut_group(group, cut_args, offset_guess)?;
+    for (i, chunk) in get_chunks(&session).iter().enumerate() {
+        println!("Cutting chunk no {} with offset {}", i, offset_guess);
+        offset_guess = cut_group(chunk, cut_args, offset_guess)?;
     }
     Ok(())
 }
@@ -38,24 +48,63 @@ pub fn cut_session(session: RecordingSession, cut_args: &CutOpts) -> Result<()> 
 //     }
 // }
 
-pub fn group_songs_by_album(session: &RecordingSession) -> Vec<(RecordingSession, String)> {
+pub fn get_chunks(session: &RecordingSession) -> Vec<RecordingSession> {
     let mut sessions = vec![];
     if session.songs.len() == 0 {
         return sessions;
     }
-    for (song, timestamp) in session.songs.iter().zip(session.timestamps.iter()) {
-        if sessions.is_empty() || song.album != sessions.last().unwrap().0.songs[0].album {
-            let new_session = RecordingSession {
-                dir: session.dir.clone(),
-                timestamps: vec![timestamp.clone()],
-                songs: vec![song.clone()],
-            };
-            sessions.push((new_session, song.album.clone()));
-        } else {
-            sessions.last_mut().unwrap().0.songs.push(song.clone());
-        }
+    let (chunk_size, num_chunks) = get_chunk_size_and_num_chunks(session.songs.len(), CHUNK_SIZE);
+    // Get the first n-1 chunks which are of size chunk_size
+    for i in 0..(num_chunks - 1) {
+        let first_song_index = i * chunk_size;
+        let last_song_index = (i + 1) * chunk_size - 1;
+        sessions.push(get_chunk(session, first_song_index, last_song_index));
     }
+    // The last chunk is the remaining songs that may be of lower size
+    sessions.push(get_chunk(
+        session,
+        (num_chunks - 1) * chunk_size,
+        session.songs.len() - 1,
+    ));
     sessions
+    // let new_session = RecordingSession {
+    //     dir: session.dir.clone(),
+    //     timestamps: vec![timestamp.clone()],
+    //     songs: vec![song.clone()],
+    // };
+    // for (song, timestamp) in session.songs.iter().zip(session.timestamps.iter()) {
+    //     if sessions.is_empty() || song.album != sessions.last().unwrap().0.songs[0].album {
+    //         let new_session = RecordingSession {
+    //             dir: session.dir.clone(),
+    //             timestamps: vec![timestamp.clone()],
+    //             songs: vec![song.clone()],
+    //         };
+    //         sessions.push((new_session, song.album.clone()));
+    //     } else {
+    //         sessions.last_mut().unwrap().0.songs.push(song.clone());
+    //     }
+    // }
+    // sessions
+}
+
+fn get_chunk_size_and_num_chunks(num_songs: usize, chunk_size: usize) -> (usize, usize) {
+    if num_songs <= chunk_size {
+        (num_songs, 1 as usize)
+    } else {
+        (chunk_size, (num_songs / chunk_size))
+    }
+}
+
+pub fn get_chunk(
+    session: &RecordingSession,
+    first_song_index: usize,
+    last_song_index: usize,
+) -> RecordingSession {
+    RecordingSession {
+        dir: session.dir.clone(),
+        timestamps: session.timestamps[first_song_index..last_song_index].to_vec(),
+        songs: session.songs[first_song_index..last_song_index].to_vec(),
+    }
 }
 
 pub fn cut_group(group: &RecordingSession, cut_args: &CutOpts, offset_guess: f64) -> Result<f64> {
