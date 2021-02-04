@@ -60,31 +60,15 @@ pub fn get_chunks(session: &RecordingSession) -> Vec<RecordingSession> {
         let last_song_index = (i + 1) * chunk_size - 1;
         sessions.push(get_chunk(session, first_song_index, last_song_index));
     }
-    // The last chunk is the remaining songs that may be of lower size
+    // The last chunk is always the last CHUNK_SIZE songs. The first few might be overlapping with
+    // the previous chunk, but it doesn't matter, it's more important that the chunk isn't only very few songs
+    // because this might give a bad offset calculation
     sessions.push(get_chunk(
         session,
-        (num_chunks - 1) * chunk_size,
+        session.songs.len() - CHUNK_SIZE,
         session.songs.len() - 1,
     ));
     sessions
-    // let new_session = RecordingSession {
-    //     dir: session.dir.clone(),
-    //     timestamps: vec![timestamp.clone()],
-    //     songs: vec![song.clone()],
-    // };
-    // for (song, timestamp) in session.songs.iter().zip(session.timestamps.iter()) {
-    //     if sessions.is_empty() || song.album != sessions.last().unwrap().0.songs[0].album {
-    //         let new_session = RecordingSession {
-    //             dir: session.dir.clone(),
-    //             timestamps: vec![timestamp.clone()],
-    //             songs: vec![song.clone()],
-    //         };
-    //         sessions.push((new_session, song.album.clone()));
-    //     } else {
-    //         sessions.last_mut().unwrap().0.songs.push(song.clone());
-    //     }
-    // }
-    // sessions
 }
 
 fn get_chunk_size_and_num_chunks(num_songs: usize, chunk_size: usize) -> (usize, usize) {
