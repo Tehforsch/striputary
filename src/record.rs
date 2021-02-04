@@ -1,4 +1,4 @@
-use crate::dbus::{collect_dbus_timestamps, previous_song, start_playback, stop_playback};
+use crate::dbus::{collect_dbus_info, previous_song, start_playback, stop_playback};
 use crate::recorder;
 use crate::recording_session::RecordingSession;
 use crate::{
@@ -39,15 +39,13 @@ fn polling_loop(
     session_dir: &Path,
     stream_config: &ServiceConfig,
 ) -> Result<RecordingSession> {
-    let mut session = RecordingSession::new(session_dir);
-
     let is_running = Arc::new(AtomicBool::new(true));
 
     let is_running_clone = is_running.clone();
     set_ctrl_handler(is_running_clone)?;
 
     initial_buffer_phase(stream_config)?;
-    recording_phase(&mut session, record_start_time, is_running, stream_config)?;
+    let session = recording_phase(session_dir, record_start_time, is_running, stream_config)?;
     final_buffer_phase();
     Ok(session)
 }
@@ -67,18 +65,22 @@ fn initial_buffer_phase(stream_config: &ServiceConfig) -> Result<()> {
 }
 
 fn recording_phase(
-    session: &mut RecordingSession,
+    session_dir: &Path,
     record_start_time: &Instant,
     is_running: Arc<AtomicBool>,
     stream_config: &ServiceConfig,
-) -> Result<()> {
+) -> Result<RecordingSession> {
+    let recording_start_time = Instant::now()
+        .duration_since(*record_start_time)
+        .as_secs_f64();
+    let mut session = RecordingSession::new(session_dir, recording_start_time);
     let mut playback_stopped = false;
     println!("Start playback.");
     start_playback(stream_config)?;
     while !playback_stopped && is_running.load(Ordering::SeqCst) {
-        playback_stopped = collect_dbus_timestamps(record_start_time, session, stream_config);
+        playback_stopped = collect_dbus_info(&mut session, stream_config);
     }
-    Ok(())
+    Ok(session)
 }
 
 fn final_buffer_phase() {

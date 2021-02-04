@@ -8,15 +8,15 @@ use std::vec::Vec;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RecordingSession {
     pub dir: PathBuf,
-    pub timestamps: Vec<f64>,
     pub songs: Vec<Song>,
+    pub estimated_time_first_song: f64,
 }
 
 impl RecordingSession {
-    pub fn new(path: &Path) -> RecordingSession {
+    pub fn new(path: &Path, estimated_time_first_song: f64) -> RecordingSession {
         RecordingSession {
             dir: path.to_owned(),
-            timestamps: vec![],
+            estimated_time_first_song,
             songs: vec![],
         }
     }

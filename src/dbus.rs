@@ -8,13 +8,11 @@ use dbus::ffidisp::Connection;
 use dbus::message::SignalArgs;
 use std::collections::HashMap;
 use std::process::Command;
-use std::time::Instant;
 
-pub fn collect_dbus_timestamps(
-    record_start_time: &Instant,
-    session: &mut RecordingSession,
-    service_config: &ServiceConfig,
-) -> bool {
+/// Collect dbus information on the songs.
+/// We could collect the dbus timestamps but they are basically useless
+/// for cutting the songs since they fluctuate way too much to be precise.
+pub fn collect_dbus_info(session: &mut RecordingSession, service_config: &ServiceConfig) -> bool {
     let c = Connection::new_session().unwrap();
     // Add a match for this signal
     let bus_name = service_config.dbus_bus_name.clone();
@@ -24,8 +22,7 @@ pub fn collect_dbus_timestamps(
     // Wait for the signal to arrive.
     for msg in c.incoming(100) {
         if let Some(pc) = PC::from_message(&msg) {
-            let playback_stopped =
-                handle_dbus_properties_changed_signal(record_start_time, session, pc);
+            let playback_stopped = handle_dbus_properties_changed_signal(session, pc);
             return playback_stopped;
         }
     }
@@ -33,7 +30,6 @@ pub fn collect_dbus_timestamps(
 }
 
 pub fn handle_dbus_properties_changed_signal(
-    record_start_time: &Instant,
     session: &mut RecordingSession,
     properties: PC,
 ) -> bool {
@@ -45,9 +41,6 @@ pub fn handle_dbus_properties_changed_signal(
         if session.songs.is_empty() || session.songs.last().unwrap() != &song {
             println!("Recording song: {:?}", song);
             session.songs.push(song);
-            session
-                .timestamps
-                .push(record_start_time.elapsed().as_secs_f64());
         }
     }
     playback_stopped

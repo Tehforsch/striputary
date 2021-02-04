@@ -55,7 +55,7 @@ fn run_striputary(args: &Opts, stream_config: &ServiceConfig) -> Result<()> {
                 stream_config,
             )?;
             wait_for_user_after_recording()?;
-            cut::cut_session(session, cut_opts)?;
+            cut::cut_session(&session, cut_opts)?;
         }
     };
     Ok(())
@@ -74,7 +74,7 @@ pub fn record_session_and_save_session_file(
 
 fn load_session_and_cut_file(yaml_file: &Path, cut_opts: &CutOpts) -> Result<()> {
     let session = yaml_session::load(&yaml_file)?;
-    cut::cut_session(session, cut_opts)
+    cut::cut_session(&session, cut_opts)
 }
 
 fn wait_for_user_after_recording() -> Result<()> {
