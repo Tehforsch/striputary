@@ -73,7 +73,8 @@ pub fn record_session_and_save_session_file(
 }
 
 fn load_session_and_cut_file(yaml_file: &Path, cut_opts: &CutOpts) -> Result<()> {
-    let session = yaml_session::load(&yaml_file)?;
+    let mut session = yaml_session::load(&yaml_file)?;
+    session.dir = yaml_file.parent().unwrap().into();
     cut::cut_session(&session, cut_opts)
 }
 
