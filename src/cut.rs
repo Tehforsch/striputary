@@ -5,13 +5,12 @@ use std::process::Command;
 use text_io::{read, try_read};
 
 use crate::audio_excerpt::AudioExcerpt;
-use crate::config::{CHUNK_SIZE, MAX_OFFSET, MIN_OFFSET, NUM_OFFSETS_TO_TRY, READ_BUFFER};
+use crate::config::{MAX_OFFSET, MIN_OFFSET, NUM_OFFSETS_TO_TRY, READ_BUFFER};
 use crate::recording_session::RecordingSession;
 use crate::song::Song;
 use crate::wav::extract_audio;
 use crate::{
     args::{CutOpts, OffsetOpts, OffsetPosition},
-    config,
 };
 
 struct Chunk<'a> {
@@ -23,7 +22,7 @@ pub fn cut_session(session: &RecordingSession, cut_args: &CutOpts) -> Result<()>
     // For reasons that I don't quite understand, the exact timings
     // of the (accumulated) song lengths and the timings of the buffer audio file
     // drift apart more and more as the recording grows in length.
-    // It might be that the bitrade of the audio isnt exactly what it should be,
+    // It might be that the bitrate of the audio isnt exactly what it should be,
     // I don't know. This means that finding one cut offset for all songs at once
     // isn't possible for very long recordings. For this reason I split the recording
     // into chunks of N songs for which I determine the offset at once. The previous
@@ -32,18 +31,40 @@ pub fn cut_session(session: &RecordingSession, cut_args: &CutOpts) -> Result<()>
     // not the entire audio file for the offset calculation - knowing the previous offset
     // gives a good guess where to look for the audio excerpt that contains the cut.
     let mut estimated_time_first_song = session.estimated_time_first_song;
-    for (i, chunk) in get_chunks(session).iter().enumerate() {
+    let chunks = match cut_args.chunk_size {
+        Some(size) => get_chunks(session, size),
+        None => get_album_chunks(session),
+    };
+    for chunk in chunks.iter() {
         estimated_time_first_song = cut_chunk(chunk, cut_args, estimated_time_first_song)?;
     }
     Ok(())
 }
 
-fn get_chunks<'a>(session: &'a RecordingSession) -> Vec<Chunk<'a>> {
+fn get_album_chunks<'a>(session: &'a RecordingSession) -> Vec<Chunk<'a>> {
     let mut chunks = vec![];
     if session.songs.len() == 0 {
         return chunks;
     }
-    let (chunk_size, num_chunks) = get_chunk_size_and_num_chunks(session.songs.len(), CHUNK_SIZE);
+    let mut first_index_album = 0;
+    let mut current_album = &session.songs[0].album;
+    for (i, song) in session.songs.iter().enumerate() {
+        if &song.album == current_album {
+        } else {
+            chunks.push(get_chunk(session, first_index_album, i));
+            first_index_album = i;
+            current_album = &song.album;
+        }
+    }
+    chunks
+}
+
+fn get_chunks<'a>(session: &'a RecordingSession, desired_chunk_size: usize) -> Vec<Chunk<'a>> {
+    let mut chunks = vec![];
+    if session.songs.len() == 0 {
+        return chunks;
+    }
+    let (chunk_size, num_chunks) = get_chunk_size_and_num_chunks(session.songs.len(), desired_chunk_size);
     // Get the first n-1 chunks which are of size chunk_size
     for i in 0..(num_chunks - 1) {
         let first_song_index = i * chunk_size;
@@ -110,18 +131,19 @@ fn cut_chunk<'a>(
         OffsetOpts::Auto => {}
         _ => {
             if !user_happy_with_offset(chunk)? {
-                return cut_chunk(chunk, &get_manual_cut_options(), estimated_time_first_song);
+                return cut_chunk(chunk, &get_manual_cut_options(&cut_args), estimated_time_first_song);
             }
         }
     }
     Ok(start_time)
 }
 
-fn get_manual_cut_options() -> CutOpts {
+fn get_manual_cut_options(cut_args: &CutOpts) -> CutOpts {
     CutOpts {
         offset: OffsetOpts::Manual(OffsetPosition {
             position: get_offset_interactively(),
         }),
+        chunk_size: cut_args.chunk_size,
     }
 }
 
