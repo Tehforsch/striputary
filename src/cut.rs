@@ -56,6 +56,7 @@ fn get_album_chunks<'a>(session: &'a RecordingSession) -> Vec<Chunk<'a>> {
             current_album = &song.album;
         }
     }
+    chunks.push(get_chunk(session, first_index_album, session.songs.len()));
     chunks
 }
 
