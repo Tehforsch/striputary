@@ -17,7 +17,7 @@ Currently there are two ways to find this offset:
 ## Installation
 ```bash
 git clone https://github.com/tehforsch/striputary
-cargo build --release
+cargo install --path .
 ```
 
 ## Usage
