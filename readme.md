@@ -5,6 +5,7 @@ Striputary relies on
 * Pulseaudio and parec for recording audio
 * ffmpeg for cutting the audio buffer into songs, adding metadata and converting to the different audio formats
 * D-Bus (via the [dbus-rs crate](https://github.com/diwic/dbus-rs)) to read song information (such as artist, album, title and song length) that is sent from the media player and to control playback
+* Optional: vlc to play back the cut songs in interactive cutting sessions. (This should be replaced by opening the music with whatever the program associated with the music MIME type is)
 
 The problem striputary tries to solve is cutting the stream into individual songs. Getting this exactly right is somewhat tricky. Striputary records D-bus information while recording and will therefore know exactly which songs were recorded in which order. However, the D-bus signal does not come at the exact millisecond a song begins. For song transitions with very little silence, this is unacceptable. Fortunately, the signal includes the exact song length. That means that if we knew exactly where a single song begins in the audio stream, we know where to cut all others as well. Therefore, the problem comes down to finding the offset for all the cuts.
 
@@ -25,7 +26,7 @@ cargo install --path .
 Begin by opening spotify and starting the first song of a playlist you want to record.
 Then run
 ```
-striputary outputDirectory run auto
+striputary outputDirectory run
 ```
 
 Striputary should now begin by creating a new pulseaudio sink and redirecting the spotify output to that sink. This means you should not hear any audio from spotify anymore. (You can still listen to audio on your computer normally while striputary is recording without ruining the recording, as long as you do not play back to the recording sink.)
@@ -34,6 +35,10 @@ Striputary will now begin recording and after a few seconds, you should see the 
 Once the playlist is finished, striputary will realize that playback has stopped and stop recording. You can also interrupt the recording manually by either stopping the playback in spotify or pressing Ctrl+C in striputary. Any songs that were not recorded fully will be ignored from here on.
 
 ### Cutting into songs
+So far, Striputary has only recorded the music into a large buffer, but we want to cut music into pieces ~~this is my last resort~~. To do so, run 
+```
+striputary outputDirectory cut interactive
+```
 Striputary should now ask you for input (since cutting the song involves automatically playing back the songs to the user, it wants to make sure you're still here). Simply press enter - after some time, striputary should open your systems media player to play back the first album. If the results are ok, close the media player and answer "y". If they are not OK (cut too early/too late), answer "N" and keep entering new offsets until you are satisfied with the result.
 After you have answered "y", striputary will continue cutting the next album.
 
