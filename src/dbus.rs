@@ -13,7 +13,10 @@ use std::process::Command;
 /// Collect dbus information on the songs.
 /// We could collect the dbus timestamps but they are basically useless
 /// for cutting the songs since they fluctuate way too much to be precise.
-pub fn collect_dbus_info(session: &mut RecordingSession, service_config: &ServiceConfig) -> Result<bool> {
+pub fn collect_dbus_info(
+    session: &mut RecordingSession,
+    service_config: &ServiceConfig,
+) -> Result<bool> {
     let c = Connection::new_session().unwrap();
     // Add a match for this signal
     let bus_name = service_config.dbus_bus_name.clone();

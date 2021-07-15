@@ -18,7 +18,11 @@ pub struct CutOpts {
     #[clap(subcommand)]
     pub offset: OffsetOpts,
 
-    #[clap(short, long, about = "Instead of cutting songs grouped by album, group them by a given chunk size")]
+    #[clap(
+        short,
+        long,
+        about = "Instead of cutting songs grouped by album, group them by a given chunk size"
+    )]
     pub chunk_size: Option<usize>,
 }
 

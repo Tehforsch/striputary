@@ -86,14 +86,12 @@ fn get_sink_input_index(service_config: &ServiceConfig) -> Result<Option<i32>> {
     let stdout_without_newlines = stdout.replace("\n", "");
     let re = Regex::new("index: ([0-9]*).*?media.name = \"(.*?)\"").unwrap();
     let captures = re.captures_iter(&stdout_without_newlines);
-    let mut temp = captures
-        .filter(|capture| {
-            get_sink_source_name_from_pacmd_output_capture(capture)
-                .map(|name| name == service_config.sink_name)
-                .unwrap_or(false)
-        });
-    temp
-        .next()
+    let mut temp = captures.filter(|capture| {
+        get_sink_source_name_from_pacmd_output_capture(capture)
+            .map(|name| name == service_config.sink_name)
+            .unwrap_or(false)
+    });
+    temp.next()
         .map(|capture| get_sink_index_from_pacmd_output_capture(&capture))
         .transpose()
     // for capture in captures {

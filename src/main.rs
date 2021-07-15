@@ -5,6 +5,7 @@ pub mod config;
 pub mod cut;
 pub mod dbus;
 pub mod errors;
+pub mod path_utils;
 pub mod record;
 pub mod recorder;
 pub mod recording_session;
@@ -12,7 +13,6 @@ pub mod service_config;
 pub mod song;
 pub mod wav;
 pub mod yaml_session;
-pub mod path_utils;
 
 use crate::recording_session::RecordingSession;
 use anyhow::Result;
@@ -36,19 +36,13 @@ fn get_service_name(service_name: &Option<String>) -> &str {
 fn run_striputary(args: &Opts, stream_config: &ServiceConfig) -> Result<()> {
     match &args.action {
         args::Action::Record => {
-            record_session_and_save_session_file(
-                &args.session_dir,
-                stream_config,
-            )?;
+            record_session_and_save_session_file(&args.session_dir, stream_config)?;
         }
         args::Action::Cut(cut_opts) => {
             load_session_and_cut_file(&get_yaml_file(&args.session_dir), &cut_opts)?;
         }
         args::Action::Run(cut_opts) => {
-            let session = record_session_and_save_session_file(
-                &args.session_dir,
-                stream_config,
-            )?;
+            let session = record_session_and_save_session_file(&args.session_dir, stream_config)?;
             wait_for_user_after_recording()?;
             cut::cut_session(&session, cut_opts)?;
         }

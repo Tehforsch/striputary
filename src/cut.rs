@@ -4,14 +4,12 @@ use std::path::Path;
 use std::process::Command;
 use text_io::{read, try_read};
 
+use crate::args::{CutOpts, OffsetOpts, OffsetPosition};
 use crate::audio_excerpt::AudioExcerpt;
 use crate::config::{MAX_OFFSET, MIN_OFFSET, NUM_OFFSETS_TO_TRY, READ_BUFFER};
 use crate::recording_session::RecordingSession;
 use crate::song::Song;
 use crate::wav::extract_audio;
-use crate::{
-    args::{CutOpts, OffsetOpts, OffsetPosition},
-};
 
 struct Chunk<'a> {
     pub session: &'a RecordingSession,
@@ -65,7 +63,8 @@ fn get_chunks<'a>(session: &'a RecordingSession, desired_chunk_size: usize) -> V
     if session.songs.len() == 0 {
         return chunks;
     }
-    let (chunk_size, num_chunks) = get_chunk_size_and_num_chunks(session.songs.len(), desired_chunk_size);
+    let (chunk_size, num_chunks) =
+        get_chunk_size_and_num_chunks(session.songs.len(), desired_chunk_size);
     // Get the first n-1 chunks which are of size chunk_size
     for i in 0..(num_chunks - 1) {
         let first_song_index = i * chunk_size;
@@ -132,7 +131,11 @@ fn cut_chunk<'a>(
         OffsetOpts::Auto => {}
         _ => {
             if !user_happy_with_offset(chunk)? {
-                return cut_chunk(chunk, &get_manual_cut_options(&cut_args), estimated_time_first_song);
+                return cut_chunk(
+                    chunk,
+                    &get_manual_cut_options(&cut_args),
+                    estimated_time_first_song,
+                );
             }
         }
     }
