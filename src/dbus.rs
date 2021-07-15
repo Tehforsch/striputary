@@ -1,6 +1,7 @@
 use crate::recording_session::RecordingSession;
 use crate::service_config::ServiceConfig;
 use crate::song::Song;
+use crate::yaml_session;
 use anyhow::{Context, Result};
 use dbus::arg::RefArg;
 use dbus::ffidisp::stdintf::org_freedesktop_dbus::PropertiesPropertiesChanged as PC;
@@ -12,7 +13,7 @@ use std::process::Command;
 /// Collect dbus information on the songs.
 /// We could collect the dbus timestamps but they are basically useless
 /// for cutting the songs since they fluctuate way too much to be precise.
-pub fn collect_dbus_info(session: &mut RecordingSession, service_config: &ServiceConfig) -> bool {
+pub fn collect_dbus_info(session: &mut RecordingSession, service_config: &ServiceConfig) -> Result<bool> {
     let c = Connection::new_session().unwrap();
     // Add a match for this signal
     let bus_name = service_config.dbus_bus_name.clone();
@@ -22,17 +23,17 @@ pub fn collect_dbus_info(session: &mut RecordingSession, service_config: &Servic
     // Wait for the signal to arrive.
     for msg in c.incoming(100) {
         if let Some(pc) = PC::from_message(&msg) {
-            let playback_stopped = handle_dbus_properties_changed_signal(session, pc);
-            return playback_stopped;
+            let playback_stopped = handle_dbus_properties_changed_signal(session, pc)?;
+            return Ok(playback_stopped);
         }
     }
-    false
+    Ok(false)
 }
 
 pub fn handle_dbus_properties_changed_signal(
     session: &mut RecordingSession,
     properties: PC,
-) -> bool {
+) -> Result<bool> {
     let playback_stopped = is_playback_stopped(&properties);
     if !playback_stopped {
         let song = get_song_from_dbus_properties(properties);
@@ -41,9 +42,10 @@ pub fn handle_dbus_properties_changed_signal(
         if session.songs.is_empty() || session.songs.last().unwrap() != &song {
             println!("Recording song: {:?}", song);
             session.songs.push(song);
+            yaml_session::save(&session)?;
         }
     }
-    playback_stopped
+    Ok(playback_stopped)
 }
 
 fn is_playback_stopped(properties: &PC) -> bool {

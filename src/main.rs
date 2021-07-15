@@ -12,12 +12,13 @@ pub mod service_config;
 pub mod song;
 pub mod wav;
 pub mod yaml_session;
+pub mod path_utils;
 
-use crate::config::{DEFAULT_BUFFER_FILE, DEFAULT_SESSION_FILE};
 use crate::recording_session::RecordingSession;
 use anyhow::Result;
 use args::{CutOpts, Opts};
 use clap::Clap;
+use path_utils::get_yaml_file;
 use record::record_new_session;
 use service_config::ServiceConfig;
 use std::{io::stdin, path::Path};
@@ -33,25 +34,19 @@ fn get_service_name(service_name: &Option<String>) -> &str {
 }
 
 fn run_striputary(args: &Opts, stream_config: &ServiceConfig) -> Result<()> {
-    let buffer_file = args.session_dir.join(DEFAULT_BUFFER_FILE);
-    let yaml_file = args.session_dir.join(DEFAULT_SESSION_FILE);
     match &args.action {
         args::Action::Record => {
             record_session_and_save_session_file(
                 &args.session_dir,
-                &buffer_file,
-                &yaml_file,
                 stream_config,
             )?;
         }
         args::Action::Cut(cut_opts) => {
-            load_session_and_cut_file(&yaml_file, &cut_opts)?;
+            load_session_and_cut_file(&get_yaml_file(&args.session_dir), &cut_opts)?;
         }
         args::Action::Run(cut_opts) => {
             let session = record_session_and_save_session_file(
                 &args.session_dir,
-                &buffer_file,
-                &yaml_file,
                 stream_config,
             )?;
             wait_for_user_after_recording()?;
@@ -63,12 +58,10 @@ fn run_striputary(args: &Opts, stream_config: &ServiceConfig) -> Result<()> {
 
 pub fn record_session_and_save_session_file(
     session_dir: &Path,
-    buffer_file: &Path,
-    session_file: &Path,
     stream_config: &ServiceConfig,
 ) -> Result<RecordingSession> {
-    let session = record_new_session(session_dir, buffer_file, stream_config)?;
-    yaml_session::save(session_file, &session)?;
+    let session = record_new_session(session_dir, stream_config)?;
+    yaml_session::save(&session)?;
     Ok(session)
 }
 

@@ -1,4 +1,5 @@
 use crate::dbus::{collect_dbus_info, previous_song, start_playback, stop_playback};
+use crate::path_utils::get_buffer_file;
 use crate::recorder;
 use crate::recording_session::RecordingSession;
 use crate::{
@@ -15,9 +16,9 @@ use std::time::{Duration, Instant};
 
 pub fn record_new_session(
     session_dir: &Path,
-    buffer_file: &Path,
     stream_config: &ServiceConfig,
 ) -> Result<RecordingSession> {
+    let buffer_file = get_buffer_file(session_dir);
     create_dir_all(&session_dir).context("Failed to create session directory")?;
     if buffer_file.exists() {
         return Err(anyhow!(
@@ -78,7 +79,7 @@ fn recording_phase(
     println!("Start playback.");
     start_playback(stream_config)?;
     while !playback_stopped && is_running.load(Ordering::SeqCst) {
-        playback_stopped = collect_dbus_info(&mut session, stream_config);
+        playback_stopped = collect_dbus_info(&mut session, stream_config)?;
     }
     Ok(session)
 }

@@ -1,9 +1,11 @@
+use crate::path_utils::get_yaml_file;
 use crate::recording_session::RecordingSession;
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
 
-pub fn save(filename: &Path, session: &RecordingSession) -> Result<()> {
+pub fn save(session: &RecordingSession) -> Result<()> {
+    let filename = get_yaml_file(&session.dir);
     let data = serde_yaml::to_string(session).context("Unable to convert session to yaml")?;
     fs::write(filename, data).context("Unable to write session file")
 }
