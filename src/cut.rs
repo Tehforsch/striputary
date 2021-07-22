@@ -45,10 +45,10 @@ pub fn cut_session(session: RecordingSession, cut_args: &CutOpts) -> Result<()> 
         for (offset, chunk) in offsets.iter().zip(chunks.iter()) {
             cut_chunk(chunk, cut_args, estimated_time_first_song, Some(*offset))?;
         }
-    }
-    else {
+    } else {
         for chunk in chunks.iter() {
-            estimated_time_first_song = cut_chunk(chunk, cut_args, estimated_time_first_song, None)?;
+            estimated_time_first_song =
+                cut_chunk(chunk, cut_args, estimated_time_first_song, None)?;
         }
     }
     Ok(())
@@ -152,7 +152,7 @@ fn cut_chunk<'a>(
                     chunk,
                     &get_manual_cut_options(&cut_args),
                     estimated_time_first_song,
-                    None
+                    None,
                 );
             }
         }
@@ -229,7 +229,11 @@ fn determine_cut_offset(audio_excerpts: Vec<AudioExcerpt>, cut_timestamps: Vec<f
 
 pub fn get_named_excerpts(session: &RecordingSession) -> Vec<NamedExcerpt> {
     let (excerpts, songs) = get_all_valid_excerpts_and_songs(session);
-    excerpts.into_iter().zip(songs.into_iter()).map(|(excerpt, song)| NamedExcerpt {excerpt, song}).collect()
+    excerpts
+        .into_iter()
+        .zip(songs.into_iter())
+        .map(|(excerpt, song)| NamedExcerpt { excerpt, song })
+        .collect()
 }
 
 fn get_all_valid_excerpts_and_songs(session: &RecordingSession) -> (Vec<AudioExcerpt>, Vec<Song>) {

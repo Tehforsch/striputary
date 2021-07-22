@@ -81,14 +81,22 @@ fn show_excerpts_system(
         let get_y_position = |song_num| song_num as f32 * Y_OFFSET_PER_SONG;
         commands
             .spawn()
-            .insert_bundle(get_text_bundle_for_song(&asset_server, &excerpt.song, HorizontalAlign::Center))
+            .insert_bundle(get_text_bundle_for_song(
+                &asset_server,
+                &excerpt.song,
+                HorizontalAlign::Center,
+            ))
             .insert(TextPosition {
                 x: LEFT_SONG_TEXT_X_OFFSET,
                 y: get_y_position(num.0 + 1),
             });
         commands
             .spawn()
-            .insert_bundle(get_text_bundle_for_song(&asset_server, &excerpt.song, HorizontalAlign::Center))
+            .insert_bundle(get_text_bundle_for_song(
+                &asset_server,
+                &excerpt.song,
+                HorizontalAlign::Center,
+            ))
             .insert(TextPosition {
                 x: RIGHT_SONG_TEXT_X_OFFSET,
                 y: get_y_position(num.0),

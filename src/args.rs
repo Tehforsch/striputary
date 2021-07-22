@@ -11,7 +11,7 @@ pub enum OffsetOpts {
     Auto,
     Interactive,
     Manual(OffsetPosition),
-    Graphical
+    Graphical,
 }
 
 #[derive(Clap, Debug)]

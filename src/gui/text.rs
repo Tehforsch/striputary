@@ -2,7 +2,11 @@ use bevy::prelude::*;
 
 use crate::song::Song;
 
-pub fn get_text_bundle_for_song(asset_server: &AssetServer, song: &Song, alignment: HorizontalAlign) -> Text2dBundle {
+pub fn get_text_bundle_for_song(
+    asset_server: &AssetServer,
+    song: &Song,
+    alignment: HorizontalAlign,
+) -> Text2dBundle {
     Text2dBundle {
         text: Text::with_section(
             &format!("{}\n{}", song.artist, song.title),

@@ -5,6 +5,7 @@ pub mod config;
 pub mod cut;
 pub mod dbus;
 pub mod errors;
+pub mod gui;
 pub mod path_utils;
 pub mod record;
 pub mod recorder;
@@ -13,7 +14,6 @@ pub mod service_config;
 pub mod song;
 pub mod wav;
 pub mod yaml_session;
-pub mod gui;
 
 use crate::recording_session::RecordingSession;
 use anyhow::Result;
