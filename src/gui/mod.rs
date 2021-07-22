@@ -1,19 +1,24 @@
 mod config;
 mod text;
 
-use self::{config::{LINE_WIDTH, SONG_HEIGHT, SONG_TEXT_X_DISTANCE, SONG_X_END, SONG_X_START, SONG_Y_START, Y_OFFSET_PER_SONG}, text::get_text_bundle_for_song};
+use self::{
+    config::{
+        LINE_WIDTH, SONG_HEIGHT, SONG_TEXT_X_DISTANCE, SONG_X_END, SONG_X_START, SONG_Y_START,
+        Y_DISTANCE_PER_MOUSEWHEEL_TICK, Y_OFFSET_PER_SONG,
+    },
+    text::get_text_bundle_for_song,
+};
 use crate::{
     audio_excerpt::AudioExcerpt,
     config::NUM_OFFSETS_TO_TRY,
     cut::{get_named_excerpts, NamedExcerpt},
     recording_session::RecordingSession,
 };
-use bevy::{prelude::*, render::camera::Camera};
+use bevy::{input::mouse::MouseWheel, prelude::*, render::camera::Camera};
 use bevy_prototype_lyon::{
     plugin::ShapePlugin,
     prelude::{DrawMode, FillOptions, GeometryBuilder, PathBuilder, ShapeColors, StrokeOptions},
 };
-
 
 struct ExcerptNum(usize);
 
@@ -81,20 +86,14 @@ fn show_excerpts_system(
         let get_y_position = |song_num| song_num as f32 * Y_OFFSET_PER_SONG;
         commands
             .spawn()
-            .insert_bundle(get_text_bundle_for_song(
-                &asset_server,
-                &excerpt.song,
-            ))
+            .insert_bundle(get_text_bundle_for_song(&asset_server, &excerpt.song))
             .insert(TextPosition {
                 x: SONG_X_START - SONG_TEXT_X_DISTANCE,
                 y: get_y_position(num.0 + 1),
             });
         commands
             .spawn()
-            .insert_bundle(get_text_bundle_for_song(
-                &asset_server,
-                &excerpt.song,
-            ))
+            .insert_bundle(get_text_bundle_for_song(&asset_server, &excerpt.song))
             .insert(TextPosition {
                 x: SONG_X_END + SONG_TEXT_X_DISTANCE,
                 y: get_y_position(num.0),
@@ -125,6 +124,20 @@ fn get_volume_data(excerpt: &AudioExcerpt) -> Vec<f64> {
     times.map(|time| excerpt.get_volume_at(time)).collect()
 }
 
+fn scrolling_input_system(
+    mut mouse_wheel: EventReader<MouseWheel>,
+    mut pos: ResMut<ScrollPosition>,
+) {
+    for event in mouse_wheel.iter() {
+        if event.y < 0.0 {
+            pos.0 -= 1;
+        }
+        if event.y > 0.0 {
+            pos.0 += 1;
+        }
+    }
+}
+
 fn text_positioning_system(mut query: Query<(&mut Transform, &TextPosition), With<Text>>) {
     for (mut transform, pos) in query.iter_mut() {
         transform.translation.x = pos.x;
@@ -132,12 +145,15 @@ fn text_positioning_system(mut query: Query<(&mut Transform, &TextPosition), Wit
     }
 }
 
-fn camera_positioning_system(mut camera: Query<&mut Transform, With<Camera>>,
+fn camera_positioning_system(
+    mut camera: Query<&mut Transform, With<Camera>>,
     windows: Res<Windows>,
+    scroll_position: Res<ScrollPosition>,
 ) {
     let window = windows.get_primary().unwrap();
     camera.single_mut().unwrap().translation.x = 0.0;
-    camera.single_mut().unwrap().translation.y = -window.height() / 2.0;
+    camera.single_mut().unwrap().translation.y =
+        -window.height() / 2.0 + scroll_position.0 as f32 * Y_DISTANCE_PER_MOUSEWHEEL_TICK;
 }
 
 fn initialize_camera_system(mut commands: Commands) {
