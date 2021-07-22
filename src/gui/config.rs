@@ -9,3 +9,4 @@ pub static Y_OFFSET_PER_SONG: f32 = -120.0;
 pub static SONG_TEXT_Y_OFFSET: f32 = -300.0;
 
 pub static LINE_WIDTH: f32 = 5.0;
+pub static MARKER_HEIGHT: f32 = 60.0;
