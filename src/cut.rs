@@ -7,16 +7,23 @@ use text_io::{read, try_read};
 use crate::args::{CutOpts, OffsetOpts, OffsetPosition};
 use crate::audio_excerpt::AudioExcerpt;
 use crate::config::{MAX_OFFSET, MIN_OFFSET, NUM_OFFSETS_TO_TRY, READ_BUFFER};
+use crate::gui;
 use crate::recording_session::RecordingSession;
 use crate::song::Song;
 use crate::wav::extract_audio;
 
-struct Chunk<'a> {
+#[derive(Clone)]
+pub struct Chunk<'a> {
     pub session: &'a RecordingSession,
     pub songs: Vec<&'a Song>,
 }
 
-pub fn cut_session(session: &RecordingSession, cut_args: &CutOpts) -> Result<()> {
+pub struct NamedExcerpt {
+    pub excerpt: AudioExcerpt,
+    pub song: Song,
+}
+
+pub fn cut_session(session: RecordingSession, cut_args: &CutOpts) -> Result<()> {
     // For reasons that I don't quite understand, the exact timings
     // of the (accumulated) song lengths and the timings of the buffer audio file
     // drift apart more and more as the recording grows in length.
@@ -30,11 +37,19 @@ pub fn cut_session(session: &RecordingSession, cut_args: &CutOpts) -> Result<()>
     // gives a good guess where to look for the audio excerpt that contains the cut).
     let mut estimated_time_first_song = session.estimated_time_first_song;
     let chunks = match cut_args.chunk_size {
-        Some(size) => get_chunks(session, size),
-        None => get_album_chunks(session),
+        Some(size) => get_chunks(&session, size),
+        None => get_album_chunks(&session),
     };
-    for chunk in chunks.iter() {
-        estimated_time_first_song = cut_chunk(chunk, cut_args, estimated_time_first_song)?;
+    if let OffsetOpts::Graphical = cut_args.offset {
+        let offsets = gui::get_offsets(session.clone());
+        for (offset, chunk) in offsets.iter().zip(chunks.iter()) {
+            cut_chunk(chunk, cut_args, estimated_time_first_song, Some(*offset))?;
+        }
+    }
+    else {
+        for chunk in chunks.iter() {
+            estimated_time_first_song = cut_chunk(chunk, cut_args, estimated_time_first_song, None)?;
+        }
     }
     Ok(())
 }
@@ -108,6 +123,7 @@ fn cut_chunk<'a>(
     chunk: &Chunk<'a>,
     cut_args: &CutOpts,
     estimated_time_first_song: f64,
+    offset: Option<f64>,
 ) -> Result<f64> {
     let cut_timestamps: Vec<f64> =
         get_cut_timestamps_from_song_lengths(chunk, estimated_time_first_song);
@@ -115,6 +131,7 @@ fn cut_chunk<'a>(
     let offset = match &cut_args.offset {
         OffsetOpts::Interactive => determine_cut_offset(audio_excerpts, cut_timestamps),
         OffsetOpts::Auto => determine_cut_offset(audio_excerpts, cut_timestamps),
+        OffsetOpts::Graphical => offset.unwrap(),
         OffsetOpts::Manual(off) => off.position,
     };
     println!(
@@ -135,6 +152,7 @@ fn cut_chunk<'a>(
                     chunk,
                     &get_manual_cut_options(&cut_args),
                     estimated_time_first_song,
+                    None
                 );
             }
         }
@@ -207,6 +225,28 @@ fn determine_cut_offset(audio_excerpts: Vec<AudioExcerpt>, cut_timestamps: Vec<f
     let cut_quality_estimate = min.unwrap().0 / (audio_excerpts.len() as f64);
     println!("Av. volume at cuts: {:.3}", cut_quality_estimate);
     min.unwrap().1
+}
+
+pub fn get_named_excerpts(session: &RecordingSession) -> Vec<NamedExcerpt> {
+    let (excerpts, songs) = get_all_valid_excerpts_and_songs(session);
+    excerpts.into_iter().zip(songs.into_iter()).map(|(excerpt, song)| NamedExcerpt {excerpt, song}).collect()
+}
+
+fn get_all_valid_excerpts_and_songs(session: &RecordingSession) -> (Vec<AudioExcerpt>, Vec<Song>) {
+    let mut audio_excerpts = Vec::new();
+    let mut valid_songs = Vec::new();
+    let mut cut_time = session.estimated_time_first_song;
+    for song in session.songs.iter() {
+        let audio_excerpt = get_excerpt(&session.get_buffer_file(), cut_time);
+        if let Some(excerpt) = audio_excerpt {
+            audio_excerpts.push(excerpt);
+            valid_songs.push(song.clone());
+        } else {
+            break;
+        }
+        cut_time += song.length;
+    }
+    (audio_excerpts, valid_songs)
 }
 
 fn get_audio_excerpts_and_valid_songs<'a>(

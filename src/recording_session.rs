@@ -5,7 +5,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::vec::Vec;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RecordingSession {
     pub dir: PathBuf,
     pub songs: Vec<Song>,

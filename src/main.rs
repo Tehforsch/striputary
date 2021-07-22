@@ -13,6 +13,7 @@ pub mod service_config;
 pub mod song;
 pub mod wav;
 pub mod yaml_session;
+pub mod gui;
 
 use crate::recording_session::RecordingSession;
 use anyhow::Result;
@@ -44,7 +45,7 @@ fn run_striputary(args: &Opts, stream_config: &ServiceConfig) -> Result<()> {
         args::Action::Run(cut_opts) => {
             let session = record_session_and_save_session_file(&args.session_dir, stream_config)?;
             wait_for_user_after_recording()?;
-            cut::cut_session(&session, cut_opts)?;
+            cut::cut_session(session, cut_opts)?;
         }
     };
     Ok(())
@@ -62,7 +63,7 @@ pub fn record_session_and_save_session_file(
 fn load_session_and_cut_file(yaml_file: &Path, cut_opts: &CutOpts) -> Result<()> {
     let mut session = yaml_session::load(&yaml_file)?;
     session.dir = yaml_file.parent().unwrap().into();
-    cut::cut_session(&session, cut_opts)
+    cut::cut_session(session, cut_opts)
 }
 
 fn wait_for_user_after_recording() -> Result<()> {
