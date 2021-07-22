@@ -5,7 +5,6 @@ use crate::song::Song;
 pub fn get_text_bundle_for_song(
     asset_server: &AssetServer,
     song: &Song,
-    alignment: HorizontalAlign,
 ) -> Text2dBundle {
     Text2dBundle {
         text: Text::with_section(
@@ -16,7 +15,7 @@ pub fn get_text_bundle_for_song(
                 color: Color::BLACK,
             },
             TextAlignment {
-                horizontal: alignment,
+                horizontal: HorizontalAlign::Center,
                 ..Default::default()
             },
         ),
