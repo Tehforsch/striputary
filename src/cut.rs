@@ -41,10 +41,7 @@ pub fn cut_session(session: RecordingSession, cut_args: &CutOpts) -> Result<()> 
         None => get_album_chunks(&session),
     };
     if let OffsetOpts::Graphical = cut_args.offset {
-        let offsets = gui::get_offsets(session.clone());
-        for (offset, chunk) in offsets.iter().zip(chunks.iter()) {
-            cut_chunk(chunk, cut_args, estimated_time_first_song, Some(*offset))?;
-        }
+        let offsets = gui::run(session.clone());
     } else {
         for chunk in chunks.iter() {
             estimated_time_first_song =
@@ -288,7 +285,12 @@ fn get_cut_timestamps_from_song_lengths(chunk: &Chunk, estimated_time_first_song
         .collect()
 }
 
-fn cut_song(session: &RecordingSession, song: &Song, start_time: f64, end_time: f64) -> Result<()> {
+pub fn cut_song(
+    session: &RecordingSession,
+    song: &Song,
+    start_time: f64,
+    end_time: f64,
+) -> Result<()> {
     let difference = end_time - start_time;
     let source_file = session.get_buffer_file();
     let target_file = song.get_target_file(&session.get_music_dir());

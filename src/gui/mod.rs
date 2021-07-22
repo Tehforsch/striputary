@@ -1,15 +1,21 @@
 mod config;
 mod text;
 
-use self::{config::{LINE_WIDTH, MARKER_HEIGHT, SONG_HEIGHT, SONG_TEXT_X_DISTANCE, SONG_TEXT_Y_OFFSET, SONG_X_END, SONG_X_START, SONG_Y_START, Y_DISTANCE_PER_MOUSEWHEEL_TICK, Y_OFFSET_PER_SONG}, text::get_text_bundle_for_song};
+use self::{
+    config::{
+        LINE_WIDTH, MARKER_HEIGHT, SONG_HEIGHT, SONG_TEXT_X_DISTANCE, SONG_TEXT_Y_OFFSET,
+        SONG_X_END, SONG_X_START, SONG_Y_START, Y_DISTANCE_PER_MOUSEWHEEL_TICK, Y_OFFSET_PER_SONG,
+    },
+    text::get_text_bundle_for_song,
+};
 use crate::{
     audio_excerpt::AudioExcerpt,
     config::NUM_OFFSETS_TO_TRY,
-    cut::{get_named_excerpts, NamedExcerpt},
+    cut::{cut_song, get_named_excerpts, NamedExcerpt},
     recording_session::RecordingSession,
     song::Song,
 };
-use bevy::{input::mouse::MouseWheel, prelude::*, render::camera::Camera};
+use bevy::{app::AppExit, input::mouse::MouseWheel, prelude::*, render::camera::Camera};
 use bevy_prototype_lyon::{
     entity::ShapeBundle,
     plugin::ShapePlugin,
@@ -18,7 +24,7 @@ use bevy_prototype_lyon::{
 
 struct ExcerptNum(usize);
 
-struct OffsetMarker(f32);
+struct OffsetMarker(f64);
 
 struct TextPosition {
     x: f32,
@@ -27,7 +33,7 @@ struct TextPosition {
 
 struct ScrollPosition(i32);
 
-pub fn get_offsets(session: RecordingSession) -> Vec<f64> {
+pub fn run(session: RecordingSession) {
     App::build()
         .add_plugins(DefaultPlugins)
         .insert_resource(session)
@@ -41,8 +47,9 @@ pub fn get_offsets(session: RecordingSession) -> Vec<f64> {
         .add_system(camera_positioning_system.system())
         .add_system(scrolling_input_system.system())
         .add_system(spawn_offset_markers_system.system())
+        .add_system(exit_system.system())
+        .add_system(cut_system.system())
         .run();
-    todo!()
 }
 
 fn add_excerpts_system(mut commands: Commands, session: Res<RecordingSession>) {
@@ -200,4 +207,36 @@ fn camera_positioning_system(
 
 fn initialize_camera_system(mut commands: Commands) {
     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
+}
+
+fn cut_system(
+    keyboard_input: Res<Input<KeyCode>>,
+    session: Res<RecordingSession>,
+    offsets: Query<(&OffsetMarker, &ExcerptNum)>,
+) {
+    for key in keyboard_input.get_just_pressed() {
+        if let KeyCode::Return = key {
+            let mut offsets: Vec<(&OffsetMarker, &ExcerptNum)> = offsets.iter().collect();
+            offsets.sort_by_key(|(_, num)| num.0);
+            let mut start_time = session.estimated_time_first_song;
+            for (marker, num) in offsets.iter() {
+                let song = &session.songs[num.0];
+                let end_time = start_time + song.length;
+                dbg!(song, start_time, end_time);
+                cut_song(&session, song, start_time + marker.0, end_time + marker.0).unwrap();
+                start_time = start_time + song.length;
+            }
+        }
+    }
+}
+
+fn exit_system(keyboard_input: Res<Input<KeyCode>>, mut app_exit_events: EventWriter<AppExit>) {
+    for key in keyboard_input.get_just_pressed() {
+        match key {
+            KeyCode::Escape | KeyCode::Q => {
+                app_exit_events.send(AppExit);
+            }
+            _ => {}
+        }
+    }
 }
