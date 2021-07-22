@@ -3,8 +3,8 @@ mod text;
 
 use self::{
     config::{
-        LINE_WIDTH, SONG_HEIGHT, SONG_TEXT_X_DISTANCE, SONG_X_END, SONG_X_START, SONG_Y_START,
-        Y_DISTANCE_PER_MOUSEWHEEL_TICK, Y_OFFSET_PER_SONG,
+        LINE_WIDTH, SONG_HEIGHT, SONG_TEXT_X_DISTANCE, SONG_TEXT_Y_OFFSET, SONG_X_END,
+        SONG_X_START, SONG_Y_START, Y_DISTANCE_PER_MOUSEWHEEL_TICK, Y_OFFSET_PER_SONG,
     },
     text::get_text_bundle_for_song,
 };
@@ -13,6 +13,7 @@ use crate::{
     config::NUM_OFFSETS_TO_TRY,
     cut::{get_named_excerpts, NamedExcerpt},
     recording_session::RecordingSession,
+    song::Song,
 };
 use bevy::{input::mouse::MouseWheel, prelude::*, render::camera::Camera};
 use bevy_prototype_lyon::{
@@ -64,41 +65,66 @@ fn show_excerpts_system(
     asset_server: Res<AssetServer>,
     excerpts: Query<(Entity, &NamedExcerpt, &ExcerptNum), Without<Draw>>,
 ) {
+    for (entity, excerpt, num) in excerpts.iter() {
+        spawn_path_for_excerpt(&mut commands, excerpt, num, entity);
+        let get_y_position = |song_num| song_num as f32 * Y_OFFSET_PER_SONG;
+        spawn_text_for_excerpt(
+            &mut commands,
+            &asset_server,
+            &excerpt.song,
+            TextPosition {
+                x: SONG_X_START - SONG_TEXT_X_DISTANCE,
+                y: get_y_position(num.0 + 1),
+            },
+        );
+        spawn_text_for_excerpt(
+            &mut commands,
+            &asset_server,
+            &excerpt.song,
+            TextPosition {
+                x: SONG_X_END + SONG_TEXT_X_DISTANCE,
+                y: get_y_position(num.0),
+            },
+        );
+    }
+}
+
+fn spawn_text_for_excerpt(
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    song: &Song,
+    text_position: TextPosition,
+) {
+    commands
+        .spawn()
+        .insert_bundle(get_text_bundle_for_song(&asset_server, &song))
+        .insert(text_position);
+}
+
+fn spawn_path_for_excerpt(
+    commands: &mut Commands,
+    excerpt: &NamedExcerpt,
+    num: &ExcerptNum,
+    entity: Entity,
+) {
     let invisible = Color::Rgba {
         red: 0.0,
         green: 0.0,
         blue: 0.0,
         alpha: 0.0,
     };
-    for (entity, excerpt, num) in excerpts.iter() {
-        let path = get_path_for_excerpt(excerpt, num);
-        commands
-            .entity(entity)
-            .insert_bundle(GeometryBuilder::build_as(
-                &path.build(),
-                ShapeColors::outlined(invisible, Color::BLACK),
-                DrawMode::Outlined {
-                    fill_options: FillOptions::default(),
-                    outline_options: StrokeOptions::default().with_line_width(LINE_WIDTH),
-                },
-                Transform::default(),
-            ));
-        let get_y_position = |song_num| song_num as f32 * Y_OFFSET_PER_SONG;
-        commands
-            .spawn()
-            .insert_bundle(get_text_bundle_for_song(&asset_server, &excerpt.song))
-            .insert(TextPosition {
-                x: SONG_X_START - SONG_TEXT_X_DISTANCE,
-                y: get_y_position(num.0 + 1),
-            });
-        commands
-            .spawn()
-            .insert_bundle(get_text_bundle_for_song(&asset_server, &excerpt.song))
-            .insert(TextPosition {
-                x: SONG_X_END + SONG_TEXT_X_DISTANCE,
-                y: get_y_position(num.0),
-            });
-    }
+    let path = get_path_for_excerpt(excerpt, num);
+    commands
+        .entity(entity)
+        .insert_bundle(GeometryBuilder::build_as(
+            &path.build(),
+            ShapeColors::outlined(invisible, Color::BLACK),
+            DrawMode::Outlined {
+                fill_options: FillOptions::default(),
+                outline_options: StrokeOptions::default().with_line_width(LINE_WIDTH),
+            },
+            Transform::default(),
+        ));
 }
 
 fn get_path_for_excerpt(excerpt: &NamedExcerpt, num: &ExcerptNum) -> PathBuilder {
@@ -141,7 +167,7 @@ fn scrolling_input_system(
 fn text_positioning_system(mut query: Query<(&mut Transform, &TextPosition), With<Text>>) {
     for (mut transform, pos) in query.iter_mut() {
         transform.translation.x = pos.x;
-        transform.translation.y = pos.y;
+        transform.translation.y = pos.y + SONG_TEXT_Y_OFFSET;
     }
 }
 
