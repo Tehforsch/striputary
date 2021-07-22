@@ -27,7 +27,7 @@ pub fn cut_session(session: &RecordingSession, cut_args: &CutOpts) -> Result<()>
     // chunks offset is then used as a guess for the next chunk (this is relevant in practice
     // because we only read small excerpts of the audio file around the cut position,
     // not the entire audio file for the offset calculation - knowing the previous offset
-    // gives a good guess where to look for the audio excerpt that contains the cut.
+    // gives a good guess where to look for the audio excerpt that contains the cut).
     let mut estimated_time_first_song = session.estimated_time_first_song;
     let chunks = match cut_args.chunk_size {
         Some(size) => get_chunks(session, size),
