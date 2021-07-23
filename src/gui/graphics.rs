@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, render::camera::Camera};
 use bevy_prototype_lyon::{
     entity::ShapeBundle,
     prelude::{DrawMode, FillOptions, GeometryBuilder, PathBuilder, ShapeColors, StrokeOptions},
@@ -8,8 +8,8 @@ use crate::{cut::NamedExcerpt, song::Song};
 
 use super::{
     config::{
-        LINE_WIDTH, MARKER_HEIGHT, SONG_HEIGHT, SONG_TEXT_X_DISTANCE, SONG_X_END, SONG_X_START,
-        SONG_Y_START, Y_OFFSET_PER_SONG,
+        LINE_WIDTH, MARKER_HEIGHT, SONG_HEIGHT, SONG_TEXT_X_DISTANCE, SONG_TEXT_Y_OFFSET,
+        SONG_X_END, SONG_X_START, SONG_Y_START, Y_DISTANCE_PER_MOUSEWHEEL_TICK, Y_OFFSET_PER_SONG,
     },
     get_volume_data, OffsetMarker,
 };
@@ -22,6 +22,8 @@ pub struct TextPosition {
 pub enum ZLayer {
     Above,
 }
+
+pub struct ScrollPosition(pub i32);
 
 pub fn show_excerpts_system(
     mut commands: Commands,
@@ -146,4 +148,26 @@ pub fn z_layering_system(mut query: Query<(&mut Transform, &ZLayer)>) {
             ZLayer::Above => 1.0,
         }
     }
+}
+
+pub fn text_positioning_system(mut query: Query<(&mut Transform, &TextPosition), With<Text>>) {
+    for (mut transform, pos) in query.iter_mut() {
+        transform.translation.x = pos.x;
+        transform.translation.y = pos.y + SONG_TEXT_Y_OFFSET;
+    }
+}
+
+pub fn camera_positioning_system(
+    mut camera: Query<&mut Transform, With<Camera>>,
+    windows: Res<Windows>,
+    scroll_position: Res<ScrollPosition>,
+) {
+    let window = windows.get_primary().unwrap();
+    camera.single_mut().unwrap().translation.x = 0.0;
+    camera.single_mut().unwrap().translation.y =
+        -window.height() / 2.0 + scroll_position.0 as f32 * Y_DISTANCE_PER_MOUSEWHEEL_TICK;
+}
+
+pub fn initialize_camera_system(mut commands: Commands) {
+    commands.spawn_bundle(OrthographicCameraBundle::new_2d());
 }

@@ -1,4 +1,31 @@
-use bevy::{prelude::*, render::camera::Camera};
+use bevy::{app::AppExit, input::mouse::MouseWheel, prelude::*, render::camera::Camera};
+
+use super::ScrollPosition;
+
+pub fn scrolling_input_system(
+    mut mouse_wheel: EventReader<MouseWheel>,
+    mut pos: ResMut<ScrollPosition>,
+) {
+    for event in mouse_wheel.iter() {
+        if event.y < 0.0 {
+            pos.0 -= 1;
+        }
+        if event.y > 0.0 {
+            pos.0 += 1;
+        }
+    }
+}
+
+pub fn exit_system(keyboard_input: Res<Input<KeyCode>>, mut app_exit_events: EventWriter<AppExit>) {
+    for key in keyboard_input.get_just_pressed() {
+        match key {
+            KeyCode::Escape | KeyCode::Q => {
+                app_exit_events.send(AppExit);
+            }
+            _ => {}
+        }
+    }
+}
 
 #[derive(Default)]
 pub struct MousePosition(Vec2);
