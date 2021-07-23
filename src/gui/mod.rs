@@ -22,6 +22,8 @@ use bevy_prototype_lyon::plugin::ShapePlugin;
 
 pub struct ReadCollectionEvent;
 
+pub struct SelectedSong(usize);
+
 pub fn run(sessions: Vec<RecordingSession>) {
     let collections = ExcerptCollections::new(
         sessions
@@ -36,6 +38,7 @@ pub fn run(sessions: Vec<RecordingSession>) {
         .add_event::<PlaybackEvent>()
         .insert_resource(collections)
         .insert_resource(ScrollPosition(0))
+        .insert_resource(SelectedSong(0))
         .init_non_send_resource::<CuttingThreadHandle>()
         // .insert_resource(Msaa { samples: 8 })
         .add_plugin(ShapePlugin)
@@ -128,13 +131,13 @@ fn get_cut_info(
         .zip(markers.iter().zip(markers[1..].iter()))
     {
         let song = &excerpt_end.song;
-        let start_time = marker_start.get_audio_time(&excerpt_start.excerpt);
-        let end_time = marker_end.get_audio_time(&excerpt_end.excerpt);
+        let start_time = marker_start.get_absolute_time(&excerpt_start.excerpt);
+        let end_time = marker_end.get_absolute_time(&excerpt_end.excerpt);
         cut_info.push(CutInfo::new(
             &collection.session,
             song.clone(),
-            start_time,
-            end_time,
+            start_time.time,
+            end_time.time,
         ));
     }
     cut_info

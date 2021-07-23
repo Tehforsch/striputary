@@ -41,8 +41,12 @@ impl AudioExcerpt {
         times.map(|time| self.get_volume_at(time)).collect()
     }
 
-    pub fn get_time_by_relative_progress(&self, pos: f64) -> f64 {
-        self.start.time + (self.end.time - self.start.time) * pos
+    pub fn get_absolute_time_by_relative_progress(&self, pos: f64) -> AudioTime {
+        AudioTime::from_time_and_spec(self.start.time + (self.end.time - self.start.time) * pos, self.spec)
+    }
+
+    pub fn get_relative_time_by_relative_progress(&self, pos: f64) -> AudioTime {
+        AudioTime::from_time_and_spec((self.end.time - self.start.time) * pos, self.spec)
     }
 
     pub fn get_relative_progress_from_time_offset(&self, time_offset: f64) -> f64 {
@@ -53,14 +57,14 @@ impl AudioExcerpt {
 
 pub struct AudioExcerptSource {
     excerpt: AudioExcerpt,
-    position: usize,
+    position: u32,
 }
 
 impl AudioExcerptSource {
-    pub fn new(excerpt: AudioExcerpt) -> Self {
+    pub fn new(excerpt: AudioExcerpt, start_time: AudioTime) -> Self {
         Self {
             excerpt,
-            position: 0,
+            position: start_time.interleaved_sample_num,
         }
     }
 }
@@ -87,7 +91,7 @@ impl Iterator for AudioExcerptSource {
     type Item = i16;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let item = self.excerpt.samples.get(self.position);
+        let item = self.excerpt.samples.get(self.position as usize);
         self.position += 1;
         item.map(|x| *x)
     }

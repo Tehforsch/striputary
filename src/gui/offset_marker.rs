@@ -1,4 +1,4 @@
-use crate::audio_excerpt::AudioExcerpt;
+use crate::{audio_excerpt::AudioExcerpt, audio_time::AudioTime};
 
 use super::config::{SONG_X_END, SONG_X_START};
 
@@ -20,7 +20,11 @@ impl PositionMarker {
         SONG_X_START + self.pos as f32 * (SONG_X_END - SONG_X_START)
     }
 
-    pub fn get_audio_time(&self, excerpt: &AudioExcerpt) -> f64 {
-        excerpt.get_time_by_relative_progress(self.pos)
+    pub fn get_absolute_time(&self, excerpt: &AudioExcerpt) -> AudioTime {
+        excerpt.get_absolute_time_by_relative_progress(self.pos)
+    }
+
+    pub fn get_relative_time(&self, excerpt: &AudioExcerpt) -> AudioTime {
+        excerpt.get_relative_time_by_relative_progress(self.pos)
     }
 }

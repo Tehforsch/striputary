@@ -16,4 +16,8 @@ impl ExcerptCollection {
     pub fn iter_excerpts<'a>(&'a self) -> Box<dyn Iterator<Item = &NamedExcerpt> + 'a> {
         Box::new(self.excerpts.iter())
     }
+
+    pub fn get_excerpt<'a>(&'a self, num: usize) -> &NamedExcerpt {
+        &self.excerpts[num]
+    }
 }

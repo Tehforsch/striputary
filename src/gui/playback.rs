@@ -5,27 +5,36 @@ use rodio::OutputStream;
 use rodio::Sink;
 
 use crate::audio_excerpt::AudioExcerptSource;
+use crate::audio_time::AudioTime;
 use crate::{audio_excerpt::AudioExcerpt, excerpt_collections::ExcerptCollections};
+
+use super::SelectedSong;
+use super::offset_marker::PositionMarker;
 
 pub struct PlaybackEvent;
 
 pub fn playback_system(
     collections: Res<ExcerptCollections>,
     mut playback_events: EventReader<PlaybackEvent>,
+    markers: Query<&PositionMarker>,
+    selected_song: Res<SelectedSong>,
 ) {
     for _ in playback_events.iter() {
         let collection = collections.get_selected();
-        let excerpt = collection.iter_excerpts().next().unwrap();
-        play_excerpt(&excerpt.excerpt);
+        let excerpt = collection.get_excerpt(selected_song.0);
+        let marker = markers.iter().find(|marker| marker.num == selected_song.0).unwrap();
+        let audio_time = marker.get_relative_time(&excerpt.excerpt);
+        play_excerpt(&excerpt.excerpt, audio_time);
     }
 }
 
-fn play_excerpt(excerpt: &AudioExcerpt) {
+fn play_excerpt(excerpt: &AudioExcerpt, start_time: AudioTime) {
     let cloned = excerpt.clone();
     thread::spawn(move || {
+        let source = AudioExcerptSource::new(cloned, start_time);
         let (_stream, stream_handle) = OutputStream::try_default().unwrap();
         let sink = Sink::try_new(&stream_handle).unwrap();
-        sink.append(AudioExcerptSource::new(cloned));
+        sink.append(source);
         sink.sleep_until_end();
     });
 }

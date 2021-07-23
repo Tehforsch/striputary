@@ -2,7 +2,7 @@ use bevy::{app::AppExit, input::mouse::MouseWheel, prelude::*, render::camera::C
 
 use crate::excerpt_collections::ExcerptCollections;
 
-use super::{PositionMarker, ReadCollectionEvent, ScrollPosition, config::{SONG_HEIGHT, SONG_Y_START, Y_OFFSET_PER_SONG}, playback::PlaybackEvent};
+use super::{PositionMarker, ReadCollectionEvent, ScrollPosition, SelectedSong, config::{SONG_HEIGHT, SONG_Y_START, Y_OFFSET_PER_SONG}, playback::PlaybackEvent};
 
 #[derive(Default, Debug)]
 pub struct MousePosition(Vec2);
@@ -48,14 +48,19 @@ pub fn move_markers_on_click_system(
     mut markers: Query<&mut PositionMarker>,
     mouse_button_input: Res<Input<MouseButton>>,
     mouse_pos: Res<MousePosition>,
+    mut selected_song: ResMut<SelectedSong>,
 ) {
     for event in mouse_button_input.get_pressed() {
         if let MouseButton::Left = event {
             let mut sorted_markers: Vec<Mut<PositionMarker>> = markers.iter_mut().collect();
             let mut clicked = false;
             sorted_markers.sort_by_key(|marker| marker.num);
-            for mut marker in sorted_markers.into_iter() {
-                if clicked || check_inside_excerpt(mouse_pos.0, marker.num) {
+            for (i, mut marker) in sorted_markers.into_iter().enumerate() {
+                let inside = check_inside_excerpt(mouse_pos.0, marker.num);
+                if inside {
+                    selected_song.0 = i;
+                }
+                if clicked || inside {
                     marker.set_pos_from_world_pos(mouse_pos.0.x);
                     clicked = true;
                 }
@@ -78,6 +83,7 @@ pub fn exit_system(keyboard_input: Res<Input<KeyCode>>, mut app_exit_events: Eve
 pub fn collection_selection_input(
     keyboard_input: Res<Input<KeyCode>>,
     mut collections: ResMut<ExcerptCollections>,
+    mut selected_song: ResMut<SelectedSong>,
     mut load_collection_events: EventWriter<ReadCollectionEvent>,
 ) {
     for key in keyboard_input.get_just_pressed() {
@@ -85,10 +91,12 @@ pub fn collection_selection_input(
             KeyCode::Right => {
                 collections.select_next();
                 load_collection_events.send(ReadCollectionEvent);
+                selected_song.0 = 0;
             }
             KeyCode::Left => {
                 collections.select_previous();
                 load_collection_events.send(ReadCollectionEvent);
+                selected_song.0 = 0;
             }
             _ => {}
         }
