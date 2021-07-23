@@ -16,8 +16,7 @@ pub fn get_yaml_files(session_dir: &Path) -> Vec<PathBuf> {
         let file = session_dir.join(format!("{}.yaml", i));
         if file.is_file() {
             files.push(file);
-        }
-        else {
+        } else {
             break;
         }
     }

@@ -10,7 +10,8 @@ pub fn save(session: &RecordingSession) -> Result<()> {
 
 pub fn load(filename: &Path) -> Result<RecordingSession> {
     let data = fs::read_to_string(filename).context("Unable to read session file")?;
-    let mut session: RecordingSession = serde_yaml::from_str(&data).context("Unable to load session file content.")?;
+    let mut session: RecordingSession =
+        serde_yaml::from_str(&data).context("Unable to load session file content.")?;
     session.filename = filename.into();
     Ok(session)
 }

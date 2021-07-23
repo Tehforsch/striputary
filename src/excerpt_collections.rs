@@ -9,7 +9,7 @@ impl ExcerptCollections {
     pub fn new(collections: Vec<ExcerptCollection>) -> Self {
         Self {
             collections,
-            num_selected: 0
+            num_selected: 0,
         }
     }
 
@@ -18,7 +18,7 @@ impl ExcerptCollections {
     }
 
     pub fn select_next(&mut self) {
-        self.num_selected = (self.num_selected + 1).min(self.collections.len()-1)
+        self.num_selected = (self.num_selected + 1).min(self.collections.len() - 1)
     }
 
     pub fn select_previous(&mut self) {

@@ -9,11 +9,11 @@ pub struct NamedExcerpt {
 pub struct ExcerptCollection {
     pub session: RecordingSession,
     pub excerpts: Vec<NamedExcerpt>,
-    pub offset_guess: f64
+    pub offset_guess: f64,
 }
 
 impl ExcerptCollection {
-    pub fn iter_excerpts<'a>(&'a self) -> Box<dyn Iterator<Item=&NamedExcerpt> + 'a> {
+    pub fn iter_excerpts<'a>(&'a self) -> Box<dyn Iterator<Item = &NamedExcerpt> + 'a> {
         Box::new(self.excerpts.iter())
     }
 }

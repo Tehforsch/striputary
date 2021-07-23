@@ -16,7 +16,7 @@ use std::time::{Duration, Instant};
 #[derive(PartialEq)]
 pub enum RecordingExitStatus {
     FinishedOrInterrupted,
-    AlbumFinished
+    AlbumFinished,
 }
 
 #[derive(PartialEq)]
@@ -31,7 +31,8 @@ pub fn record_new_session(
     stream_config: &ServiceConfig,
     is_running: Arc<AtomicBool>,
 ) -> Result<(RecordingExitStatus, RecordingSession)> {
-    create_dir_all(&session_file.parent().unwrap()).context("Failed to create session directory")?;
+    create_dir_all(&session_file.parent().unwrap())
+        .context("Failed to create session directory")?;
     if buffer_file.exists() {
         return Err(anyhow!(
             "Buffer file already exists, not recording a new session."
@@ -40,7 +41,8 @@ pub fn record_new_session(
     let recording_handles = recorder::start_recording(&buffer_file, stream_config)?;
     let record_start_time = Instant::now();
     // Check for dbus signals while recording until terminated
-    let (status, session) = polling_loop(&record_start_time, &session_file, stream_config, is_running)?;
+    let (status, session) =
+        polling_loop(&record_start_time, &session_file, stream_config, is_running)?;
     // Whether the loop ended because of the user interrupt (ctrl-c) or
     // because the playback was stopped doesn't matter - kill the recording processes
     recorder::stop_recording(recording_handles)?;
@@ -53,9 +55,13 @@ fn polling_loop(
     stream_config: &ServiceConfig,
     is_running: Arc<AtomicBool>,
 ) -> Result<(RecordingExitStatus, RecordingSession)> {
-
     initial_buffer_phase(stream_config)?;
-    let (status, session) = recording_phase(session_filename, record_start_time, is_running, stream_config)?;
+    let (status, session) = recording_phase(
+        session_filename,
+        record_start_time,
+        is_running,
+        stream_config,
+    )?;
     final_buffer_phase();
     Ok((status, session))
 }
@@ -92,7 +98,7 @@ fn recording_phase(
             return Ok((exit_status, session));
         }
         if !is_running.load(Ordering::SeqCst) {
-            return Ok((RecordingExitStatus::FinishedOrInterrupted, session))
+            return Ok((RecordingExitStatus::FinishedOrInterrupted, session));
         }
     }
 }

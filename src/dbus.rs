@@ -48,7 +48,9 @@ pub fn handle_dbus_properties_changed_signal(
             if let Some(last_song) = last_song {
                 if last_song.album != song.album {
                     println!("This is a new album - creating a new recording session");
-                    return Ok(RecordingStatus::Finished(RecordingExitStatus::AlbumFinished));
+                    return Ok(RecordingStatus::Finished(
+                        RecordingExitStatus::AlbumFinished,
+                    ));
                 }
             }
             session.songs.push(song);
@@ -57,7 +59,9 @@ pub fn handle_dbus_properties_changed_signal(
     }
     match playback_stopped {
         false => Ok(RecordingStatus::Running),
-        true => Ok(RecordingStatus::Finished(RecordingExitStatus::FinishedOrInterrupted)),
+        true => Ok(RecordingStatus::Finished(
+            RecordingExitStatus::FinishedOrInterrupted,
+        )),
     }
 }
 

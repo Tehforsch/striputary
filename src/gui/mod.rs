@@ -91,7 +91,10 @@ fn add_excerpts_and_markers_system(
                 .spawn()
                 .insert(PositionMarker::new(i, relative_progress))
                 .id();
-            commands.spawn().insert(ExcerptView::new(i)).push_children(&[marker_id]);
+            commands
+                .spawn()
+                .insert(ExcerptView::new(i))
+                .push_children(&[marker_id]);
         }
     }
 }

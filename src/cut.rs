@@ -38,7 +38,10 @@ fn get_excerpt(buffer_file_name: &Path, cut_time: f64) -> Option<AudioExcerpt> {
     extract_audio(buffer_file_name, listen_start_time, listen_end_time).ok()
 }
 
-fn get_cut_timestamps_from_song_lengths(songs: &[Song], estimated_time_first_song: f64) -> Vec<f64> {
+fn get_cut_timestamps_from_song_lengths(
+    songs: &[Song],
+    estimated_time_first_song: f64,
+) -> Vec<f64> {
     songs
         .iter()
         .scan(estimated_time_first_song, |acc, song| {
@@ -61,9 +64,7 @@ fn determine_cut_offset(audio_excerpts: &[AudioExcerpt], cut_timestamps: &[f64])
         let total_volume: f64 = cut_timestamps
             .iter()
             .zip(audio_excerpts.iter())
-            .map(|(cut_time, audio_excerpt)| {
-                audio_excerpt.get_volume_at(cut_time + offset)
-            })
+            .map(|(cut_time, audio_excerpt)| audio_excerpt.get_volume_at(cut_time + offset))
             .sum();
         if let Some((min_volume, _)) = min {
             if total_volume < min_volume {
@@ -80,17 +81,18 @@ fn determine_cut_offset(audio_excerpts: &[AudioExcerpt], cut_timestamps: &[f64])
 
 pub fn get_excerpt_collection(session: RecordingSession) -> ExcerptCollection {
     let (excerpts, songs) = get_all_valid_excerpts_and_songs(&session);
-    let timestamps = get_cut_timestamps_from_song_lengths(&songs, session.estimated_time_first_song);
+    let timestamps =
+        get_cut_timestamps_from_song_lengths(&songs, session.estimated_time_first_song);
     let offset_guess = determine_cut_offset(&excerpts, &timestamps);
     ExcerptCollection {
         session: session,
         excerpts: excerpts
-        .into_iter()
-        .enumerate()
-        .zip(songs.into_iter())
-        .map(|((num, excerpt), song)| NamedExcerpt { excerpt, song, num })
-        .collect(),
-        offset_guess
+            .into_iter()
+            .enumerate()
+            .zip(songs.into_iter())
+            .map(|((num, excerpt), song)| NamedExcerpt { excerpt, song, num })
+            .collect(),
+        offset_guess,
     }
 }
 
