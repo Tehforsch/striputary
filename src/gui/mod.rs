@@ -1,34 +1,54 @@
 mod config;
 mod cutting_thread;
+mod excerpt_view;
 mod graphics;
 mod input;
 mod offset_marker;
-mod excerpt_view;
 
-use self::{cutting_thread::CuttingThreadHandle, excerpt_view::ExcerptView, graphics::{
+use self::{
+    cutting_thread::CuttingThreadHandle,
+    excerpt_view::ExcerptView,
+    graphics::{
         camera_positioning_system, initialize_camera_system, marker_positioning_system,
         show_excerpts_system, spawn_offset_markers_system, text_positioning_system,
         z_layering_system, ScrollPosition,
-    }, input::{
-        exit_system, move_markers_on_click_system, scrolling_input_system,
-        track_mouse_position_system, MousePosition,
-    }, offset_marker::PositionMarker};
-use crate::{cut::{get_excerpt_collection, CutInfo}, excerpt_collection::{ExcerptCollection, NamedExcerpt}, excerpt_collections::ExcerptCollections, recording_session::RecordingSession};
+    },
+    input::{
+        collection_selection_input, exit_system, move_markers_on_click_system,
+        scrolling_input_system, track_mouse_position_system, MousePosition,
+    },
+    offset_marker::PositionMarker,
+};
+use crate::{
+    cut::{get_excerpt_collection, CutInfo},
+    excerpt_collection::{ExcerptCollection, NamedExcerpt},
+    excerpt_collections::ExcerptCollections,
+    recording_session::RecordingSession,
+};
 use bevy::prelude::*;
 use bevy_prototype_lyon::plugin::ShapePlugin;
 
+pub struct ReadCollectionEvent;
+
 pub fn run(sessions: Vec<RecordingSession>) {
-    let collections = ExcerptCollections::new(sessions.into_iter().map(|session| get_excerpt_collection(session)).collect());
+    let collections = ExcerptCollections::new(
+        sessions
+            .into_iter()
+            .map(|session| get_excerpt_collection(session))
+            .collect(),
+    );
     App::build()
         .add_plugins(DefaultPlugins)
         .init_resource::<MousePosition>()
+        .add_event::<ReadCollectionEvent>()
         .insert_resource(collections)
         .insert_resource(ScrollPosition(0))
         .init_non_send_resource::<CuttingThreadHandle>()
         // .insert_resource(Msaa { samples: 8 })
         .add_plugin(ShapePlugin)
         .add_startup_system(initialize_camera_system.system())
-        .add_startup_system(add_excerpts_system.system())
+        .add_system(add_excerpts_and_markers_system.system())
+        .add_system(remove_excerpts_and_markers_system.system())
         .add_system(show_excerpts_system.system())
         .add_system(text_positioning_system.system())
         .add_system(camera_positioning_system.system())
@@ -40,15 +60,39 @@ pub fn run(sessions: Vec<RecordingSession>) {
         .add_system(track_mouse_position_system.system())
         .add_system(move_markers_on_click_system.system())
         .add_system(marker_positioning_system.system())
+        .add_system(collection_selection_input.system())
         .run();
 }
 
-fn add_excerpts_system(mut commands: Commands, collections: Res<ExcerptCollections>) {
-    let collection = collections.get_selected();
-    for (i, excerpt) in collection.iter_excerpts().enumerate() {
-        let relative_progress = excerpt.excerpt.get_relative_progress_from_time_offset(collection.offset_guess);
-        commands.spawn().insert(PositionMarker::new(i, relative_progress));
-        commands.spawn().insert(ExcerptView::new(i));
+fn remove_excerpts_and_markers_system(
+    mut commands: Commands,
+    mut read_collection_events: EventReader<ReadCollectionEvent>,
+    excerpt_views: Query<Entity, With<ExcerptView>>,
+) {
+    for _ in read_collection_events.iter() {
+        for entity in excerpt_views.iter() {
+            commands.entity(entity).despawn_recursive();
+        }
+    }
+}
+
+fn add_excerpts_and_markers_system(
+    mut commands: Commands,
+    collections: Res<ExcerptCollections>,
+    mut read_collection_events: EventReader<ReadCollectionEvent>,
+) {
+    for _ in read_collection_events.iter() {
+        let collection = collections.get_selected();
+        for (i, excerpt) in collection.iter_excerpts().enumerate() {
+            let relative_progress = excerpt
+                .excerpt
+                .get_relative_progress_from_time_offset(collection.offset_guess);
+            let marker_id = commands
+                .spawn()
+                .insert(PositionMarker::new(i, relative_progress))
+                .id();
+            commands.spawn().insert(ExcerptView::new(i)).push_children(&[marker_id]);
+        }
     }
 }
 
@@ -82,7 +126,12 @@ fn get_cut_info(
         let song = &excerpt_end.song;
         let start_time = marker_start.get_audio_time(&excerpt_start.excerpt);
         let end_time = marker_end.get_audio_time(&excerpt_end.excerpt);
-        cut_info.push(CutInfo::new(&collection.session, song.clone(), start_time, end_time));
+        cut_info.push(CutInfo::new(
+            &collection.session,
+            song.clone(),
+            start_time,
+            end_time,
+        ));
     }
     cut_info
 }

@@ -16,4 +16,15 @@ impl ExcerptCollections {
     pub fn get_selected(&self) -> &ExcerptCollection {
         &self.collections[self.num_selected]
     }
+
+    pub fn select_next(&mut self) {
+        self.num_selected = (self.num_selected + 1).min(self.collections.len()-1)
+    }
+
+    pub fn select_previous(&mut self) {
+        if self.num_selected == 0 {
+            return;
+        }
+        self.num_selected -= 1;
+    }
 }

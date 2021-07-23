@@ -35,6 +35,7 @@ pub fn show_excerpts_system(
         let get_y_position = |song_num| song_num as f32 * Y_OFFSET_PER_SONG;
         spawn_text_for_excerpt(
             &mut commands,
+            entity,
             &asset_server,
             &excerpt.song,
             TextPosition {
@@ -44,6 +45,7 @@ pub fn show_excerpts_system(
         );
         spawn_text_for_excerpt(
             &mut commands,
+            entity,
             &asset_server,
             &excerpt.song,
             TextPosition {
@@ -56,14 +58,15 @@ pub fn show_excerpts_system(
 
 fn spawn_text_for_excerpt(
     commands: &mut Commands,
+    parent_entity: Entity,
     asset_server: &AssetServer,
     song: &Song,
     text_position: TextPosition,
 ) {
-    commands
-        .spawn()
+    let text = commands.spawn()
         .insert_bundle(get_text_bundle_for_song(&asset_server, &song))
-        .insert(text_position);
+        .insert(text_position).id();
+    commands.entity(parent_entity).push_children(&[text]);
 }
 
 fn get_text_bundle_for_song(asset_server: &AssetServer, song: &Song) -> Text2dBundle {
