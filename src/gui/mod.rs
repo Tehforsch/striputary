@@ -1,41 +1,31 @@
 mod config;
-mod text;
+mod graphics;
+mod mouse;
 
 use self::{
-    config::{
-        LINE_WIDTH, MARKER_HEIGHT, SONG_HEIGHT, SONG_TEXT_X_DISTANCE, SONG_TEXT_Y_OFFSET,
-        SONG_X_END, SONG_X_START, SONG_Y_START, Y_DISTANCE_PER_MOUSEWHEEL_TICK, Y_OFFSET_PER_SONG,
-    },
-    text::get_text_bundle_for_song,
+    config::{SONG_TEXT_Y_OFFSET, Y_DISTANCE_PER_MOUSEWHEEL_TICK},
+    graphics::{show_excerpts_system, spawn_offset_markers_system, TextPosition},
+    mouse::{track_mouse_position_system, MousePosition},
 };
 use crate::{
     audio_excerpt::AudioExcerpt,
     config::NUM_OFFSETS_TO_TRY,
-    cut::{cut_song, get_named_excerpts, NamedExcerpt},
+    cut::{cut_song, get_named_excerpts},
     recording_session::RecordingSession,
-    song::Song,
 };
 use bevy::{app::AppExit, input::mouse::MouseWheel, prelude::*, render::camera::Camera};
-use bevy_prototype_lyon::{
-    entity::ShapeBundle,
-    plugin::ShapePlugin,
-    prelude::{DrawMode, FillOptions, GeometryBuilder, PathBuilder, ShapeColors, StrokeOptions},
-};
+use bevy_prototype_lyon::plugin::ShapePlugin;
 
-struct ExcerptNum(usize);
+pub struct ExcerptNum(usize);
 
-struct OffsetMarker(f64);
+pub struct OffsetMarker(f64);
 
-struct TextPosition {
-    x: f32,
-    y: f32,
-}
-
-struct ScrollPosition(i32);
+pub struct ScrollPosition(i32);
 
 pub fn run(session: RecordingSession) {
     App::build()
         .add_plugins(DefaultPlugins)
+        .init_resource::<MousePosition>()
         .insert_resource(session)
         .insert_resource(ScrollPosition(0))
         // .insert_resource(Msaa { samples: 8 })
@@ -49,6 +39,7 @@ pub fn run(session: RecordingSession) {
         .add_system(spawn_offset_markers_system.system())
         .add_system(exit_system.system())
         .add_system(cut_system.system())
+        .add_system(track_mouse_position_system.system())
         .run();
 }
 
@@ -63,114 +54,11 @@ fn add_excerpts_system(mut commands: Commands, session: Res<RecordingSession>) {
     }
 }
 
-fn show_excerpts_system(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    excerpts: Query<(Entity, &NamedExcerpt, &ExcerptNum), Without<Draw>>,
-) {
-    for (entity, excerpt, num) in excerpts.iter() {
-        spawn_path_for_excerpt(&mut commands, excerpt, num, entity);
-        let get_y_position = |song_num| song_num as f32 * Y_OFFSET_PER_SONG;
-        spawn_text_for_excerpt(
-            &mut commands,
-            &asset_server,
-            &excerpt.song,
-            TextPosition {
-                x: SONG_X_START - SONG_TEXT_X_DISTANCE,
-                y: get_y_position(num.0 + 1),
-            },
-        );
-        spawn_text_for_excerpt(
-            &mut commands,
-            &asset_server,
-            &excerpt.song,
-            TextPosition {
-                x: SONG_X_END + SONG_TEXT_X_DISTANCE,
-                y: get_y_position(num.0),
-            },
-        );
-    }
-}
-
-fn spawn_text_for_excerpt(
-    commands: &mut Commands,
-    asset_server: &AssetServer,
-    song: &Song,
-    text_position: TextPosition,
-) {
-    commands
-        .spawn()
-        .insert_bundle(get_text_bundle_for_song(&asset_server, &song))
-        .insert(text_position);
-}
-
-fn spawn_path_for_excerpt(
-    commands: &mut Commands,
-    excerpt: &NamedExcerpt,
-    num: &ExcerptNum,
-    entity: Entity,
-) {
-    let path = get_path_for_excerpt(excerpt, num);
-    commands
-        .entity(entity)
-        .insert_bundle(get_shape_bundle_for_path(path, LINE_WIDTH, Color::BLACK));
-}
-
-fn get_shape_bundle_for_path(path: PathBuilder, line_width: f32, color: Color) -> ShapeBundle {
-    let invisible = Color::Rgba {
-        red: 0.0,
-        green: 0.0,
-        blue: 0.0,
-        alpha: 0.0,
-    };
-    GeometryBuilder::build_as(
-        &path.build(),
-        ShapeColors::outlined(invisible, color),
-        DrawMode::Outlined {
-            fill_options: FillOptions::default(),
-            outline_options: StrokeOptions::default().with_line_width(line_width),
-        },
-        Transform::default(),
-    )
-}
-
-fn get_path_for_excerpt(excerpt: &NamedExcerpt, num: &ExcerptNum) -> PathBuilder {
-    let mut path = PathBuilder::new();
-    let values = get_volume_data(&excerpt.excerpt);
-    let y_offset = (num.0 as f32) * Y_OFFSET_PER_SONG;
-    let width = SONG_X_END - SONG_X_START;
-    path.move_to(Vec2::new(SONG_X_START, SONG_Y_START + y_offset));
-    for (i, y) in values.iter().enumerate() {
-        let x = (i as f32) / (values.len() as f32);
-        path.line_to(Vec2::new(
-            SONG_X_START + x * width,
-            SONG_Y_START + y_offset + (*y as f32) * SONG_HEIGHT,
-        ));
-    }
-    path
-}
-
 fn get_volume_data(excerpt: &AudioExcerpt) -> Vec<f64> {
     let width = excerpt.end.time - excerpt.start.time;
     let step_size = width / NUM_OFFSETS_TO_TRY as f64;
     let times = (1..NUM_OFFSETS_TO_TRY).map(|x| excerpt.start.time + (x as f64) * step_size);
     times.map(|time| excerpt.get_volume_at(time)).collect()
-}
-
-fn spawn_offset_markers_system(
-    mut commands: Commands,
-    query: Query<(Entity, &OffsetMarker, &ExcerptNum), Without<Draw>>,
-) {
-    for (entity, _, num) in query.iter() {
-        let mut path = PathBuilder::new();
-        let middle = (SONG_X_START + SONG_X_END) * 0.5;
-        let y_offset = SONG_Y_START + (num.0 as f32) * Y_OFFSET_PER_SONG;
-        path.move_to(Vec2::new(middle, y_offset));
-        path.line_to(Vec2::new(middle, y_offset + MARKER_HEIGHT));
-        commands
-            .entity(entity)
-            .insert_bundle(get_shape_bundle_for_path(path, 2.0, Color::RED));
-    }
 }
 
 fn scrolling_input_system(

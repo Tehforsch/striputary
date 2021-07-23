@@ -41,7 +41,7 @@ pub fn cut_session(session: RecordingSession, cut_args: &CutOpts) -> Result<()> 
         None => get_album_chunks(&session),
     };
     if let OffsetOpts::Graphical = cut_args.offset {
-        let offsets = gui::run(session.clone());
+        gui::run(session.clone());
     } else {
         for chunk in chunks.iter() {
             estimated_time_first_song =
