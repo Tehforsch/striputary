@@ -1,5 +1,4 @@
 use crate::dbus::{collect_dbus_info, previous_song, start_playback, stop_playback};
-use crate::path_utils::get_buffer_file;
 use crate::recorder;
 use crate::recording_session::RecordingSession;
 use crate::{
@@ -27,11 +26,11 @@ pub enum RecordingStatus {
 }
 
 pub fn record_new_session(
-    session_dir: &Path,
+    session_file: &Path,
+    buffer_file: &Path,
     stream_config: &ServiceConfig,
 ) -> Result<(RecordingExitStatus, RecordingSession)> {
-    let buffer_file = get_buffer_file(session_dir);
-    create_dir_all(&session_dir).context("Failed to create session directory")?;
+    create_dir_all(&session_file.parent().unwrap()).context("Failed to create session directory")?;
     if buffer_file.exists() {
         return Err(anyhow!(
             "Buffer file already exists, not recording a new session."
@@ -40,7 +39,7 @@ pub fn record_new_session(
     let recording_handles = recorder::start_recording(&buffer_file, stream_config)?;
     let record_start_time = Instant::now();
     // Check for dbus signals while recording until terminated
-    let (status, session) = polling_loop(&record_start_time, &session_dir, stream_config)?;
+    let (status, session) = polling_loop(&record_start_time, &session_file, stream_config)?;
     // Whether the loop ended because of the user interrupt (ctrl-c) or
     // because the playback was stopped doesn't matter - kill the recording processes
     recorder::stop_recording(recording_handles)?;
@@ -49,7 +48,7 @@ pub fn record_new_session(
 
 fn polling_loop(
     record_start_time: &Instant,
-    session_dir: &Path,
+    session_filename: &Path,
     stream_config: &ServiceConfig,
 ) -> Result<(RecordingExitStatus, RecordingSession)> {
     let is_running = Arc::new(AtomicBool::new(true));
@@ -58,7 +57,7 @@ fn polling_loop(
     set_ctrl_handler(is_running_clone)?;
 
     initial_buffer_phase(stream_config)?;
-    let (status, session) = recording_phase(session_dir, record_start_time, is_running, stream_config)?;
+    let (status, session) = recording_phase(session_filename, record_start_time, is_running, stream_config)?;
     final_buffer_phase();
     Ok((status, session))
 }
@@ -78,7 +77,7 @@ fn initial_buffer_phase(stream_config: &ServiceConfig) -> Result<()> {
 }
 
 fn recording_phase(
-    session_dir: &Path,
+    session_filename: &Path,
     record_start_time: &Instant,
     is_running: Arc<AtomicBool>,
     stream_config: &ServiceConfig,
@@ -86,7 +85,7 @@ fn recording_phase(
     let recording_start_time = Instant::now()
         .duration_since(*record_start_time)
         .as_secs_f64();
-    let mut session = RecordingSession::new(session_dir, recording_start_time);
+    let mut session = RecordingSession::new(session_filename, recording_start_time);
     println!("Start playback.");
     start_playback(stream_config)?;
     loop {

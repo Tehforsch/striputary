@@ -2,16 +2,17 @@ use std::path::PathBuf;
 
 use std::path::Path;
 
-use crate::config::DEFAULT_BUFFER_FILE;
+pub fn get_yaml_file(session_dir: &Path, num: i32) -> PathBuf {
+    session_dir.join(format!("{}.yaml", num)).into()
+}
 
-pub fn get_buffer_file(session_dir: &Path) -> PathBuf {
-    session_dir.join(DEFAULT_BUFFER_FILE)
+pub fn get_buffer_file(session_dir: &Path, num: i32) -> PathBuf {
+    session_dir.join(format!("{}.wav", num)).into()
 }
 
 pub fn get_yaml_files(session_dir: &Path) -> Vec<PathBuf> {
     let mut files = vec![];
-    let mut i = 0;
-    loop {
+    for i in 0.. {
         let file = session_dir.join(format!("{}.yaml", i));
         if file.is_file() {
             files.push(file);
@@ -19,7 +20,6 @@ pub fn get_yaml_files(session_dir: &Path) -> Vec<PathBuf> {
         else {
             break;
         }
-        i += 1;
     }
     files
 }

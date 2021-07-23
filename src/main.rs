@@ -17,7 +17,7 @@ pub mod yaml_session;
 pub mod excerpt_collection;
 pub mod excerpt_collections;
 
-use crate::{record::RecordingExitStatus, recording_session::RecordingSession};
+use crate::{path_utils::{get_buffer_file, get_yaml_file}, record::RecordingExitStatus, recording_session::RecordingSession};
 use anyhow::{anyhow, Result};
 use args::Opts;
 use clap::Clap;
@@ -58,8 +58,10 @@ pub fn record_sessions_and_save_session_files(
     stream_config: &ServiceConfig,
 ) -> Result<Vec<RecordingSession>> {
     let sessions = vec![];
-    loop {
-        let (status, session) = record_new_session(session_dir, stream_config)?;
+    for num in 0.. {
+        let yaml_file = get_yaml_file(session_dir, num);
+        let buffer_file = get_buffer_file(session_dir, num);
+        let (status, session) = record_new_session(&yaml_file, &buffer_file, stream_config)?;
         yaml_session::save(&session)?;
         if status == RecordingExitStatus::FinishedOrInterrupted {
             break;
