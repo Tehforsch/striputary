@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Context, Result};
 use std::fs::create_dir_all;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use text_io::{read, try_read};
 
@@ -22,6 +22,28 @@ pub struct NamedExcerpt {
     pub excerpt: AudioExcerpt,
     pub song: Song,
     pub num: usize,
+}
+
+pub struct CutInfo {
+    pub song: Song,
+    buffer_file: PathBuf,
+    music_dir: PathBuf,
+    start_time: f64,
+    end_time: f64,
+}
+
+impl CutInfo {
+    pub fn new(session: &RecordingSession, song: Song, start_time: f64, end_time: f64) -> Self {
+        let buffer_file = session.get_buffer_file();
+        let music_dir = session.get_music_dir();
+        CutInfo {
+            buffer_file,
+            music_dir,
+            song,
+            start_time,
+            end_time,
+        }
+    }
 }
 
 pub fn cut_session(session: RecordingSession, cut_args: &CutOpts) -> Result<()> {
@@ -137,9 +159,14 @@ fn cut_chunk<'a>(
         offset, estimated_time_first_song
     );
     let mut start_time = estimated_time_first_song + offset;
-    for song in valid_songs.iter() {
+    for song in valid_songs.into_iter() {
         let end_time = start_time + song.length;
-        cut_song(chunk.session, song, start_time, end_time)?;
+        cut_song(&CutInfo::new(
+            chunk.session,
+            song.clone(),
+            start_time,
+            end_time,
+        ))?;
         start_time = end_time;
     }
     match &cut_args.offset {
@@ -287,47 +314,41 @@ fn get_cut_timestamps_from_song_lengths(chunk: &Chunk, estimated_time_first_song
         .collect()
 }
 
-pub fn cut_song(
-    session: &RecordingSession,
-    song: &Song,
-    start_time: f64,
-    end_time: f64,
-) -> Result<()> {
-    let difference = end_time - start_time;
-    let source_file = session.get_buffer_file();
-    let target_file = song.get_target_file(&session.get_music_dir());
+pub fn cut_song(info: &CutInfo) -> Result<()> {
+    let difference = info.end_time - info.start_time;
+    let target_file = info.song.get_target_file(&info.music_dir);
     create_dir_all(target_file.parent().unwrap())
         .context("Failed to create subfolders of target file")?;
     println!(
         "Cutting song: {:.2}+{:.2}: {} to {}",
-        start_time,
+        info.start_time,
         difference,
-        song,
+        info.song,
         target_file.to_str().unwrap()
     );
     Command::new("ffmpeg")
         .arg("-ss")
-        .arg(format!("{}", start_time))
+        .arg(format!("{}", info.start_time))
         .arg("-t")
         .arg(format!("{}", difference))
         .arg("-i")
-        .arg(source_file.to_str().unwrap())
+        .arg(&info.buffer_file.to_str().unwrap())
         .arg("-metadata")
-        .arg(format!("title={}", &song.title))
+        .arg(format!("title={}", &info.song.title))
         .arg("-metadata")
-        .arg(format!("album={}", &song.album))
+        .arg(format!("album={}", &info.song.album))
         .arg("-metadata")
-        .arg(format!("artist={}", &song.artist))
+        .arg(format!("artist={}", &info.song.artist))
         .arg("-metadata")
-        .arg(format!("albumartist={}", &song.artist))
+        .arg(format!("albumartist={}", &info.song.artist))
         .arg("-metadata")
-        .arg(format!("track={}", &song.track_number))
+        .arg(format!("track={}", &info.song.track_number))
         .arg("-y")
         .arg(target_file.to_str().unwrap())
         .output()
         .map(|_| ())
         .context(format!(
             "Failed to cut song: {} {} {} ({}+{})",
-            &song.title, &song.album, &song.artist, start_time, difference,
+            &info.song.title, &info.song.album, &info.song.artist, info.start_time, difference,
         ))
 }

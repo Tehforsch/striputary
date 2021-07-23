@@ -72,7 +72,7 @@ fn get_text_bundle_for_song(asset_server: &AssetServer, song: &Song) -> Text2dBu
         text: Text::with_section(
             &format!("{}\n{}", song.artist, song.title),
             TextStyle {
-                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                font: asset_server.load("fonts/FiraMono-Medium.ttf"),
                 font_size: 30.0,
                 color: Color::BLACK,
             },
