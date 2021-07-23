@@ -2,7 +2,6 @@ use bevy::{app::AppExit, input::mouse::MouseWheel, prelude::*, render::camera::C
 
 use super::{
     config::{SONG_HEIGHT, SONG_Y_START, Y_OFFSET_PER_SONG},
-    cutting_thread::CuttingThreadHandle,
     PositionMarker, ScrollPosition,
 };
 

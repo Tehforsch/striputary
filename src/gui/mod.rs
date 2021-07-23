@@ -4,7 +4,7 @@ mod graphics;
 mod input;
 mod offset_marker;
 
-use std::thread;
+
 
 use self::{
     cutting_thread::CuttingThreadHandle,
@@ -20,11 +20,8 @@ use self::{
     offset_marker::PositionMarker,
 };
 use crate::{
-    audio_excerpt::AudioExcerpt,
-    config::NUM_OFFSETS_TO_TRY,
-    cut::{cut_song, get_named_excerpts, CutInfo, NamedExcerpt},
+    cut::{get_named_excerpts, CutInfo, NamedExcerpt},
     recording_session::RecordingSession,
-    song::Song,
 };
 use bevy::prelude::*;
 use bevy_prototype_lyon::plugin::ShapePlugin;
