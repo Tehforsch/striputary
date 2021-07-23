@@ -29,6 +29,7 @@ pub fn record_new_session(
     session_file: &Path,
     buffer_file: &Path,
     stream_config: &ServiceConfig,
+    is_running: Arc<AtomicBool>,
 ) -> Result<(RecordingExitStatus, RecordingSession)> {
     create_dir_all(&session_file.parent().unwrap()).context("Failed to create session directory")?;
     if buffer_file.exists() {
@@ -39,7 +40,7 @@ pub fn record_new_session(
     let recording_handles = recorder::start_recording(&buffer_file, stream_config)?;
     let record_start_time = Instant::now();
     // Check for dbus signals while recording until terminated
-    let (status, session) = polling_loop(&record_start_time, &session_file, stream_config)?;
+    let (status, session) = polling_loop(&record_start_time, &session_file, stream_config, is_running)?;
     // Whether the loop ended because of the user interrupt (ctrl-c) or
     // because the playback was stopped doesn't matter - kill the recording processes
     recorder::stop_recording(recording_handles)?;
@@ -50,11 +51,8 @@ fn polling_loop(
     record_start_time: &Instant,
     session_filename: &Path,
     stream_config: &ServiceConfig,
+    is_running: Arc<AtomicBool>,
 ) -> Result<(RecordingExitStatus, RecordingSession)> {
-    let is_running = Arc::new(AtomicBool::new(true));
-
-    let is_running_clone = is_running.clone();
-    set_ctrl_handler(is_running_clone)?;
 
     initial_buffer_phase(stream_config)?;
     let (status, session) = recording_phase(session_filename, record_start_time, is_running, stream_config)?;
@@ -102,11 +100,4 @@ fn recording_phase(
 fn final_buffer_phase() {
     println!("Recording finished. Record final buffer for a few seconds");
     thread::sleep(Duration::from_secs_f64(TIME_AFTER_SESSION_END));
-}
-
-fn set_ctrl_handler(is_running: Arc<AtomicBool>) -> Result<()> {
-    ctrlc::set_handler(move || {
-        is_running.store(false, Ordering::SeqCst);
-    })
-    .context("Error setting Ctrl-C handler")
 }

@@ -18,13 +18,13 @@ pub mod excerpt_collection;
 pub mod excerpt_collections;
 
 use crate::{path_utils::{get_buffer_file, get_yaml_file}, record::RecordingExitStatus, recording_session::RecordingSession};
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Result, Context};
 use args::Opts;
 use clap::Clap;
 use path_utils::get_yaml_files;
 use record::record_new_session;
 use service_config::ServiceConfig;
-use std::{io::stdin, path::Path};
+use std::{io::stdin, path::Path, sync::{Arc, atomic::{AtomicBool, Ordering}}};
 
 fn main() -> Result<(), anyhow::Error> {
     let args = Opts::parse();
@@ -58,16 +58,27 @@ pub fn record_sessions_and_save_session_files(
     stream_config: &ServiceConfig,
 ) -> Result<Vec<RecordingSession>> {
     let sessions = vec![];
+    let is_running = set_ctrl_handler()?;
     for num in 0.. {
         let yaml_file = get_yaml_file(session_dir, num);
         let buffer_file = get_buffer_file(session_dir, num);
-        let (status, session) = record_new_session(&yaml_file, &buffer_file, stream_config)?;
+        let (status, session) = record_new_session(&yaml_file, &buffer_file, stream_config, is_running.clone())?;
         yaml_session::save(&session)?;
         if status == RecordingExitStatus::FinishedOrInterrupted {
             break;
         }
     }
     Ok(sessions)
+}
+
+fn set_ctrl_handler() -> Result<Arc<AtomicBool>> {
+    let is_running = Arc::new(AtomicBool::new(true));
+    let is_running_cloned = is_running.clone();
+    ctrlc::set_handler(move || {
+        is_running_cloned.store(false, Ordering::SeqCst);
+    })
+    .context("Error setting Ctrl-C handler")?;
+    Ok(is_running)
 }
 
 fn load_sessions_and_cut(session_dir: &Path) -> Result<()> {
