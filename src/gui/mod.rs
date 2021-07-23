@@ -3,7 +3,18 @@ mod graphics;
 mod input;
 mod offset_marker;
 
-use self::{graphics::{ScrollPosition, camera_positioning_system, initialize_camera_system, marker_positioning_system, show_excerpts_system, spawn_offset_markers_system, text_positioning_system, z_layering_system}, input::{MousePosition, exit_system, move_markers_on_click_system, scrolling_input_system, track_mouse_position_system}, offset_marker::OffsetMarker};
+use self::{
+    graphics::{
+        camera_positioning_system, initialize_camera_system, marker_positioning_system,
+        show_excerpts_system, spawn_offset_markers_system, text_positioning_system,
+        z_layering_system, ScrollPosition,
+    },
+    input::{
+        exit_system, move_markers_on_click_system, scrolling_input_system,
+        track_mouse_position_system, MousePosition,
+    },
+    offset_marker::OffsetMarker,
+};
 use crate::{
     audio_excerpt::AudioExcerpt,
     config::NUM_OFFSETS_TO_TRY,

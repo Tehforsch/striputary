@@ -1,13 +1,17 @@
 use bevy::{app::AppExit, input::mouse::MouseWheel, prelude::*, render::camera::Camera};
 
-use super::{OffsetMarker, ScrollPosition, config::{SONG_HEIGHT, SONG_Y_START, Y_OFFSET_PER_SONG}};
+use super::{
+    config::{SONG_HEIGHT, SONG_Y_START, Y_OFFSET_PER_SONG},
+    OffsetMarker, ScrollPosition,
+};
 
 #[derive(Default, Debug)]
 pub struct MousePosition(Vec2);
 
 fn check_inside_excerpt(world_pos: Vec2, excerpt_num: usize) -> bool {
-    let y_pos = (world_pos.y - SONG_Y_START - Y_OFFSET_PER_SONG * (excerpt_num as f32)) / SONG_HEIGHT;
-    return y_pos >= 0.0 && y_pos <= 1.0
+    let y_pos =
+        (world_pos.y - SONG_Y_START - Y_OFFSET_PER_SONG * (excerpt_num as f32)) / SONG_HEIGHT;
+    return y_pos >= 0.0 && y_pos <= 1.0;
 }
 
 pub fn scrolling_input_system(
