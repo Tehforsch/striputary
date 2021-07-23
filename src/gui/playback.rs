@@ -1,3 +1,5 @@
+use std::thread;
+
 use bevy::prelude::*;
 use rodio::OutputStream;
 use rodio::Sink;
@@ -19,8 +21,11 @@ pub fn playback_system(
 }
 
 fn play_excerpt(excerpt: &AudioExcerpt) {
-    let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-    let sink = Sink::try_new(&stream_handle).unwrap();
-    sink.append(AudioExcerptSource::new(excerpt.clone()));
-    sink.sleep_until_end();
+    let cloned = excerpt.clone();
+    thread::spawn(move || {
+        let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+        let sink = Sink::try_new(&stream_handle).unwrap();
+        sink.append(AudioExcerptSource::new(cloned));
+        sink.sleep_until_end();
+    });
 }
