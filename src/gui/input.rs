@@ -2,6 +2,7 @@ use bevy::{app::AppExit, input::mouse::MouseWheel, prelude::*, render::camera::C
 
 use super::{
     config::{SONG_HEIGHT, SONG_Y_START, Y_OFFSET_PER_SONG},
+    cutting_thread::CuttingThreadHandle,
     PositionMarker, ScrollPosition,
 };
 
@@ -65,7 +66,11 @@ pub fn move_markers_on_click_system(
     }
 }
 
-pub fn exit_system(keyboard_input: Res<Input<KeyCode>>, mut app_exit_events: EventWriter<AppExit>) {
+pub fn exit_system(
+    keyboard_input: Res<Input<KeyCode>>,
+    mut app_exit_events: EventWriter<AppExit>,
+    handle: NonSend<CuttingThreadHandle>,
+) {
     for key in keyboard_input.get_just_pressed() {
         match key {
             KeyCode::Escape | KeyCode::Q => {

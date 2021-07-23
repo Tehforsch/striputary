@@ -34,7 +34,7 @@ impl CuttingThread {
 }
 
 pub struct CuttingThreadHandle {
-    handle: JoinHandle<()>,
+    _handle: JoinHandle<()>,
     sender: Sender<CutInfo>,
 }
 
@@ -43,7 +43,7 @@ impl Default for CuttingThreadHandle {
         let (sender, receiver) = channel();
         let handle = thread::spawn(|| CuttingThread::new(receiver).cutting_loop());
         CuttingThreadHandle {
-            handle: handle,
+            _handle: handle,
             sender,
         }
     }
