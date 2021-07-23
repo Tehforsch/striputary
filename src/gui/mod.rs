@@ -13,7 +13,7 @@ use self::{cutting_thread::CuttingThreadHandle, excerpt_view::ExcerptView, graph
         exit_system, move_markers_on_click_system, scrolling_input_system,
         track_mouse_position_system, MousePosition,
     }, offset_marker::PositionMarker};
-use crate::{cut::{get_excerpt_collection, CutInfo}, excerpt_collection::NamedExcerpt, excerpt_collections::ExcerptCollections, recording_session::RecordingSession};
+use crate::{cut::{get_excerpt_collection, CutInfo}, excerpt_collection::{ExcerptCollection, NamedExcerpt}, excerpt_collections::ExcerptCollections, recording_session::RecordingSession};
 use bevy::prelude::*;
 use bevy_prototype_lyon::plugin::ShapePlugin;
 
@@ -56,36 +56,33 @@ fn start_cut_system(
     keyboard_input: Res<Input<KeyCode>>,
     collections: Res<ExcerptCollections>,
     positions: Query<&PositionMarker>,
-    excerpts: Query<&NamedExcerpt>,
     cutting_thread: NonSend<CuttingThreadHandle>,
 ) {
     for key in keyboard_input.get_just_pressed() {
         if let KeyCode::Return = key {
-            let cut_infos = get_cut_info(&collections.get_selected().session, &positions, &excerpts);
+            let cut_infos = get_cut_info(&collections.get_selected(), &positions);
             cutting_thread.send_cut_infos(cut_infos);
         }
     }
 }
 
 fn get_cut_info(
-    session: &RecordingSession,
+    collection: &ExcerptCollection,
     positions: &Query<&PositionMarker>,
-    excerpts: &Query<&NamedExcerpt>,
 ) -> Vec<CutInfo> {
     let mut markers: Vec<&PositionMarker> = positions.iter().collect();
     markers.sort_by_key(|marker| marker.num);
-    let mut excerpts: Vec<&NamedExcerpt> = excerpts.iter().collect();
-    excerpts.sort_by_key(|excerpt| excerpt.num);
+    let excerpts: Vec<&NamedExcerpt> = collection.iter_excerpts().collect();
     let mut cut_info: Vec<CutInfo> = vec![];
     for ((excerpt_start, excerpt_end), (marker_start, marker_end)) in excerpts
         .iter()
         .zip(excerpts[1..].iter())
         .zip(markers.iter().zip(markers[1..].iter()))
     {
-        let song = &session.songs[marker_start.num];
+        let song = &excerpt_end.song;
         let start_time = marker_start.get_audio_time(&excerpt_start.excerpt);
         let end_time = marker_end.get_audio_time(&excerpt_end.excerpt);
-        cut_info.push(CutInfo::new(session, song.clone(), start_time, end_time));
+        cut_info.push(CutInfo::new(&collection.session, song.clone(), start_time, end_time));
     }
     cut_info
 }
