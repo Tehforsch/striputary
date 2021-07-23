@@ -4,7 +4,7 @@ use bevy_prototype_lyon::{
     prelude::{DrawMode, FillOptions, GeometryBuilder, PathBuilder, ShapeColors, StrokeOptions},
 };
 
-use crate::{cut::NamedExcerpt, song::Song};
+use crate::{excerpt_collection::NamedExcerpt, song::Song};
 
 use super::{
     config::{

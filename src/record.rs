@@ -14,10 +14,22 @@ use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
+#[derive(PartialEq)]
+pub enum RecordingExitStatus {
+    FinishedOrInterrupted,
+    AlbumFinished
+}
+
+#[derive(PartialEq)]
+pub enum RecordingStatus {
+    Running,
+    Finished(RecordingExitStatus),
+}
+
 pub fn record_new_session(
     session_dir: &Path,
     stream_config: &ServiceConfig,
-) -> Result<RecordingSession> {
+) -> Result<(RecordingExitStatus, RecordingSession)> {
     let buffer_file = get_buffer_file(session_dir);
     create_dir_all(&session_dir).context("Failed to create session directory")?;
     if buffer_file.exists() {
@@ -28,27 +40,27 @@ pub fn record_new_session(
     let recording_handles = recorder::start_recording(&buffer_file, stream_config)?;
     let record_start_time = Instant::now();
     // Check for dbus signals while recording until terminated
-    let session = polling_loop(&record_start_time, &session_dir, stream_config)?;
+    let (status, session) = polling_loop(&record_start_time, &session_dir, stream_config)?;
     // Whether the loop ended because of the user interrupt (ctrl-c) or
     // because the playback was stopped doesn't matter - kill the recording processes
     recorder::stop_recording(recording_handles)?;
-    Ok(session)
+    Ok((status, session))
 }
 
 fn polling_loop(
     record_start_time: &Instant,
     session_dir: &Path,
     stream_config: &ServiceConfig,
-) -> Result<RecordingSession> {
+) -> Result<(RecordingExitStatus, RecordingSession)> {
     let is_running = Arc::new(AtomicBool::new(true));
 
     let is_running_clone = is_running.clone();
     set_ctrl_handler(is_running_clone)?;
 
     initial_buffer_phase(stream_config)?;
-    let session = recording_phase(session_dir, record_start_time, is_running, stream_config)?;
+    let (status, session) = recording_phase(session_dir, record_start_time, is_running, stream_config)?;
     final_buffer_phase();
-    Ok(session)
+    Ok((status, session))
 }
 
 fn initial_buffer_phase(stream_config: &ServiceConfig) -> Result<()> {
@@ -70,18 +82,22 @@ fn recording_phase(
     record_start_time: &Instant,
     is_running: Arc<AtomicBool>,
     stream_config: &ServiceConfig,
-) -> Result<RecordingSession> {
+) -> Result<(RecordingExitStatus, RecordingSession)> {
     let recording_start_time = Instant::now()
         .duration_since(*record_start_time)
         .as_secs_f64();
     let mut session = RecordingSession::new(session_dir, recording_start_time);
-    let mut playback_stopped = false;
     println!("Start playback.");
     start_playback(stream_config)?;
-    while !playback_stopped && is_running.load(Ordering::SeqCst) {
-        playback_stopped = collect_dbus_info(&mut session, stream_config)?;
+    loop {
+        let playback_status = collect_dbus_info(&mut session, stream_config)?;
+        if let RecordingStatus::Finished(exit_status) = playback_status {
+            return Ok((exit_status, session));
+        }
+        if !is_running.load(Ordering::SeqCst) {
+            return Ok((RecordingExitStatus::FinishedOrInterrupted, session))
+        }
     }
-    Ok(session)
 }
 
 fn final_buffer_phase() {

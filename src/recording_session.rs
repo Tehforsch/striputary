@@ -1,4 +1,3 @@
-use crate::config::DEFAULT_BUFFER_FILE;
 use crate::song::Song;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -7,7 +6,7 @@ use std::vec::Vec;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RecordingSession {
-    pub dir: PathBuf,
+    pub filename: PathBuf,
     pub songs: Vec<Song>,
     pub estimated_time_first_song: f64,
 }
@@ -15,17 +14,17 @@ pub struct RecordingSession {
 impl RecordingSession {
     pub fn new(path: &Path, estimated_time_first_song: f64) -> RecordingSession {
         RecordingSession {
-            dir: path.to_owned(),
+            filename: path.to_owned(),
             estimated_time_first_song,
             songs: vec![],
         }
     }
 
     pub fn get_buffer_file(&self) -> PathBuf {
-        self.dir.join(DEFAULT_BUFFER_FILE)
+        Path::new(&self.filename.to_str().unwrap().replace("yaml", "wav")).into()
     }
 
     pub fn get_music_dir(&self) -> PathBuf {
-        self.dir.join(Path::new("music"))
+        self.filename.parent().unwrap().join(Path::new("music"))
     }
 }

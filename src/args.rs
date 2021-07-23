@@ -7,31 +7,10 @@ pub struct OffsetPosition {
 }
 
 #[derive(Clap, Debug)]
-pub enum OffsetOpts {
-    Auto,
-    Interactive,
-    Manual(OffsetPosition),
-    Graphical,
-}
-
-#[derive(Clap, Debug)]
-pub struct CutOpts {
-    #[clap(subcommand)]
-    pub offset: OffsetOpts,
-
-    #[clap(
-        short,
-        long,
-        about = "Instead of cutting songs grouped by album, group them by a given chunk size"
-    )]
-    pub chunk_size: Option<usize>,
-}
-
-#[derive(Clap, Debug)]
 pub enum Action {
-    Run(CutOpts),
+    Run,
     Record,
-    Cut(CutOpts),
+    Cut,
 }
 
 #[derive(Clap, Debug)]

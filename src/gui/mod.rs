@@ -19,18 +19,16 @@ use self::{
     },
     offset_marker::PositionMarker,
 };
-use crate::{
-    cut::{get_named_excerpts, CutInfo, NamedExcerpt},
-    recording_session::RecordingSession,
-};
+use crate::{cut::{get_excerpt_collection, CutInfo}, excerpt_collection::{ExcerptCollection, NamedExcerpt}, recording_session::RecordingSession};
 use bevy::prelude::*;
 use bevy_prototype_lyon::plugin::ShapePlugin;
 
-pub fn run(session: RecordingSession) {
+pub fn run(sessions: Vec<RecordingSession>) {
+    let collections: Vec<ExcerptCollection> = sessions.into_iter().map(|session| get_excerpt_collection(session)).collect();
     App::build()
         .add_plugins(DefaultPlugins)
         .init_resource::<MousePosition>()
-        .insert_resource(session)
+        .insert_resource(collections)
         .insert_resource(ScrollPosition(0))
         .init_non_send_resource::<CuttingThreadHandle>()
         // .insert_resource(Msaa { samples: 8 })
@@ -51,10 +49,8 @@ pub fn run(session: RecordingSession) {
         .run();
 }
 
-fn add_excerpts_system(mut commands: Commands, session: Res<RecordingSession>) {
-    let excerpts = get_named_excerpts(&session);
-    for (i, excerpt) in excerpts.into_iter().enumerate() {
-        commands.spawn().insert(excerpt);
+fn add_excerpts_system(mut commands: Commands, collection: Res<ExcerptCollection>) {
+    for (i, _) in collection.iter_excerpts().enumerate() {
         commands.spawn().insert(PositionMarker::new(i));
     }
 }

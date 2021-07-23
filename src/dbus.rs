@@ -1,3 +1,4 @@
+use crate::record::{RecordingExitStatus, RecordingStatus};
 use crate::recording_session::RecordingSession;
 use crate::service_config::ServiceConfig;
 use crate::song::Song;
@@ -16,7 +17,7 @@ use std::process::Command;
 pub fn collect_dbus_info(
     session: &mut RecordingSession,
     service_config: &ServiceConfig,
-) -> Result<bool> {
+) -> Result<RecordingStatus> {
     let c = Connection::new_session().unwrap();
     // Add a match for this signal
     let bus_name = service_config.dbus_bus_name.clone();
@@ -26,29 +27,38 @@ pub fn collect_dbus_info(
     // Wait for the signal to arrive.
     for msg in c.incoming(100) {
         if let Some(pc) = PC::from_message(&msg) {
-            let playback_stopped = handle_dbus_properties_changed_signal(session, pc)?;
-            return Ok(playback_stopped);
+            return handle_dbus_properties_changed_signal(session, pc);
         }
     }
-    Ok(false)
+    Ok(RecordingStatus::Running)
 }
 
 pub fn handle_dbus_properties_changed_signal(
     session: &mut RecordingSession,
     properties: PC,
-) -> Result<bool> {
+) -> Result<RecordingStatus> {
     let playback_stopped = is_playback_stopped(&properties);
     if !playback_stopped {
         let song = get_song_from_dbus_properties(properties);
         // We get multiple dbus messages on every song change for every property that changes.
         // Find out whether the song actually changed (or whether we havent recorded anything so far)
-        if session.songs.is_empty() || session.songs.last().unwrap() != &song {
-            println!("Recording song: {:?}", song);
+        let last_song = session.songs.last();
+        if session.songs.is_empty() || last_song.unwrap() != &song {
+            println!("Now recording song: {:?}", song);
+            if let Some(last_song) = last_song {
+                if last_song.album != song.album {
+                    println!("This is a new album - creating a new recording session");
+                    return Ok(RecordingStatus::Finished(RecordingExitStatus::AlbumFinished));
+                }
+            }
             session.songs.push(song);
             yaml_session::save(&session)?;
         }
     }
-    Ok(playback_stopped)
+    match playback_stopped {
+        false => Ok(RecordingStatus::Running),
+        true => Ok(RecordingStatus::Finished(RecordingExitStatus::FinishedOrInterrupted)),
+    }
 }
 
 fn is_playback_stopped(properties: &PC) -> bool {

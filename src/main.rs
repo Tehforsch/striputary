@@ -14,12 +14,13 @@ pub mod service_config;
 pub mod song;
 pub mod wav;
 pub mod yaml_session;
+pub mod excerpt_collection;
 
-use crate::recording_session::RecordingSession;
+use crate::{record::RecordingExitStatus, recording_session::RecordingSession};
 use anyhow::Result;
-use args::{CutOpts, Opts};
+use args::Opts;
 use clap::Clap;
-use path_utils::get_yaml_file;
+use path_utils::get_yaml_files;
 use record::record_new_session;
 use service_config::ServiceConfig;
 use std::{io::stdin, path::Path};
@@ -37,33 +38,42 @@ fn get_service_name(service_name: &Option<String>) -> &str {
 fn run_striputary(args: &Opts, stream_config: &ServiceConfig) -> Result<()> {
     match &args.action {
         args::Action::Record => {
-            record_session_and_save_session_file(&args.session_dir, stream_config)?;
+            record_sessions_and_save_session_files(&args.session_dir, stream_config)?;
         }
-        args::Action::Cut(cut_opts) => {
-            load_session_and_cut_file(&get_yaml_file(&args.session_dir), &cut_opts)?;
+        args::Action::Cut => {
+            load_sessions_and_cut(&args.session_dir)?;
         }
-        args::Action::Run(cut_opts) => {
-            let session = record_session_and_save_session_file(&args.session_dir, stream_config)?;
+        args::Action::Run => {
+            let sessions = record_sessions_and_save_session_files(&args.session_dir, stream_config)?;
             wait_for_user_after_recording()?;
-            cut::cut_session(session, cut_opts)?;
+            gui::run(sessions);
         }
     };
     Ok(())
 }
 
-pub fn record_session_and_save_session_file(
+pub fn record_sessions_and_save_session_files(
     session_dir: &Path,
     stream_config: &ServiceConfig,
-) -> Result<RecordingSession> {
-    let session = record_new_session(session_dir, stream_config)?;
-    yaml_session::save(&session)?;
-    Ok(session)
+) -> Result<Vec<RecordingSession>> {
+    let sessions = vec![];
+    loop {
+        let (status, session) = record_new_session(session_dir, stream_config)?;
+        yaml_session::save(&session)?;
+        if status == RecordingExitStatus::FinishedOrInterrupted {
+            break;
+        }
+    }
+    Ok(sessions)
 }
 
-fn load_session_and_cut_file(yaml_file: &Path, cut_opts: &CutOpts) -> Result<()> {
-    let mut session = yaml_session::load(&yaml_file)?;
-    session.dir = yaml_file.parent().unwrap().into();
-    cut::cut_session(session, cut_opts)
+fn load_sessions_and_cut(session_dir: &Path) -> Result<()> {
+    let mut sessions = vec![];
+    for yaml_file in get_yaml_files(session_dir) {
+        sessions.push(yaml_session::load(&yaml_file)?);
+    }
+    gui::run(sessions);
+    Ok(())
 }
 
 fn wait_for_user_after_recording() -> Result<()> {
