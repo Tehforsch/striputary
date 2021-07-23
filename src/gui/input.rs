@@ -66,11 +66,7 @@ pub fn move_markers_on_click_system(
     }
 }
 
-pub fn exit_system(
-    keyboard_input: Res<Input<KeyCode>>,
-    mut app_exit_events: EventWriter<AppExit>,
-    handle: NonSend<CuttingThreadHandle>,
-) {
+pub fn exit_system(keyboard_input: Res<Input<KeyCode>>, mut app_exit_events: EventWriter<AppExit>) {
     for key in keyboard_input.get_just_pressed() {
         match key {
             KeyCode::Escape | KeyCode::Q => {

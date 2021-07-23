@@ -1,5 +1,5 @@
 use crate::audio_time::AudioTime;
-use crate::config::NUM_SAMPLES_PER_AVERAGE_VOLUME;
+use crate::config::{NUM_OFFSETS_TO_TRY, NUM_SAMPLES_PER_AVERAGE_VOLUME};
 use std::i16;
 
 pub struct AudioExcerpt {
@@ -28,6 +28,13 @@ impl AudioExcerpt {
             .map(|x| (*x as f64).abs() * inv_len * inv_i16)
             .sum::<f64>();
         average
+    }
+
+    pub fn get_volume_plot_data(&self) -> Vec<f64> {
+        let width = self.end.time - self.start.time;
+        let step_size = width / NUM_OFFSETS_TO_TRY as f64;
+        let times = (1..NUM_OFFSETS_TO_TRY).map(|x| self.start.time + (x as f64) * step_size);
+        times.map(|time| self.get_volume_at(time)).collect()
     }
 
     pub fn get_time_by_relative_progress(&self, pos: f64) -> f64 {

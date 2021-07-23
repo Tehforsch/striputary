@@ -11,7 +11,6 @@ use super::{
         LINE_WIDTH, MARKER_HEIGHT, SONG_HEIGHT, SONG_TEXT_X_DISTANCE, SONG_TEXT_Y_OFFSET,
         SONG_X_END, SONG_X_START, SONG_Y_START, Y_DISTANCE_PER_MOUSEWHEEL_TICK, Y_OFFSET_PER_SONG,
     },
-    get_volume_data,
     offset_marker::PositionMarker,
 };
 
@@ -111,7 +110,7 @@ fn get_shape_bundle_for_path(path: PathBuilder, line_width: f32, color: Color) -
 }
 
 fn get_path_for_excerpt(excerpt: &NamedExcerpt) -> PathBuilder {
-    let volume_data = get_volume_data(&excerpt.excerpt);
+    let volume_data = excerpt.excerpt.get_volume_plot_data();
     let mut path = PathBuilder::new();
     let y_offset = (excerpt.num as f32) * Y_OFFSET_PER_SONG;
     let width = SONG_X_END - SONG_X_START;

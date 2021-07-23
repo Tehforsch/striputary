@@ -62,13 +62,6 @@ fn add_excerpts_system(mut commands: Commands, session: Res<RecordingSession>) {
     }
 }
 
-fn get_volume_data(excerpt: &AudioExcerpt) -> Vec<f64> {
-    let width = excerpt.end.time - excerpt.start.time;
-    let step_size = width / NUM_OFFSETS_TO_TRY as f64;
-    let times = (1..NUM_OFFSETS_TO_TRY).map(|x| excerpt.start.time + (x as f64) * step_size);
-    times.map(|time| excerpt.get_volume_at(time)).collect()
-}
-
 fn start_cut_system(
     keyboard_input: Res<Input<KeyCode>>,
     session: Res<RecordingSession>,
@@ -79,7 +72,6 @@ fn start_cut_system(
     for key in keyboard_input.get_just_pressed() {
         if let KeyCode::Return = key {
             let cut_infos = get_cut_info(&session, &positions, &excerpts);
-            let cloned_session = session.clone();
             cutting_thread.send_cut_infos(cut_infos);
         }
     }

@@ -1,7 +1,6 @@
 use std::{
     sync::mpsc::{channel, Receiver, Sender},
     thread::{self, JoinHandle},
-    time::Duration,
 };
 
 use crate::cut::{cut_song, CutInfo};
