@@ -47,6 +47,7 @@ pub fn run(sessions: Vec<RecordingSession>) {
         // .insert_resource(Msaa { samples: 8 })
         .add_plugin(ShapePlugin)
         .add_startup_system(initialize_camera_system.system())
+        .add_startup_system(load_first_collection.system())
         .add_system(add_excerpts_and_markers_system.system())
         .add_system(remove_excerpts_and_markers_system.system())
         .add_system(show_excerpts_system.system())
@@ -62,6 +63,11 @@ pub fn run(sessions: Vec<RecordingSession>) {
         .add_system(marker_positioning_system.system())
         .add_system(collection_selection_input.system())
         .run();
+}
+
+fn load_first_collection(
+    mut read_collection_events: EventWriter<ReadCollectionEvent>) {
+    read_collection_events.send(ReadCollectionEvent);
 }
 
 fn remove_excerpts_and_markers_system(
