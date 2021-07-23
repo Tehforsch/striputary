@@ -2,7 +2,13 @@ mod config;
 mod graphics;
 mod mouse;
 
-use self::{config::{SONG_TEXT_Y_OFFSET, Y_DISTANCE_PER_MOUSEWHEEL_TICK}, graphics::{TextPosition, show_excerpts_system, spawn_offset_markers_system, z_layering_system}, mouse::{track_mouse_position_system, MousePosition}};
+use self::{
+    config::{SONG_TEXT_Y_OFFSET, Y_DISTANCE_PER_MOUSEWHEEL_TICK},
+    graphics::{
+        show_excerpts_system, spawn_offset_markers_system, z_layering_system, TextPosition,
+    },
+    mouse::{track_mouse_position_system, MousePosition},
+};
 use crate::{
     audio_excerpt::AudioExcerpt,
     config::NUM_OFFSETS_TO_TRY,
@@ -45,9 +51,7 @@ fn add_excerpts_system(mut commands: Commands, session: Res<RecordingSession>) {
     let excerpts = get_named_excerpts(&session);
     for (i, excerpt) in excerpts.into_iter().enumerate() {
         commands.spawn().insert(excerpt);
-        commands
-            .spawn()
-            .insert(OffsetMarker{num: i, pos: 0.0});
+        commands.spawn().insert(OffsetMarker { num: i, pos: 0.0 });
     }
 }
 
@@ -108,7 +112,13 @@ fn cut_system(
                 let song = &session.songs[marker.num];
                 let end_time = start_time + song.length;
                 dbg!(song, start_time, end_time);
-                cut_song(&session, song, start_time + marker.pos, end_time + marker.pos).unwrap();
+                cut_song(
+                    &session,
+                    song,
+                    start_time + marker.pos,
+                    end_time + marker.pos,
+                )
+                .unwrap();
                 start_time = start_time + song.length;
             }
         }

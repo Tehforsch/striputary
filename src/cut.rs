@@ -231,7 +231,7 @@ pub fn get_named_excerpts(session: &RecordingSession) -> Vec<NamedExcerpt> {
         .into_iter()
         .enumerate()
         .zip(songs.into_iter())
-        .map(|((num, excerpt), song)| NamedExcerpt { excerpt, song, num})
+        .map(|((num, excerpt), song)| NamedExcerpt { excerpt, song, num })
         .collect()
 }
 

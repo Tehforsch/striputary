@@ -82,11 +82,7 @@ fn get_text_bundle_for_song(asset_server: &AssetServer, song: &Song) -> Text2dBu
     }
 }
 
-fn spawn_path_for_excerpt(
-    commands: &mut Commands,
-    excerpt: &NamedExcerpt,
-    entity: Entity,
-) {
+fn spawn_path_for_excerpt(commands: &mut Commands, excerpt: &NamedExcerpt, entity: Entity) {
     let path = get_path_for_excerpt(excerpt);
     commands
         .entity(entity)
