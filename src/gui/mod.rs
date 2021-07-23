@@ -15,7 +15,12 @@ use self::{
     },
     offset_marker::PositionMarker,
 };
-use crate::{audio_excerpt::AudioExcerpt, config::NUM_OFFSETS_TO_TRY, cut::{NamedExcerpt, cut_song, get_named_excerpts}, recording_session::RecordingSession};
+use crate::{
+    audio_excerpt::AudioExcerpt,
+    config::NUM_OFFSETS_TO_TRY,
+    cut::{cut_song, get_named_excerpts, NamedExcerpt},
+    recording_session::RecordingSession,
+};
 use bevy::prelude::*;
 use bevy_prototype_lyon::plugin::ShapePlugin;
 
@@ -70,18 +75,16 @@ fn cut_system(
             markers.sort_by_key(|marker| marker.num);
             let mut excerpts: Vec<&NamedExcerpt> = excerpts.iter().collect();
             excerpts.sort_by_key(|excerpt| excerpt.num);
-            for ((excerpt_start, excerpt_end), (marker_start, marker_end)) in excerpts.iter().zip(excerpts[1..].iter()).zip(markers.iter().zip(markers[1..].iter())) {
+            for ((excerpt_start, excerpt_end), (marker_start, marker_end)) in excerpts
+                .iter()
+                .zip(excerpts[1..].iter())
+                .zip(markers.iter().zip(markers[1..].iter()))
+            {
                 let song = &session.songs[marker_start.num];
                 let start_time = marker_start.get_audio_time(&excerpt_start.excerpt);
                 let end_time = marker_end.get_audio_time(&excerpt_end.excerpt);
                 dbg!(song, start_time, end_time);
-                cut_song(
-                    &session,
-                    song,
-                    start_time,
-                    end_time,
-                )
-                .unwrap();
+                cut_song(&session, song, start_time, end_time).unwrap();
             }
         }
     }
