@@ -29,4 +29,8 @@ impl AudioExcerpt {
             .sum::<f64>();
         average
     }
+
+    pub fn get_time_by_relative_progress(&self, pos: f64) -> f64 {
+        self.start.time + (self.end.time - self.start.time) * pos
+    }
 }

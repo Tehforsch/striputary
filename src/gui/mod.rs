@@ -13,14 +13,9 @@ use self::{
         exit_system, move_markers_on_click_system, scrolling_input_system,
         track_mouse_position_system, MousePosition,
     },
-    offset_marker::OffsetMarker,
+    offset_marker::PositionMarker,
 };
-use crate::{
-    audio_excerpt::AudioExcerpt,
-    config::NUM_OFFSETS_TO_TRY,
-    cut::{cut_song, get_named_excerpts},
-    recording_session::RecordingSession,
-};
+use crate::{audio_excerpt::AudioExcerpt, config::NUM_OFFSETS_TO_TRY, cut::{NamedExcerpt, cut_song, get_named_excerpts}, recording_session::RecordingSession};
 use bevy::prelude::*;
 use bevy_prototype_lyon::plugin::ShapePlugin;
 
@@ -52,7 +47,7 @@ fn add_excerpts_system(mut commands: Commands, session: Res<RecordingSession>) {
     let excerpts = get_named_excerpts(&session);
     for (i, excerpt) in excerpts.into_iter().enumerate() {
         commands.spawn().insert(excerpt);
-        commands.spawn().insert(OffsetMarker { num: i, pos: 0.0 });
+        commands.spawn().insert(PositionMarker::new(i));
     }
 }
 
@@ -66,25 +61,27 @@ fn get_volume_data(excerpt: &AudioExcerpt) -> Vec<f64> {
 fn cut_system(
     keyboard_input: Res<Input<KeyCode>>,
     session: Res<RecordingSession>,
-    offsets: Query<&OffsetMarker>,
+    positions: Query<&PositionMarker>,
+    excerpts: Query<&NamedExcerpt>,
 ) {
     for key in keyboard_input.get_just_pressed() {
         if let KeyCode::Return = key {
-            let mut offsets: Vec<&OffsetMarker> = offsets.iter().collect();
-            offsets.sort_by_key(|marker| marker.num);
-            let mut start_time = session.estimated_time_first_song;
-            for marker in offsets.iter() {
-                let song = &session.songs[marker.num];
-                let end_time = start_time + song.length;
+            let mut markers: Vec<&PositionMarker> = positions.iter().collect();
+            markers.sort_by_key(|marker| marker.num);
+            let mut excerpts: Vec<&NamedExcerpt> = excerpts.iter().collect();
+            excerpts.sort_by_key(|excerpt| excerpt.num);
+            for ((excerpt_start, excerpt_end), (marker_start, marker_end)) in excerpts.iter().zip(excerpts[1..].iter()).zip(markers.iter().zip(markers[1..].iter())) {
+                let song = &session.songs[marker_start.num];
+                let start_time = marker_start.get_audio_time(&excerpt_start.excerpt);
+                let end_time = marker_end.get_audio_time(&excerpt_end.excerpt);
                 dbg!(song, start_time, end_time);
                 cut_song(
                     &session,
                     song,
-                    start_time + marker.pos,
-                    end_time + marker.pos,
+                    start_time,
+                    end_time,
                 )
                 .unwrap();
-                start_time = start_time + song.length;
             }
         }
     }

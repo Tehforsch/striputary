@@ -12,7 +12,7 @@ use super::{
         SONG_X_END, SONG_X_START, SONG_Y_START, Y_DISTANCE_PER_MOUSEWHEEL_TICK, Y_OFFSET_PER_SONG,
     },
     get_volume_data,
-    offset_marker::OffsetMarker,
+    offset_marker::PositionMarker,
 };
 
 pub struct TextPosition {
@@ -128,7 +128,7 @@ fn get_path_for_excerpt(excerpt: &NamedExcerpt) -> PathBuilder {
 
 pub fn spawn_offset_markers_system(
     mut commands: Commands,
-    query: Query<(Entity, &OffsetMarker), Without<Draw>>,
+    query: Query<(Entity, &PositionMarker), Without<Draw>>,
 ) {
     for (entity, marker) in query.iter() {
         let mut path = PathBuilder::new();
@@ -158,9 +158,9 @@ pub fn text_positioning_system(mut query: Query<(&mut Transform, &TextPosition),
     }
 }
 
-pub fn marker_positioning_system(mut query: Query<(&mut Transform, &OffsetMarker)>) {
+pub fn marker_positioning_system(mut query: Query<(&mut Transform, &PositionMarker)>) {
     for (mut transform, marker) in query.iter_mut() {
-        transform.translation.x = marker.pos as f32;
+        transform.translation.x = marker.get_world_pos();
     }
 }
 

@@ -2,7 +2,7 @@ use bevy::{app::AppExit, input::mouse::MouseWheel, prelude::*, render::camera::C
 
 use super::{
     config::{SONG_HEIGHT, SONG_Y_START, Y_OFFSET_PER_SONG},
-    OffsetMarker, ScrollPosition,
+    PositionMarker, ScrollPosition,
 };
 
 #[derive(Default, Debug)]
@@ -46,18 +46,18 @@ pub fn track_mouse_position_system(
 }
 
 pub fn move_markers_on_click_system(
-    mut markers: Query<&mut OffsetMarker>,
+    mut markers: Query<&mut PositionMarker>,
     mouse_button_input: Res<Input<MouseButton>>,
     mouse_pos: Res<MousePosition>,
 ) {
     for event in mouse_button_input.get_pressed() {
         if let MouseButton::Left = event {
-            let mut sorted_markers: Vec<Mut<OffsetMarker>> = markers.iter_mut().collect();
+            let mut sorted_markers: Vec<Mut<PositionMarker>> = markers.iter_mut().collect();
             let mut clicked = false;
             sorted_markers.sort_by_key(|marker| marker.num);
             for mut marker in sorted_markers.into_iter() {
                 if clicked || check_inside_excerpt(mouse_pos.0, marker.num) {
-                    marker.pos = mouse_pos.0.x as f64;
+                    marker.set_pos_from_world_pos(mouse_pos.0.x);
                     clicked = true;
                 }
             }
