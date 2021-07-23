@@ -6,13 +6,10 @@ use bevy_prototype_lyon::{
 
 use crate::{cut::NamedExcerpt, song::Song};
 
-use super::{
-    config::{
+use super::{config::{
         LINE_WIDTH, MARKER_HEIGHT, SONG_HEIGHT, SONG_TEXT_X_DISTANCE, SONG_TEXT_Y_OFFSET,
         SONG_X_END, SONG_X_START, SONG_Y_START, Y_DISTANCE_PER_MOUSEWHEEL_TICK, Y_OFFSET_PER_SONG,
-    },
-    get_volume_data, OffsetMarker,
-};
+    }, get_volume_data, offset_marker::OffsetMarker};
 
 pub struct TextPosition {
     pub x: f32,
@@ -154,6 +151,12 @@ pub fn text_positioning_system(mut query: Query<(&mut Transform, &TextPosition),
     for (mut transform, pos) in query.iter_mut() {
         transform.translation.x = pos.x;
         transform.translation.y = pos.y + SONG_TEXT_Y_OFFSET;
+    }
+}
+
+pub fn marker_positioning_system(mut query: Query<(&mut Transform, &OffsetMarker)>) {
+    for (mut transform, marker) in query.iter_mut() {
+        transform.translation.x = marker.pos as f32;
     }
 }
 
