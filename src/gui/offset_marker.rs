@@ -8,8 +8,8 @@ pub struct PositionMarker {
 }
 
 impl PositionMarker {
-    pub fn new(num: usize) -> Self {
-        Self { num, pos: 0.5 }
+    pub fn new(num: usize, offset: f64) -> Self {
+        Self { num, pos: offset }
     }
 
     pub fn set_pos_from_world_pos(&mut self, world_pos_x: f32) {

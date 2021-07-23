@@ -3,20 +3,16 @@ mod cutting_thread;
 mod graphics;
 mod input;
 mod offset_marker;
+mod excerpt_view;
 
-use self::{
-    cutting_thread::CuttingThreadHandle,
-    graphics::{
+use self::{cutting_thread::CuttingThreadHandle, excerpt_view::ExcerptView, graphics::{
         camera_positioning_system, initialize_camera_system, marker_positioning_system,
         show_excerpts_system, spawn_offset_markers_system, text_positioning_system,
         z_layering_system, ScrollPosition,
-    },
-    input::{
+    }, input::{
         exit_system, move_markers_on_click_system, scrolling_input_system,
         track_mouse_position_system, MousePosition,
-    },
-    offset_marker::PositionMarker,
-};
+    }, offset_marker::PositionMarker};
 use crate::{cut::{get_excerpt_collection, CutInfo}, excerpt_collection::NamedExcerpt, excerpt_collections::ExcerptCollections, recording_session::RecordingSession};
 use bevy::prelude::*;
 use bevy_prototype_lyon::plugin::ShapePlugin;
@@ -48,8 +44,11 @@ pub fn run(sessions: Vec<RecordingSession>) {
 }
 
 fn add_excerpts_system(mut commands: Commands, collections: Res<ExcerptCollections>) {
-    for (i, _) in collections.get_selected().iter_excerpts().enumerate() {
-        commands.spawn().insert(PositionMarker::new(i));
+    let collection = collections.get_selected();
+    for (i, excerpt) in collection.iter_excerpts().enumerate() {
+        let relative_progress = excerpt.excerpt.get_relative_progress_from_time_offset(collection.offset_guess);
+        commands.spawn().insert(PositionMarker::new(i, relative_progress));
+        commands.spawn().insert(ExcerptView::new(i));
     }
 }
 

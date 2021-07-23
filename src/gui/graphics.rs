@@ -4,15 +4,12 @@ use bevy_prototype_lyon::{
     prelude::{DrawMode, FillOptions, GeometryBuilder, PathBuilder, ShapeColors, StrokeOptions},
 };
 
-use crate::{excerpt_collection::NamedExcerpt, song::Song};
+use crate::{excerpt_collection::NamedExcerpt, excerpt_collections::ExcerptCollections, song::Song};
 
-use super::{
-    config::{
+use super::{config::{
         LINE_WIDTH, MARKER_HEIGHT, SONG_HEIGHT, SONG_TEXT_X_DISTANCE, SONG_TEXT_Y_OFFSET,
         SONG_X_END, SONG_X_START, SONG_Y_START, Y_DISTANCE_PER_MOUSEWHEEL_TICK, Y_OFFSET_PER_SONG,
-    },
-    offset_marker::PositionMarker,
-};
+    }, excerpt_view::ExcerptView, offset_marker::PositionMarker};
 
 pub struct TextPosition {
     pub x: f32,
@@ -28,9 +25,12 @@ pub struct ScrollPosition(pub i32);
 pub fn show_excerpts_system(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    excerpts: Query<(Entity, &NamedExcerpt), Without<Draw>>,
+    collections: Res<ExcerptCollections>,
+    excerpt_views: Query<(Entity, &ExcerptView), Without<Draw>>,
 ) {
-    for (entity, excerpt) in excerpts.iter() {
+    let collection = collections.get_selected();
+    for (entity, excerpt_view) in excerpt_views.iter() {
+        let excerpt = collection.iter_excerpts().enumerate().find(|(i, _)| *i == excerpt_view.0).map(|(_, ex)| ex).unwrap();
         spawn_path_for_excerpt(&mut commands, excerpt, entity);
         let get_y_position = |song_num| song_num as f32 * Y_OFFSET_PER_SONG;
         spawn_text_for_excerpt(
