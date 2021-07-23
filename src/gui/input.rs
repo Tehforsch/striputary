@@ -2,10 +2,7 @@ use bevy::{app::AppExit, input::mouse::MouseWheel, prelude::*, render::camera::C
 
 use crate::excerpt_collections::ExcerptCollections;
 
-use super::{
-    config::{SONG_HEIGHT, SONG_Y_START, Y_OFFSET_PER_SONG},
-    PositionMarker, ReadCollectionEvent, ScrollPosition,
-};
+use super::{PositionMarker, ReadCollectionEvent, ScrollPosition, config::{SONG_HEIGHT, SONG_Y_START, Y_OFFSET_PER_SONG}, playback::PlaybackEvent};
 
 #[derive(Default, Debug)]
 pub struct MousePosition(Vec2);
@@ -92,6 +89,20 @@ pub fn collection_selection_input(
             KeyCode::Left => {
                 collections.select_previous();
                 load_collection_events.send(ReadCollectionEvent);
+            }
+            _ => {}
+        }
+    }
+}
+
+pub fn playback_input_system(
+    keyboard_input: Res<Input<KeyCode>>,
+    mut playback_events: EventWriter<PlaybackEvent>,
+) {
+    for key in keyboard_input.get_just_pressed() {
+        match key {
+            KeyCode::Space => {
+                playback_events.send(PlaybackEvent);
             }
             _ => {}
         }

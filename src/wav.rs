@@ -21,14 +21,13 @@ pub fn extract_audio(
     let end = AudioTime::from_time_and_spec(end_time, spec);
     let num_samples = (end - start).interleaved_sample_num;
     reader.seek(start.frame_num)?;
-    let samples_interleaved: Result<Vec<i16>, hound::Error> =
-        reader.samples::<i16>().take(num_samples as usize).collect();
-    let samples = get_volume_average_over_channels(samples_interleaved?);
-    if samples.len() as u32 != num_samples / 2 {
+    let samples_interleaved: Vec<i16> = reader.samples::<i16>().take(num_samples as usize).collect::<Result<Vec<_>, hound::Error>>()?;
+    if samples_interleaved.len() as u32 != num_samples {
         Err(MissingSongError {})
     } else {
         Ok(AudioExcerpt {
-            samples,
+            spec,
+            samples: samples_interleaved,
             start,
             end,
         })

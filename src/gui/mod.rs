@@ -4,21 +4,13 @@ mod excerpt_view;
 mod graphics;
 mod input;
 mod offset_marker;
+mod playback;
 
-use self::{
-    cutting_thread::CuttingThreadHandle,
-    excerpt_view::ExcerptView,
-    graphics::{
+use self::{cutting_thread::CuttingThreadHandle, excerpt_view::ExcerptView, graphics::{
         camera_positioning_system, initialize_camera_system, marker_positioning_system,
         show_excerpts_system, spawn_offset_markers_system, text_positioning_system,
         z_layering_system, ScrollPosition,
-    },
-    input::{
-        collection_selection_input, exit_system, move_markers_on_click_system,
-        scrolling_input_system, track_mouse_position_system, MousePosition,
-    },
-    offset_marker::PositionMarker,
-};
+    }, input::{MousePosition, collection_selection_input, exit_system, move_markers_on_click_system, playback_input_system, scrolling_input_system, track_mouse_position_system}, offset_marker::PositionMarker, playback::{PlaybackEvent, playback_system}};
 use crate::{
     cut::{get_excerpt_collection, CutInfo},
     excerpt_collection::{ExcerptCollection, NamedExcerpt},
@@ -41,6 +33,7 @@ pub fn run(sessions: Vec<RecordingSession>) {
         .add_plugins(DefaultPlugins)
         .init_resource::<MousePosition>()
         .add_event::<ReadCollectionEvent>()
+        .add_event::<PlaybackEvent>()
         .insert_resource(collections)
         .insert_resource(ScrollPosition(0))
         .init_non_send_resource::<CuttingThreadHandle>()
@@ -62,6 +55,8 @@ pub fn run(sessions: Vec<RecordingSession>) {
         .add_system(move_markers_on_click_system.system())
         .add_system(marker_positioning_system.system())
         .add_system(collection_selection_input.system())
+        .add_system(playback_system.system())
+        .add_system(playback_input_system.system())
         .run();
 }
 

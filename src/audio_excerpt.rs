@@ -1,26 +1,30 @@
 use crate::audio_time::AudioTime;
 use crate::config::{NUM_OFFSETS_TO_TRY, NUM_SAMPLES_PER_AVERAGE_VOLUME};
 use std::i16;
+use hound::WavSpec;
+use rodio::Source;
 
+#[derive(Clone)]
 pub struct AudioExcerpt {
     pub samples: Vec<i16>,
     pub start: AudioTime,
     pub end: AudioTime,
+    pub spec: WavSpec,
 }
 
 impl AudioExcerpt {
     pub fn get_volume_at(&self, time_f64: f64) -> f64 {
         let time = AudioTime::from_time_same_spec(time_f64, self.start);
         let position_exact = time - self.start;
-        let position_begin = if position_exact.frame_num < NUM_SAMPLES_PER_AVERAGE_VOLUME as u32 {
+        let position_begin = if position_exact.interleaved_sample_num < NUM_SAMPLES_PER_AVERAGE_VOLUME as u32 {
             0
         } else {
-            position_exact.frame_num as usize - NUM_SAMPLES_PER_AVERAGE_VOLUME
+            position_exact.interleaved_sample_num as usize - NUM_SAMPLES_PER_AVERAGE_VOLUME
         };
         let position_end = self
             .samples
             .len()
-            .min(position_exact.frame_num as usize + NUM_SAMPLES_PER_AVERAGE_VOLUME);
+            .min(position_exact.interleaved_sample_num as usize + NUM_SAMPLES_PER_AVERAGE_VOLUME);
         let inv_len = 1.0 / ((position_end - position_begin) as f64);
         let inv_i16 = 1.0 / (i16::MAX as f64);
         let average: f64 = self.samples[position_begin..position_end]
@@ -44,5 +48,47 @@ impl AudioExcerpt {
     pub fn get_relative_progress_from_time_offset(&self, time_offset: f64) -> f64 {
         // time_offset is relative to the center
         0.5 + (time_offset / (self.end.time - self.start.time))
+    }
+}
+
+pub struct AudioExcerptSource {
+    excerpt: AudioExcerpt,
+    position: usize,
+}
+
+impl AudioExcerptSource {
+    pub fn new(excerpt: AudioExcerpt) -> Self {
+        Self {
+            excerpt,
+            position: 0,
+        }
+    }
+}
+
+impl Source for AudioExcerptSource {
+    fn current_frame_len(&self) -> Option<usize> {
+        None
+    }
+
+    fn channels(&self) -> u16 {
+        self.excerpt.spec.channels
+    }
+
+    fn sample_rate(&self) -> u32 {
+        self.excerpt.spec.sample_rate
+    }
+
+    fn total_duration(&self) -> Option<std::time::Duration> {
+        None
+    }
+}
+
+impl Iterator for AudioExcerptSource {
+    type Item = i16;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let item = self.excerpt.samples.get(self.position);
+        self.position += 1;
+        item.map(|x| *x)
     }
 }
