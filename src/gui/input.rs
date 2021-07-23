@@ -2,7 +2,11 @@ use bevy::{app::AppExit, input::mouse::MouseWheel, prelude::*, render::camera::C
 
 use crate::excerpt_collections::ExcerptCollections;
 
-use super::{PositionMarker, ReadCollectionEvent, ScrollPosition, SelectedSong, config::{SONG_HEIGHT, SONG_Y_START, Y_OFFSET_PER_SONG}, playback::PlaybackEvent};
+use super::{
+    config::{SONG_HEIGHT, SONG_Y_START, Y_OFFSET_PER_SONG},
+    playback::PlaybackEvent,
+    PositionMarker, ReadCollectionEvent, ScrollPosition, SelectedSong,
+};
 
 #[derive(Default, Debug)]
 pub struct MousePosition(Vec2);

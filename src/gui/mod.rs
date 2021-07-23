@@ -6,11 +6,21 @@ mod input;
 mod offset_marker;
 mod playback;
 
-use self::{cutting_thread::CuttingThreadHandle, excerpt_view::ExcerptView, graphics::{
+use self::{
+    cutting_thread::CuttingThreadHandle,
+    excerpt_view::ExcerptView,
+    graphics::{
         camera_positioning_system, initialize_camera_system, marker_positioning_system,
         show_excerpts_system, spawn_offset_markers_system, text_positioning_system,
         z_layering_system, ScrollPosition,
-    }, input::{MousePosition, collection_selection_input, exit_system, move_markers_on_click_system, playback_input_system, scrolling_input_system, track_mouse_position_system}, offset_marker::PositionMarker, playback::{PlaybackEvent, playback_system}};
+    },
+    input::{
+        collection_selection_input, exit_system, move_markers_on_click_system,
+        playback_input_system, scrolling_input_system, track_mouse_position_system, MousePosition,
+    },
+    offset_marker::PositionMarker,
+    playback::{playback_system, PlaybackEvent},
+};
 use crate::{
     cut::{get_excerpt_collection, CutInfo},
     excerpt_collection::{ExcerptCollection, NamedExcerpt},
@@ -63,8 +73,7 @@ pub fn run(sessions: Vec<RecordingSession>) {
         .run();
 }
 
-fn load_first_collection(
-    mut read_collection_events: EventWriter<ReadCollectionEvent>) {
+fn load_first_collection(mut read_collection_events: EventWriter<ReadCollectionEvent>) {
     read_collection_events.send(ReadCollectionEvent);
 }
 

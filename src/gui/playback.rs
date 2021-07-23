@@ -8,8 +8,8 @@ use crate::audio_excerpt::AudioExcerptSource;
 use crate::audio_time::AudioTime;
 use crate::{audio_excerpt::AudioExcerpt, excerpt_collections::ExcerptCollections};
 
-use super::SelectedSong;
 use super::offset_marker::PositionMarker;
+use super::SelectedSong;
 
 pub struct PlaybackEvent;
 
@@ -22,7 +22,10 @@ pub fn playback_system(
     for _ in playback_events.iter() {
         let collection = collections.get_selected();
         let excerpt = collection.get_excerpt(selected_song.0);
-        let marker = markers.iter().find(|marker| marker.num == selected_song.0).unwrap();
+        let marker = markers
+            .iter()
+            .find(|marker| marker.num == selected_song.0)
+            .unwrap();
         let audio_time = marker.get_relative_time(&excerpt.excerpt);
         play_excerpt(&excerpt.excerpt, audio_time);
     }

@@ -1,8 +1,8 @@
 use crate::audio_time::AudioTime;
 use crate::config::{NUM_OFFSETS_TO_TRY, NUM_SAMPLES_PER_AVERAGE_VOLUME};
-use std::i16;
 use hound::WavSpec;
 use rodio::Source;
+use std::i16;
 
 #[derive(Clone)]
 pub struct AudioExcerpt {
@@ -16,11 +16,12 @@ impl AudioExcerpt {
     pub fn get_volume_at(&self, time_f64: f64) -> f64 {
         let time = AudioTime::from_time_same_spec(time_f64, self.start);
         let position_exact = time - self.start;
-        let position_begin = if position_exact.interleaved_sample_num < NUM_SAMPLES_PER_AVERAGE_VOLUME as u32 {
-            0
-        } else {
-            position_exact.interleaved_sample_num as usize - NUM_SAMPLES_PER_AVERAGE_VOLUME
-        };
+        let position_begin =
+            if position_exact.interleaved_sample_num < NUM_SAMPLES_PER_AVERAGE_VOLUME as u32 {
+                0
+            } else {
+                position_exact.interleaved_sample_num as usize - NUM_SAMPLES_PER_AVERAGE_VOLUME
+            };
         let position_end = self
             .samples
             .len()
@@ -42,7 +43,10 @@ impl AudioExcerpt {
     }
 
     pub fn get_absolute_time_by_relative_progress(&self, pos: f64) -> AudioTime {
-        AudioTime::from_time_and_spec(self.start.time + (self.end.time - self.start.time) * pos, self.spec)
+        AudioTime::from_time_and_spec(
+            self.start.time + (self.end.time - self.start.time) * pos,
+            self.spec,
+        )
     }
 
     pub fn get_relative_time_by_relative_progress(&self, pos: f64) -> AudioTime {
