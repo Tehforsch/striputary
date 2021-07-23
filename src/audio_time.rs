@@ -43,12 +43,3 @@ impl ops::Sub<AudioTime> for AudioTime {
         AudioTime::from_time_same_spec(self.time - rhs.time, self)
     }
 }
-
-// pub fn from_time(time: f64, spec: WavSpec) -> AudioTime {
-//     AudioTime {
-//         time,
-//         spec,
-//         sample: (time * (spec.channels as u32 * spec.sample_rate) as f64) as u32,
-//         frame: (time * spec.sample_rate as f64) as u32,
-//     }
-// }
