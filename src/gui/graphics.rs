@@ -11,7 +11,7 @@ use super::{
         LINE_WIDTH, MARKER_HEIGHT, SONG_HEIGHT, SONG_TEXT_X_DISTANCE, SONG_X_END, SONG_X_START,
         SONG_Y_START, Y_OFFSET_PER_SONG,
     },
-    get_volume_data, ExcerptNum, OffsetMarker,
+    get_volume_data, OffsetMarker,
 };
 
 pub struct TextPosition {
@@ -19,13 +19,17 @@ pub struct TextPosition {
     pub y: f32,
 }
 
+pub enum ZLayer {
+    Above,
+}
+
 pub fn show_excerpts_system(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    excerpts: Query<(Entity, &NamedExcerpt, &ExcerptNum), Without<Draw>>,
+    excerpts: Query<(Entity, &NamedExcerpt), Without<Draw>>,
 ) {
-    for (entity, excerpt, num) in excerpts.iter() {
-        spawn_path_for_excerpt(&mut commands, excerpt, num, entity);
+    for (entity, excerpt) in excerpts.iter() {
+        spawn_path_for_excerpt(&mut commands, excerpt, entity);
         let get_y_position = |song_num| song_num as f32 * Y_OFFSET_PER_SONG;
         spawn_text_for_excerpt(
             &mut commands,
@@ -33,7 +37,7 @@ pub fn show_excerpts_system(
             &excerpt.song,
             TextPosition {
                 x: SONG_X_START - SONG_TEXT_X_DISTANCE,
-                y: get_y_position(num.0 + 1),
+                y: get_y_position(excerpt.num + 1),
             },
         );
         spawn_text_for_excerpt(
@@ -42,7 +46,7 @@ pub fn show_excerpts_system(
             &excerpt.song,
             TextPosition {
                 x: SONG_X_END + SONG_TEXT_X_DISTANCE,
-                y: get_y_position(num.0),
+                y: get_y_position(excerpt.num),
             },
         );
     }
@@ -81,11 +85,9 @@ fn get_text_bundle_for_song(asset_server: &AssetServer, song: &Song) -> Text2dBu
 fn spawn_path_for_excerpt(
     commands: &mut Commands,
     excerpt: &NamedExcerpt,
-    num: &ExcerptNum,
     entity: Entity,
 ) {
-    let volume_data = get_volume_data(&excerpt.excerpt);
-    let path = get_path_for_excerpt(volume_data, num);
+    let path = get_path_for_excerpt(excerpt);
     commands
         .entity(entity)
         .insert_bundle(get_shape_bundle_for_path(path, LINE_WIDTH, Color::BLACK));
@@ -109,9 +111,10 @@ fn get_shape_bundle_for_path(path: PathBuilder, line_width: f32, color: Color) -
     )
 }
 
-fn get_path_for_excerpt(volume_data: Vec<f64>, num: &ExcerptNum) -> PathBuilder {
+fn get_path_for_excerpt(excerpt: &NamedExcerpt) -> PathBuilder {
+    let volume_data = get_volume_data(&excerpt.excerpt);
     let mut path = PathBuilder::new();
-    let y_offset = (num.0 as f32) * Y_OFFSET_PER_SONG;
+    let y_offset = (excerpt.num as f32) * Y_OFFSET_PER_SONG;
     let width = SONG_X_END - SONG_X_START;
     path.move_to(Vec2::new(SONG_X_START, SONG_Y_START + y_offset));
     for (i, y) in volume_data.iter().enumerate() {
@@ -126,16 +129,25 @@ fn get_path_for_excerpt(volume_data: Vec<f64>, num: &ExcerptNum) -> PathBuilder 
 
 pub fn spawn_offset_markers_system(
     mut commands: Commands,
-    query: Query<(Entity, &OffsetMarker, &ExcerptNum), Without<Draw>>,
+    query: Query<(Entity, &OffsetMarker), Without<Draw>>,
 ) {
-    for (entity, _, num) in query.iter() {
+    for (entity, marker) in query.iter() {
         let mut path = PathBuilder::new();
         let middle = (SONG_X_START + SONG_X_END) * 0.5;
-        let y_offset = SONG_Y_START + (num.0 as f32) * Y_OFFSET_PER_SONG;
+        let y_offset = SONG_Y_START + (marker.num as f32) * Y_OFFSET_PER_SONG;
         path.move_to(Vec2::new(middle, y_offset));
         path.line_to(Vec2::new(middle, y_offset + MARKER_HEIGHT));
         commands
             .entity(entity)
-            .insert_bundle(get_shape_bundle_for_path(path, 2.0, Color::RED));
+            .insert_bundle(get_shape_bundle_for_path(path, 2.0, Color::RED))
+            .insert(ZLayer::Above);
+    }
+}
+
+pub fn z_layering_system(mut query: Query<(&mut Transform, &ZLayer)>) {
+    for (mut transform, z_layer) in query.iter_mut() {
+        transform.translation.z = match z_layer {
+            ZLayer::Above => 1.0,
+        }
     }
 }

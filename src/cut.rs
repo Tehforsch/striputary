@@ -21,6 +21,7 @@ pub struct Chunk<'a> {
 pub struct NamedExcerpt {
     pub excerpt: AudioExcerpt,
     pub song: Song,
+    pub num: usize,
 }
 
 pub fn cut_session(session: RecordingSession, cut_args: &CutOpts) -> Result<()> {
@@ -228,8 +229,9 @@ pub fn get_named_excerpts(session: &RecordingSession) -> Vec<NamedExcerpt> {
     let (excerpts, songs) = get_all_valid_excerpts_and_songs(session);
     excerpts
         .into_iter()
+        .enumerate()
         .zip(songs.into_iter())
-        .map(|(excerpt, song)| NamedExcerpt { excerpt, song })
+        .map(|((num, excerpt), song)| NamedExcerpt { excerpt, song, num})
         .collect()
 }
 

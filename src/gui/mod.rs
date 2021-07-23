@@ -2,11 +2,7 @@ mod config;
 mod graphics;
 mod mouse;
 
-use self::{
-    config::{SONG_TEXT_Y_OFFSET, Y_DISTANCE_PER_MOUSEWHEEL_TICK},
-    graphics::{show_excerpts_system, spawn_offset_markers_system, TextPosition},
-    mouse::{track_mouse_position_system, MousePosition},
-};
+use self::{config::{SONG_TEXT_Y_OFFSET, Y_DISTANCE_PER_MOUSEWHEEL_TICK}, graphics::{TextPosition, show_excerpts_system, spawn_offset_markers_system, z_layering_system}, mouse::{track_mouse_position_system, MousePosition}};
 use crate::{
     audio_excerpt::AudioExcerpt,
     config::NUM_OFFSETS_TO_TRY,
@@ -16,9 +12,10 @@ use crate::{
 use bevy::{app::AppExit, input::mouse::MouseWheel, prelude::*, render::camera::Camera};
 use bevy_prototype_lyon::plugin::ShapePlugin;
 
-pub struct ExcerptNum(usize);
-
-pub struct OffsetMarker(f64);
+pub struct OffsetMarker {
+    num: usize,
+    pos: f64,
+}
 
 pub struct ScrollPosition(i32);
 
@@ -35,6 +32,7 @@ pub fn run(session: RecordingSession) {
         .add_system(show_excerpts_system.system())
         .add_system(text_positioning_system.system())
         .add_system(camera_positioning_system.system())
+        .add_system(z_layering_system.system())
         .add_system(scrolling_input_system.system())
         .add_system(spawn_offset_markers_system.system())
         .add_system(exit_system.system())
@@ -46,11 +44,10 @@ pub fn run(session: RecordingSession) {
 fn add_excerpts_system(mut commands: Commands, session: Res<RecordingSession>) {
     let excerpts = get_named_excerpts(&session);
     for (i, excerpt) in excerpts.into_iter().enumerate() {
-        commands.spawn().insert(excerpt).insert(ExcerptNum(i));
+        commands.spawn().insert(excerpt);
         commands
             .spawn()
-            .insert(ExcerptNum(i))
-            .insert(OffsetMarker(0.0));
+            .insert(OffsetMarker{num: i, pos: 0.0});
     }
 }
 
@@ -100,18 +97,18 @@ fn initialize_camera_system(mut commands: Commands) {
 fn cut_system(
     keyboard_input: Res<Input<KeyCode>>,
     session: Res<RecordingSession>,
-    offsets: Query<(&OffsetMarker, &ExcerptNum)>,
+    offsets: Query<&OffsetMarker>,
 ) {
     for key in keyboard_input.get_just_pressed() {
         if let KeyCode::Return = key {
-            let mut offsets: Vec<(&OffsetMarker, &ExcerptNum)> = offsets.iter().collect();
-            offsets.sort_by_key(|(_, num)| num.0);
+            let mut offsets: Vec<&OffsetMarker> = offsets.iter().collect();
+            offsets.sort_by_key(|marker| marker.num);
             let mut start_time = session.estimated_time_first_song;
-            for (marker, num) in offsets.iter() {
-                let song = &session.songs[num.0];
+            for marker in offsets.iter() {
+                let song = &session.songs[marker.num];
                 let end_time = start_time + song.length;
                 dbg!(song, start_time, end_time);
-                cut_song(&session, song, start_time + marker.0, end_time + marker.0).unwrap();
+                cut_song(&session, song, start_time + marker.pos, end_time + marker.pos).unwrap();
                 start_time = start_time + song.length;
             }
         }
