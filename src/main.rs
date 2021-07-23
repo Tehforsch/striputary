@@ -15,9 +15,10 @@ pub mod song;
 pub mod wav;
 pub mod yaml_session;
 pub mod excerpt_collection;
+pub mod excerpt_collections;
 
 use crate::{record::RecordingExitStatus, recording_session::RecordingSession};
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use args::Opts;
 use clap::Clap;
 use path_utils::get_yaml_files;
@@ -68,11 +69,12 @@ pub fn record_sessions_and_save_session_files(
 }
 
 fn load_sessions_and_cut(session_dir: &Path) -> Result<()> {
-    let mut sessions = vec![];
-    for yaml_file in get_yaml_files(session_dir) {
-        sessions.push(yaml_session::load(&yaml_file)?);
+    let files = get_yaml_files(session_dir);
+    if files.len() == 0 {
+        return Err(anyhow!("No session files found!"));
     }
-    gui::run(sessions);
+    let sessions = files.iter().map(|yaml_file| yaml_session::load(&yaml_file)).collect::<Result<Vec<_>>>();
+    gui::run(sessions?);
     Ok(())
 }
 

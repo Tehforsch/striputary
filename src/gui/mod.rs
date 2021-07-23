@@ -4,8 +4,6 @@ mod graphics;
 mod input;
 mod offset_marker;
 
-
-
 use self::{
     cutting_thread::CuttingThreadHandle,
     graphics::{
@@ -19,12 +17,12 @@ use self::{
     },
     offset_marker::PositionMarker,
 };
-use crate::{cut::{get_excerpt_collection, CutInfo}, excerpt_collection::{ExcerptCollection, NamedExcerpt}, recording_session::RecordingSession};
+use crate::{cut::{get_excerpt_collection, CutInfo}, excerpt_collection::NamedExcerpt, excerpt_collections::ExcerptCollections, recording_session::RecordingSession};
 use bevy::prelude::*;
 use bevy_prototype_lyon::plugin::ShapePlugin;
 
 pub fn run(sessions: Vec<RecordingSession>) {
-    let collections: Vec<ExcerptCollection> = sessions.into_iter().map(|session| get_excerpt_collection(session)).collect();
+    let collections = ExcerptCollections::new(sessions.into_iter().map(|session| get_excerpt_collection(session)).collect());
     App::build()
         .add_plugins(DefaultPlugins)
         .init_resource::<MousePosition>()
@@ -49,22 +47,22 @@ pub fn run(sessions: Vec<RecordingSession>) {
         .run();
 }
 
-fn add_excerpts_system(mut commands: Commands, collection: Res<ExcerptCollection>) {
-    for (i, _) in collection.iter_excerpts().enumerate() {
+fn add_excerpts_system(mut commands: Commands, collections: Res<ExcerptCollections>) {
+    for (i, _) in collections.get_selected().iter_excerpts().enumerate() {
         commands.spawn().insert(PositionMarker::new(i));
     }
 }
 
 fn start_cut_system(
     keyboard_input: Res<Input<KeyCode>>,
-    session: Res<RecordingSession>,
+    collections: Res<ExcerptCollections>,
     positions: Query<&PositionMarker>,
     excerpts: Query<&NamedExcerpt>,
     cutting_thread: NonSend<CuttingThreadHandle>,
 ) {
     for key in keyboard_input.get_just_pressed() {
         if let KeyCode::Return = key {
-            let cut_infos = get_cut_info(&session, &positions, &excerpts);
+            let cut_infos = get_cut_info(&collections.get_selected().session, &positions, &excerpts);
             cutting_thread.send_cut_infos(cut_infos);
         }
     }

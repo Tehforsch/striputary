@@ -10,7 +10,7 @@ pub fn get_buffer_file(session_dir: &Path) -> PathBuf {
 
 pub fn get_yaml_files(session_dir: &Path) -> Vec<PathBuf> {
     let mut files = vec![];
-    let i = 0;
+    let mut i = 0;
     loop {
         let file = session_dir.join(format!("{}.yaml", i));
         if file.is_file() {
@@ -19,6 +19,7 @@ pub fn get_yaml_files(session_dir: &Path) -> Vec<PathBuf> {
         else {
             break;
         }
+        i += 1;
     }
     files
 }
