@@ -14,7 +14,7 @@ pub struct Song {
 impl Song {
     pub fn get_target_file(&self, music_dir: &Path) -> PathBuf {
         let file_name = format!(
-            "{:02}_{}.flac",
+            "{:02}_{}.opus",
             self.track_number,
             &sanitize_string(&self.title)
         );
