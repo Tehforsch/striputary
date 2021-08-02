@@ -38,7 +38,7 @@ pub fn run(sessions: Vec<RecordingSession>) {
     let collections = ExcerptCollections::new(
         sessions
             .into_iter()
-            .map(|session| get_excerpt_collection(session))
+            .map(get_excerpt_collection)
             .collect(),
     );
     App::build()

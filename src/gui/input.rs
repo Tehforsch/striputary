@@ -14,7 +14,7 @@ pub struct MousePosition(Vec2);
 fn check_inside_excerpt(world_pos: Vec2, excerpt_num: usize) -> bool {
     let y_pos =
         (world_pos.y - SONG_Y_START - Y_OFFSET_PER_SONG * (excerpt_num as f32)) / SONG_HEIGHT;
-    return y_pos >= 0.0 && y_pos <= 1.0;
+    (0.0..=1.0).contains(&y_pos)
 }
 
 pub fn scrolling_input_system(
@@ -75,11 +75,8 @@ pub fn move_markers_on_click_system(
 
 pub fn exit_system(keyboard_input: Res<Input<KeyCode>>, mut app_exit_events: EventWriter<AppExit>) {
     for key in keyboard_input.get_just_pressed() {
-        match key {
-            KeyCode::Escape | KeyCode::Q => {
-                app_exit_events.send(AppExit);
-            }
-            _ => {}
+        if let KeyCode::Escape | KeyCode::Q = key {
+            app_exit_events.send(AppExit);
         }
     }
 }
@@ -112,11 +109,8 @@ pub fn playback_input_system(
     mut playback_events: EventWriter<PlaybackEvent>,
 ) {
     for key in keyboard_input.get_just_pressed() {
-        match key {
-            KeyCode::Space => {
-                playback_events.send(PlaybackEvent);
-            }
-            _ => {}
+        if let KeyCode::Space = key {
+            playback_events.send(PlaybackEvent);
         }
     }
 }

@@ -97,6 +97,6 @@ impl Iterator for AudioExcerptSource {
     fn next(&mut self) -> Option<Self::Item> {
         let item = self.excerpt.samples.get(self.position as usize);
         self.position += 1;
-        item.map(|x| *x)
+        item.copied()
     }
 }

@@ -3,11 +3,11 @@ use std::path::PathBuf;
 use std::path::Path;
 
 pub fn get_yaml_file(session_dir: &Path, num: i32) -> PathBuf {
-    session_dir.join(format!("{}.yaml", num)).into()
+    session_dir.join(format!("{}.yaml", num))
 }
 
 pub fn get_buffer_file(session_dir: &Path, num: i32) -> PathBuf {
-    session_dir.join(format!("{}.wav", num)).into()
+    session_dir.join(format!("{}.wav", num))
 }
 
 pub fn get_yaml_files(session_dir: &Path) -> Vec<PathBuf> {

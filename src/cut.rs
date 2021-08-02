@@ -23,9 +23,9 @@ impl CutInfo {
         let buffer_file = session.get_buffer_file();
         let music_dir = session.get_music_dir();
         CutInfo {
+            song,
             buffer_file,
             music_dir,
-            song,
             start_time,
             end_time,
         }
@@ -94,8 +94,8 @@ pub fn get_excerpt_collection(session: RecordingSession) -> ExcerptCollection {
         })
         .collect();
     ExcerptCollection {
-        excerpts,
         session,
+        excerpts,
         offset_guess,
     }
 }

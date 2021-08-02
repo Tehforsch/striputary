@@ -96,7 +96,7 @@ fn set_ctrl_handler() -> Result<Arc<AtomicBool>> {
 
 fn load_sessions_and_cut(session_dir: &Path) -> Result<()> {
     let files = get_yaml_files(session_dir);
-    if files.len() == 0 {
+    if files.is_empty() {
         return Err(anyhow!("No session files found!"));
     }
     let sessions = files
