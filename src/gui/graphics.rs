@@ -44,26 +44,28 @@ pub fn show_excerpts_system(
             .unwrap();
         spawn_path_for_excerpt(&mut commands, excerpt, entity);
         let get_y_position = |song_num| song_num as f32 * Y_OFFSET_PER_SONG;
-        spawn_text_for_excerpt(
-            &mut commands,
-            entity,
-            &asset_server,
-            &excerpt.song,
-            TextPosition {
-                x: SONG_X_START - SONG_TEXT_X_DISTANCE,
-                y: get_y_position(excerpt.num + 1),
-            },
-        );
-        spawn_text_for_excerpt(
-            &mut commands,
-            entity,
-            &asset_server,
-            &excerpt.song,
-            TextPosition {
-                x: SONG_X_END + SONG_TEXT_X_DISTANCE,
-                y: get_y_position(excerpt.num),
-            },
-        );
+        if let Some(ref song) = excerpt.song {
+            spawn_text_for_excerpt(
+                &mut commands,
+                entity,
+                &asset_server,
+                &song,
+                TextPosition {
+                    x: SONG_X_START - SONG_TEXT_X_DISTANCE,
+                    y: get_y_position(excerpt.num + 1),
+                },
+            );
+            spawn_text_for_excerpt(
+                &mut commands,
+                entity,
+                &asset_server,
+                &song,
+                TextPosition {
+                    x: SONG_X_END + SONG_TEXT_X_DISTANCE,
+                    y: get_y_position(excerpt.num),
+                },
+            );
+        }
     }
 }
 

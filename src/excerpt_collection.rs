@@ -2,7 +2,7 @@ use crate::{audio_excerpt::AudioExcerpt, recording_session::RecordingSession, so
 
 pub struct NamedExcerpt {
     pub excerpt: AudioExcerpt,
-    pub song: Song,
+    pub song: Option<Song>,
     pub num: usize,
 }
 

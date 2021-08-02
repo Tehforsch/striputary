@@ -139,7 +139,7 @@ fn get_cut_info(
         .zip(excerpts[1..].iter())
         .zip(markers.iter().zip(markers[1..].iter()))
     {
-        let song = &excerpt_end.song;
+        let song = excerpt_start.song.as_ref().unwrap();
         let start_time = marker_start.get_absolute_time(&excerpt_start.excerpt);
         let end_time = marker_end.get_absolute_time(&excerpt_end.excerpt);
         cut_info.push(CutInfo::new(

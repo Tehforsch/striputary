@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::audio_excerpt::AudioExcerpt;
-use crate::config::{MAX_OFFSET, MIN_OFFSET, NUM_OFFSETS_TO_TRY, READ_BUFFER};
+use crate::config::{self, MAX_OFFSET, MIN_OFFSET, NUM_OFFSETS_TO_TRY, READ_BUFFER};
 use crate::excerpt_collection::{ExcerptCollection, NamedExcerpt};
 use crate::recording_session::RecordingSession;
 use crate::song::Song;
@@ -84,14 +84,18 @@ pub fn get_excerpt_collection(session: RecordingSession) -> ExcerptCollection {
     let timestamps =
         get_cut_timestamps_from_song_lengths(&songs, session.estimated_time_first_song);
     let offset_guess = determine_cut_offset(&excerpts, &timestamps);
+    let excerpts: Vec<NamedExcerpt> = excerpts
+        .into_iter()
+        .enumerate()
+        .map(|(num, excerpt)| NamedExcerpt {
+            excerpt,
+            song: songs.get(num).cloned(),
+            num,
+        })
+        .collect();
     ExcerptCollection {
-        session: session,
-        excerpts: excerpts
-            .into_iter()
-            .enumerate()
-            .zip(songs.into_iter())
-            .map(|((num, excerpt), song)| NamedExcerpt { excerpt, song, num })
-            .collect(),
+        excerpts,
+        session,
         offset_guess,
     }
 }
@@ -109,6 +113,10 @@ fn get_all_valid_excerpts_and_songs(session: &RecordingSession) -> (Vec<AudioExc
             break;
         }
         cut_time += song.length;
+    }
+    let audio_excerpt_after_last_song = get_excerpt(&session.get_buffer_file(), cut_time);
+    if let Some(audio_excerpt_after_last_song) = audio_excerpt_after_last_song {
+        audio_excerpts.push(audio_excerpt_after_last_song);
     }
     (audio_excerpts, valid_songs)
 }
@@ -144,6 +152,8 @@ pub fn cut_song(info: &CutInfo) -> Result<()> {
         .arg(format!("track={}", &info.song.track_number))
         .arg("-y")
         .arg(target_file.to_str().unwrap())
+        .arg("-b:a")
+        .arg(format!("{}", config::BITRATE))
         .output()
         .map(|_| ())
         .context(format!(
