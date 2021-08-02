@@ -133,13 +133,17 @@ pub fn cut_song(info: &CutInfo) -> Result<()> {
         info.song,
         target_file.to_str().unwrap()
     );
-    Command::new("ffmpeg")
+    let out = Command::new("ffmpeg")
         .arg("-ss")
         .arg(format!("{}", info.start_time))
         .arg("-t")
         .arg(format!("{}", difference))
         .arg("-i")
         .arg(&info.buffer_file.to_str().unwrap())
+        .arg("-c:a")
+        .arg("libopus")
+        .arg("-b:a")
+        .arg(format!("{}", config::BITRATE))
         .arg("-metadata")
         .arg(format!("title={}", &info.song.title))
         .arg("-metadata")
@@ -152,9 +156,8 @@ pub fn cut_song(info: &CutInfo) -> Result<()> {
         .arg(format!("track={}", &info.song.track_number))
         .arg("-y")
         .arg(target_file.to_str().unwrap())
-        .arg("-b:a")
-        .arg(format!("{}", config::BITRATE))
-        .output()
+        .output();
+    out
         .map(|_| ())
         .context(format!(
             "Failed to cut song: {} {} {} ({}+{})",

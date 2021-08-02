@@ -9,7 +9,7 @@ pub static TIME_BEFORE_SESSION_START: f64 = 5.0;
 pub static WAIT_TIME_BEFORE_FIRST_SONG: f64 = 1.0;
 pub static TIME_AFTER_SESSION_END: f64 = 10.0;
 
-pub static BITRATE: i64 = 320;
+pub static BITRATE: i64 = 192000;
 pub static MIN_OFFSET: f64 = -3.;
 pub static MAX_OFFSET: f64 = 3.;
 pub static READ_BUFFER: f64 = 0.5;
