@@ -51,6 +51,7 @@ The meta-data added is very rudimentary. The only meta-data the resulting files 
 * First Artist
 * Track number
 in spotify.
+
 Since this is unsatisfactory for most people, I recommend using [beets](http://beets.io/) to add meta data your music. So far, every album recorded with striputary has been recognized by beets immediately upon running
 ```
 beet import outputDirectory/music
