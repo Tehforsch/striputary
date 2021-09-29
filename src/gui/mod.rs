@@ -1,153 +1,91 @@
-mod config;
-mod cutting_thread;
-mod excerpt_view;
-mod graphics;
-mod input;
-mod offset_marker;
-mod playback;
+pub mod plot;
 
-use self::{
-    cutting_thread::CuttingThreadHandle,
-    excerpt_view::ExcerptView,
-    graphics::{
-        camera_positioning_system, initialize_camera_system, marker_positioning_system,
-        show_excerpts_system, spawn_offset_markers_system, text_positioning_system,
-        z_layering_system, ScrollPosition,
-    },
-    input::{
-        collection_selection_input, exit_system, move_markers_on_click_system,
-        playback_input_system, scrolling_input_system, track_mouse_position_system, MousePosition,
-    },
-    offset_marker::PositionMarker,
-    playback::{playback_system, PlaybackEvent},
-};
-use crate::{
-    cut::{get_excerpt_collection, CutInfo},
-    excerpt_collection::{ExcerptCollection, NamedExcerpt},
-    excerpt_collections::ExcerptCollections,
-    recording_session::RecordingSession,
-};
-use bevy::prelude::*;
-use bevy_prototype_lyon::plugin::ShapePlugin;
+use eframe::{egui, epi};
+use crate::{excerpt_collections::ExcerptCollections, gui::plot::LineDemo};
 
-pub struct ReadCollectionEvent;
-
-pub struct SelectedSong(usize);
-
-pub fn run(sessions: Vec<RecordingSession>) {
-    let collections = ExcerptCollections::new(
-        sessions
-            .into_iter()
-            .map(get_excerpt_collection)
-            .collect(),
-    );
-    App::build()
-        .add_plugins(DefaultPlugins)
-        .init_resource::<MousePosition>()
-        .add_event::<ReadCollectionEvent>()
-        .add_event::<PlaybackEvent>()
-        .insert_resource(collections)
-        .insert_resource(ScrollPosition(0))
-        .insert_resource(SelectedSong(0))
-        .init_non_send_resource::<CuttingThreadHandle>()
-        // .insert_resource(Msaa { samples: 8 })
-        .add_plugin(ShapePlugin)
-        .add_startup_system(initialize_camera_system.system())
-        .add_startup_system(load_first_collection.system())
-        .add_system(add_excerpts_and_markers_system.system())
-        .add_system(remove_excerpts_and_markers_system.system())
-        .add_system(show_excerpts_system.system())
-        .add_system(text_positioning_system.system())
-        .add_system(camera_positioning_system.system())
-        .add_system(z_layering_system.system())
-        .add_system(scrolling_input_system.system())
-        .add_system(spawn_offset_markers_system.system())
-        .add_system(exit_system.system())
-        .add_system(start_cut_system.system())
-        .add_system(track_mouse_position_system.system())
-        .add_system(move_markers_on_click_system.system())
-        .add_system(marker_positioning_system.system())
-        .add_system(collection_selection_input.system())
-        .add_system(playback_system.system())
-        .add_system(playback_input_system.system())
-        .run();
+pub struct TemplateApp {
+    label: String,
+    value: f32,
+    line_demo: LineDemo,
+    collections: ExcerptCollections,
 }
 
-fn load_first_collection(mut read_collection_events: EventWriter<ReadCollectionEvent>) {
-    read_collection_events.send(ReadCollectionEvent);
-}
-
-fn remove_excerpts_and_markers_system(
-    mut commands: Commands,
-    mut read_collection_events: EventReader<ReadCollectionEvent>,
-    excerpt_views: Query<Entity, With<ExcerptView>>,
-) {
-    for _ in read_collection_events.iter() {
-        for entity in excerpt_views.iter() {
-            commands.entity(entity).despawn_recursive();
+impl TemplateApp {
+    pub fn new(collections: ExcerptCollections) -> Self {
+        Self {
+            // Example stuff:
+            label: "Striputary".to_owned(),
+            value: 2.7,
+            line_demo: LineDemo::default(),
+            collections,
         }
     }
 }
 
-fn add_excerpts_and_markers_system(
-    mut commands: Commands,
-    collections: Res<ExcerptCollections>,
-    mut read_collection_events: EventReader<ReadCollectionEvent>,
-) {
-    for _ in read_collection_events.iter() {
-        let collection = collections.get_selected();
-        for (i, excerpt) in collection.iter_excerpts().enumerate() {
-            let relative_progress = excerpt
-                .excerpt
-                .get_relative_progress_from_time_offset(collection.offset_guess);
-            let marker_id = commands
-                .spawn()
-                .insert(PositionMarker::new(i, relative_progress))
-                .id();
-            commands
-                .spawn()
-                .insert(ExcerptView::new(i))
-                .push_children(&[marker_id]);
+impl epi::App for TemplateApp {
+    fn name(&self) -> &str {
+        "Striputary"
+    }
+
+    fn update(&mut self, ctx: &egui::CtxRef, frame: &mut epi::Frame<'_>) {
+        let Self { label, value, line_demo, collections } = self;
+
+        // Examples of how to create different panels and windows.
+        // Pick whichever suits you.
+        // Tip: a good default choice is to just keep the `CentralPanel`.
+        // For inspiration and more examples, go to https://emilk.github.io/egui
+
+        egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
+            // The top panel is often a good place for a menu bar:
+            egui::menu::bar(ui, |ui| {
+                egui::menu::menu(ui, "File", |ui| {
+                    if ui.button("Quit").clicked() {
+                        frame.quit();
+                    }
+                });
+            });
+        });
+
+        egui::SidePanel::left("side_panel").show(ctx, |ui| {
+            ui.heading("Side Panel");
+
+            ui.horizontal(|ui| {
+                ui.label("Write something: ");
+                ui.text_edit_singleline(label);
+            });
+
+            ui.add(egui::Slider::new(value, 0.0..=10.0).text("value"));
+            if ui.button("Increment").clicked() {
+                *value += 1.0;
+            }
+
+            ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
+                ui.add(
+                    egui::Hyperlink::new("https://github.com/emilk/egui/").text("powered by egui"),
+                );
+            });
+        });
+
+        egui::CentralPanel::default().show(ctx, |ui| {
+            // The central panel the region left after adding TopPanel's and SidePanel's
+
+            ui.heading("egui template");
+            ui.hyperlink("https://github.com/emilk/egui_template");
+            ui.add(egui::github_link_file!(
+                "https://github.com/emilk/egui_template/blob/master/",
+                "Source code."
+            ));
+            ui.add(&mut self.line_demo);
+            egui::warn_if_debug_build(ui);
+        });
+
+        if false {
+            egui::Window::new("Window").show(ctx, |ui| {
+                ui.label("Windows can be moved by dragging them.");
+                ui.label("They are automatically sized based on contents.");
+                ui.label("You can turn on resizing and scrolling if you like.");
+                ui.label("You would normally chose either panels OR windows.");
+            });
         }
     }
-}
-
-fn start_cut_system(
-    keyboard_input: Res<Input<KeyCode>>,
-    collections: Res<ExcerptCollections>,
-    positions: Query<&PositionMarker>,
-    cutting_thread: NonSend<CuttingThreadHandle>,
-) {
-    for key in keyboard_input.get_just_pressed() {
-        if let KeyCode::Return = key {
-            let cut_infos = get_cut_info(&collections.get_selected(), &positions);
-            cutting_thread.send_cut_infos(cut_infos);
-        }
-    }
-}
-
-fn get_cut_info(
-    collection: &ExcerptCollection,
-    positions: &Query<&PositionMarker>,
-) -> Vec<CutInfo> {
-    let mut markers: Vec<&PositionMarker> = positions.iter().collect();
-    markers.sort_by_key(|marker| marker.num);
-    let excerpts: Vec<&NamedExcerpt> = collection.iter_excerpts().collect();
-    let mut cut_info: Vec<CutInfo> = vec![];
-    for ((excerpt_start, excerpt_end), (marker_start, marker_end)) in excerpts
-        .iter()
-        .zip(excerpts[1..].iter())
-        .zip(markers.iter().zip(markers[1..].iter()))
-    {
-        let song = excerpt_start.song.as_ref().unwrap();
-        let start_time = marker_start.get_absolute_time(&excerpt_start.excerpt);
-        let end_time = marker_end.get_absolute_time(&excerpt_end.excerpt);
-        cut_info.push(CutInfo::new(
-            &collection.session,
-            song.clone(),
-            start_time.time,
-            end_time.time,
-        ));
-    }
-    cut_info
 }

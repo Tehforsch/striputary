@@ -7,6 +7,7 @@ pub mod dbus;
 pub mod errors;
 pub mod excerpt_collection;
 pub mod excerpt_collections;
+// pub mod gui;
 pub mod gui;
 pub mod path_utils;
 pub mod record;
@@ -17,6 +18,7 @@ pub mod song;
 pub mod wav;
 pub mod yaml_session;
 
+use crate::gui::TemplateApp;
 use crate::{
     path_utils::{get_buffer_file, get_yaml_file},
     record::RecordingExitStatus,
@@ -25,6 +27,8 @@ use crate::{
 use anyhow::{anyhow, Context, Result};
 use args::Opts;
 use clap::Clap;
+use cut::get_excerpt_collection;
+use excerpt_collections::ExcerptCollections;
 use path_utils::get_yaml_files;
 use record::record_new_session;
 use service_config::ServiceConfig;
@@ -59,7 +63,7 @@ fn run_striputary(args: &Opts, stream_config: &ServiceConfig) -> Result<()> {
             let sessions =
                 record_sessions_and_save_session_files(&args.session_dir, stream_config)?;
             wait_for_user_after_recording()?;
-            gui::run(sessions);
+            run_gui(sessions);
         }
     };
     Ok(())
@@ -103,8 +107,15 @@ fn load_sessions_and_cut(session_dir: &Path) -> Result<()> {
         .iter()
         .map(|yaml_file| yaml_session::load(&yaml_file))
         .collect::<Result<Vec<_>>>();
-    gui::run(sessions?);
+    run_gui(sessions?);
     Ok(())
+}
+
+fn run_gui(sessions: Vec<RecordingSession>) {
+    let collections = ExcerptCollections::new(sessions.into_iter().map(get_excerpt_collection).collect());
+    let app = TemplateApp::new(collections);
+    let native_options = eframe::NativeOptions::default();
+    eframe::run_native(Box::new(app), native_options);
 }
 
 fn wait_for_user_after_recording() -> Result<()> {
