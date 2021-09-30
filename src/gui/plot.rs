@@ -60,6 +60,10 @@ impl ExcerptPlot {
     pub fn show_playback_marker_at(&mut self, audio_time: AudioTime) {
         self.playback_marker = Some(audio_time);
     }
+
+    pub fn hide_playback_marker(&mut self) {
+        self.playback_marker = None;
+    }
 }
 
 impl Widget for &mut ExcerptPlot {

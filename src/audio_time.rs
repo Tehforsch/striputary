@@ -1,7 +1,7 @@
 use hound::WavSpec;
 use std::ops;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct AudioTime {
     pub time: f64,
     pub interleaved_sample_num: u32,
@@ -52,5 +52,11 @@ impl ops::Add<AudioTime> for AudioTime {
         assert_eq!(self.sample_rate, rhs.sample_rate);
         assert_eq!(self.channels, rhs.channels);
         AudioTime::from_time_same_spec(self.time + rhs.time, self)
+    }
+}
+
+impl PartialOrd for AudioTime {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.time.partial_cmp(&other.time)
     }
 }

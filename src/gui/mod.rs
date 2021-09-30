@@ -164,12 +164,15 @@ impl StriputaryGui {
                         );
                     });
                 });
+                plot.hide_playback_marker();
                 if let Some((playback_song, ref current_playback)) = self.current_playback {
                     if playback_song == plot_song {
                         let playback_time_relative = current_playback.get_elapsed_audio_time();
                         let playback_time_absolute =
                             plot.excerpt.excerpt.start + playback_time_relative;
-                        plot.show_playback_marker_at(playback_time_absolute);
+                        if playback_time_absolute < plot.excerpt.excerpt.end {
+                            plot.show_playback_marker_at(playback_time_absolute);
+                        }
                     }
                 }
                 let plot = ui.add(plot);
