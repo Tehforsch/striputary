@@ -23,6 +23,7 @@ pub struct StriputaryGui {
     plots: Vec<ExcerptPlot>,
     cut_thread: CuttingThreadHandle,
     current_playback: Option<PlaybackThreadHandle>,
+    last_touched_song: Option<usize>,
 }
 
 impl StriputaryGui {
@@ -36,6 +37,7 @@ impl StriputaryGui {
             plots,
             cut_thread: thread,
             current_playback,
+            last_touched_song: None,
         }
     }
 
@@ -77,9 +79,24 @@ impl StriputaryGui {
         }
     }
 
+    fn play_last_touched_song(&mut self) {
+        if let Some(last_touched) = self.last_touched_song {
+            let plot = &self.plots[last_touched];
+            let excerpt = &plot.excerpt.excerpt;
+            if let Some(ref thread) = self.current_playback {
+                thread.shut_down();
+            }
+            self.current_playback = Some(play_excerpt(
+                excerpt,
+                excerpt.get_relative_time(plot.cut_time),
+            ));
+        }
+    }
+
     fn select(&mut self, selection: usize) {
         self.collections.select(selection);
         self.plots = StriputaryGui::get_plots(self.collections.get_selected());
+        self.last_touched_song = None;
     }
 
     fn get_plots(collection: &ExcerptCollection) -> Vec<ExcerptPlot> {
@@ -112,7 +129,6 @@ impl StriputaryGui {
 
     fn add_top_bar(&mut self, ctx: &egui::CtxRef) {
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
-            // The top panel is often a good place for a menu bar:
             egui::menu::bar(ui, |ui| {
                 let mut selection: Option<usize> = None;
                 for (i, collection) in self.collections.enumerate() {
@@ -133,22 +149,14 @@ impl StriputaryGui {
                 self.cut_songs();
             }
             if ui.button("Playback").clicked() {
-                let plot = &self.plots[0];
-                let excerpt = &plot.excerpt.excerpt;
-                if let Some(ref thread) = self.current_playback {
-                    thread.shut_down();
-                }
-                self.current_playback = Some(play_excerpt(
-                    excerpt,
-                    excerpt.get_relative_time(plot.cut_time),
-                ));
+                self.play_last_touched_song();
             }
         });
     }
 
     fn add_central_panel(&mut self, ctx: &egui::CtxRef) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            for plot in self.plots.iter_mut() {
+            for (i, plot) in self.plots.iter_mut().enumerate() {
                 ui.horizontal(|ui| {
                     Self::add_plot_label(
                         ui,
@@ -163,7 +171,9 @@ impl StriputaryGui {
                         );
                     });
                 });
-                ui.add(plot);
+                if ui.add(plot).is_pointer_button_down_on() {
+                    self.last_touched_song = Some(i);
+                };
             }
             egui::warn_if_debug_build(ui);
         });
