@@ -129,10 +129,13 @@ impl StriputaryGui {
         egui::SidePanel::left("side_panel")
             .resizable(false)
             .show(ctx, |ui| {
-                if ui.button("Cut").clicked() {
+                let mut add_large_button = |name| { ui.add(Button::new(name).text_style(TextStyle::Heading)) };
+                let cut_button = add_large_button("Cut");
+                let playback_button = add_large_button("Playback");
+                if cut_button.clicked() || ctx.input().key_pressed(config::CUT_KEY) {
                     self.cut_songs();
                 }
-                if ui.button("Playback").clicked() {
+                if playback_button.clicked() || ctx.input().key_pressed(config::PLAYBACK_KEY) {
                     self.play_last_touched_song();
                 }
             });
@@ -195,6 +198,12 @@ impl epi::App for StriputaryGui {
         self.add_side_bar(ctx);
         self.add_central_panel(ctx);
         self.mark_cut_songs();
+        if ctx.input().key_pressed(config::SELECT_NEXT_KEY) {
+            self.collections.select_next();
+        }
+        if ctx.input().key_pressed(config::SELECT_PREVIOUS_KEY) {
+            self.collections.select_previous();
+        }
         ctx.request_repaint();
     }
 }
