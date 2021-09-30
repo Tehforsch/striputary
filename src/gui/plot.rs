@@ -15,15 +15,27 @@ pub struct ExcerptPlot {
 
 impl ExcerptPlot {
     pub fn new(excerpt: NamedExcerpt, cut_time: AudioTime) -> Self {
-        Self { excerpt, cut_time, finished_cutting_song_before: false, finished_cutting_song_after: false }
+        Self {
+            excerpt,
+            cut_time,
+            finished_cutting_song_before: false,
+            finished_cutting_song_after: false,
+        }
     }
 
     fn get_lines(&self) -> (Line, Line) {
         let x_values = self.excerpt.excerpt.get_sample_times();
         let y_values = self.excerpt.excerpt.get_volume_plot_data();
-        let values_iter = x_values.into_iter().zip(y_values).map(|(x, y)| Value::new(x, y));
-        let (values_before_cut, values_after_cut): (Vec<_>, Vec<_>) = values_iter.partition(|value| value.x < self.cut_time.time);
-        (Line::new(Values::from_values(values_before_cut)), Line::new(Values::from_values(values_after_cut)))
+        let values_iter = x_values
+            .into_iter()
+            .zip(y_values)
+            .map(|(x, y)| Value::new(x, y));
+        let (values_before_cut, values_after_cut): (Vec<_>, Vec<_>) =
+            values_iter.partition(|value| value.x < self.cut_time.time);
+        (
+            Line::new(Values::from_values(values_before_cut)),
+            Line::new(Values::from_values(values_after_cut)),
+        )
     }
 
     pub fn get_line_color(&self, finished_cutting: bool) -> Color32 {
@@ -37,7 +49,10 @@ impl ExcerptPlot {
         let plot_begin = rect.min + (rect.center() - rect.min) * 0.05;
         let plot_width = rect.width() / 1.1;
         let relative_progress = (click_pos.x - plot_begin.x) / plot_width;
-        self.cut_time = self.excerpt.excerpt.get_absolute_time_by_relative_progress(relative_progress as f64);
+        self.cut_time = self
+            .excerpt
+            .excerpt
+            .get_absolute_time_by_relative_progress(relative_progress as f64);
     }
 }
 
@@ -54,8 +69,7 @@ impl Widget for &mut ExcerptPlot {
             .allow_drag(false)
             .allow_zoom(false)
             .vline(VLine::new(self.cut_time.time))
-            .show_background(false)
-            ;
+            .show_background(false);
         let response = ui.add(plot);
         if response.dragged() {
             if let Some(pos) = response.interact_pointer_pos() {

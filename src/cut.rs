@@ -20,7 +20,12 @@ pub struct CutInfo {
 }
 
 impl CutInfo {
-    pub fn new(session: &RecordingSession, song: Song, start_time: AudioTime, end_time: AudioTime) -> Self {
+    pub fn new(
+        session: &RecordingSession,
+        song: Song,
+        start_time: AudioTime,
+        end_time: AudioTime,
+    ) -> Self {
         let buffer_file = session.get_buffer_file();
         let music_dir = session.get_music_dir();
         CutInfo {
@@ -90,7 +95,7 @@ pub fn get_excerpt_collection(session: RecordingSession) -> ExcerptCollection {
         .enumerate()
         .map(|(num, excerpt)| NamedExcerpt {
             excerpt,
-            song_before: songs.get(num-1).cloned(),
+            song_before: songs.get(num - 1).cloned(),
             song_after: songs.get(num).cloned(),
             num,
         })
@@ -159,10 +164,8 @@ pub fn cut_song(info: &CutInfo) -> Result<()> {
         .arg("-y")
         .arg(target_file.to_str().unwrap())
         .output();
-    out
-        .map(|_| ())
-        .context(format!(
-            "Failed to cut song: {} {} {} ({}+{})",
-            &info.song.title, &info.song.album, &info.song.artist, info.start_time.time, difference,
-        ))
+    out.map(|_| ()).context(format!(
+        "Failed to cut song: {} {} {} ({}+{})",
+        &info.song.title, &info.song.album, &info.song.artist, info.start_time.time, difference,
+    ))
 }

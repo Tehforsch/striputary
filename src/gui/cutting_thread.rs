@@ -1,6 +1,13 @@
-use std::{sync::mpsc::{channel, Receiver, Sender}, thread::{self, JoinHandle}, time::Duration};
+use std::{
+    sync::mpsc::{channel, Receiver, Sender},
+    thread::{self, JoinHandle},
+    time::Duration,
+};
 
-use crate::{cut::{cut_song, CutInfo}, song::Song};
+use crate::{
+    cut::{cut_song, CutInfo},
+    song::Song,
+};
 
 struct CuttingThread {
     pub to_cut: Vec<CutInfo>,

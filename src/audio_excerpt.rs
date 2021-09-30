@@ -38,12 +38,17 @@ impl AudioExcerpt {
     pub fn get_sample_times(&self) -> Vec<f32> {
         let width = self.end.time - self.start.time;
         let step_size = width as f32 / NUM_PLOT_DATA_POINTS as f32;
-        (1..NUM_PLOT_DATA_POINTS).map(|x| self.start.time as f32 + (x as f32) * step_size as f32).collect()
+        (1..NUM_PLOT_DATA_POINTS)
+            .map(|x| self.start.time as f32 + (x as f32) * step_size as f32)
+            .collect()
     }
 
     pub fn get_volume_plot_data(&self) -> Vec<f32> {
         let times = self.get_sample_times();
-        times.into_iter().map(|time| self.get_volume_at(time as f64) as f32).collect()
+        times
+            .into_iter()
+            .map(|time| self.get_volume_at(time as f64) as f32)
+            .collect()
     }
 
     pub fn get_absolute_time_by_relative_progress(&self, pos: f64) -> AudioTime {
@@ -67,7 +72,9 @@ impl AudioExcerpt {
     }
 
     pub fn get_absolute_time_from_time_offset(&self, time_offset: f64) -> AudioTime {
-        self.get_absolute_time_by_relative_progress(self.get_relative_progress_from_time_offset(time_offset))
+        self.get_absolute_time_by_relative_progress(
+            self.get_relative_progress_from_time_offset(time_offset),
+        )
     }
 }
 

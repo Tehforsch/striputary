@@ -112,7 +112,8 @@ fn load_sessions_and_cut(session_dir: &Path) -> Result<()> {
 }
 
 fn run_gui(sessions: Vec<RecordingSession>) {
-    let collections = ExcerptCollections::new(sessions.into_iter().map(get_excerpt_collection).collect());
+    let collections =
+        ExcerptCollections::new(sessions.into_iter().map(get_excerpt_collection).collect());
     let app = StriputaryGui::new(collections);
     let native_options = eframe::NativeOptions::default();
     eframe::run_native(Box::new(app), native_options);

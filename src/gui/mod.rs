@@ -1,12 +1,22 @@
 mod config;
 mod cutting_thread;
-mod plot;
 mod playback;
+mod plot;
 
-use crate::{cut::CutInfo, excerpt_collection::ExcerptCollection, excerpt_collections::ExcerptCollections, song::Song};
-use eframe::{egui::{self, Align, Color32, Label, Layout, Ui}, epi};
+use crate::{
+    cut::CutInfo, excerpt_collection::ExcerptCollection, excerpt_collections::ExcerptCollections,
+    song::Song,
+};
+use eframe::{
+    egui::{self, Align, Color32, Label, Layout, Ui},
+    epi,
+};
 
-use self::{cutting_thread::CuttingThreadHandle, playback::{PlaybackThreadHandle, play_excerpt}, plot::ExcerptPlot};
+use self::{
+    cutting_thread::CuttingThreadHandle,
+    playback::{play_excerpt, PlaybackThreadHandle},
+    plot::ExcerptPlot,
+};
 
 pub struct StriputaryGui {
     collections: ExcerptCollections,
@@ -93,7 +103,6 @@ impl StriputaryGui {
         }
     }
 
-
     fn add_plot_label(ui: &mut Ui, song: Option<&Song>, finished_cutting: bool) {
         let color = StriputaryGui::get_label_color(finished_cutting);
         if let Some(ref song) = song {
@@ -129,7 +138,10 @@ impl StriputaryGui {
                 if let Some(ref thread) = self.current_playback {
                     thread.shut_down();
                 }
-                self.current_playback = Some(play_excerpt(excerpt, excerpt.get_relative_time(plot.cut_time)));
+                self.current_playback = Some(play_excerpt(
+                    excerpt,
+                    excerpt.get_relative_time(plot.cut_time),
+                ));
             }
         });
     }
@@ -138,9 +150,17 @@ impl StriputaryGui {
         egui::CentralPanel::default().show(ctx, |ui| {
             for plot in self.plots.iter_mut() {
                 ui.horizontal(|ui| {
-                    Self::add_plot_label(ui, plot.excerpt.song_before.as_ref(), plot.finished_cutting_song_before);
+                    Self::add_plot_label(
+                        ui,
+                        plot.excerpt.song_before.as_ref(),
+                        plot.finished_cutting_song_before,
+                    );
                     ui.with_layout(Layout::right_to_left(), |ui| {
-                        Self::add_plot_label(ui, plot.excerpt.song_after.as_ref(), plot.finished_cutting_song_after);
+                        Self::add_plot_label(
+                            ui,
+                            plot.excerpt.song_after.as_ref(),
+                            plot.finished_cutting_song_after,
+                        );
                     });
                 });
                 ui.add(plot);
