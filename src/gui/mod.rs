@@ -27,6 +27,7 @@ pub struct StriputaryGui {
     current_playback: Option<(SongIdentifier, PlaybackThreadHandle)>,
     last_touched_song: Option<SongIdentifier>,
     selected_collection: CollectionIdentifier,
+    should_repaint: bool,
 }
 
 impl StriputaryGui {
@@ -39,6 +40,7 @@ impl StriputaryGui {
             current_playback: None,
             last_touched_song: None,
             selected_collection: 0,
+            should_repaint: false,
         };
         gui.select(0);
         gui
@@ -70,12 +72,18 @@ impl StriputaryGui {
             for plot in self.plots.iter_mut() {
                 if let Some(ref song_before) = plot.excerpt.song_before {
                     if song_before == song {
-                        plot.finished_cutting_song_before = true;
+                        if !plot.finished_cutting_song_before {
+                            plot.finished_cutting_song_before = true;
+                            self.should_repaint = true;
+                        }
                     }
                 }
                 if let Some(ref song_after) = plot.excerpt.song_after {
                     if song_after == song {
-                        plot.finished_cutting_song_after = true;
+                        if !plot.finished_cutting_song_after {
+                            plot.finished_cutting_song_after = true;
+                            self.should_repaint = true;
+                        }
                     }
                 }
             }
@@ -188,6 +196,7 @@ impl StriputaryGui {
                         let playback_time_absolute =
                             plot.excerpt.excerpt.start + playback_time_relative;
                         if playback_time_absolute < plot.excerpt.excerpt.end {
+                            self.should_repaint = true;
                             plot.show_playback_marker_at(playback_time_absolute);
                         }
                     }
@@ -222,7 +231,10 @@ impl epi::App for StriputaryGui {
         if ctx.input().key_pressed(config::SELECT_PREVIOUS_KEY) {
             self.select_previous_collection();
         }
-        ctx.request_repaint();
+        if self.should_repaint {
+            ctx.request_repaint();
+            self.should_repaint = false;
+        }
     }
 }
 
