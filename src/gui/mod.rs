@@ -29,35 +29,6 @@ impl StriputaryGui {
         }
     }
 
-    fn get_plots(collection: &ExcerptCollection) -> Vec<ExcerptPlot> {
-        collection
-            .iter_excerpts()
-            .map(|excerpt| {
-                ExcerptPlot::new(
-                    excerpt.clone(),
-                    excerpt
-                        .excerpt
-                        .get_absolute_time_from_time_offset(collection.offset_guess),
-                )
-            })
-            .collect()
-    }
-
-    pub fn get_label_color(finished_cutting: bool) -> Color32 {
-        match finished_cutting {
-            true => config::CUT_LABEL_COLOR,
-            false => config::UNCUT_LABEL_COLOR,
-        }
-    }
-
-
-    fn add_plot_label(ui: &mut Ui, song: Option<&Song>, finished_cutting: bool) {
-        let color = StriputaryGui::get_label_color(finished_cutting);
-        if let Some(ref song) = song {
-            ui.add(Label::new(format!("{}", song.title)).text_color(color));
-        }
-    }
-
     fn cut_songs(&self) {
         let cut_infos = self.get_cut_info();
         self.cut_thread.send_cut_infos(cut_infos);
@@ -100,14 +71,37 @@ impl StriputaryGui {
         self.collections.select(selection);
         self.plots = StriputaryGui::get_plots(self.collections.get_selected());
     }
-}
 
-impl epi::App for StriputaryGui {
-    fn name(&self) -> &str {
-        "Striputary"
+    fn get_plots(collection: &ExcerptCollection) -> Vec<ExcerptPlot> {
+        collection
+            .iter_excerpts()
+            .map(|excerpt| {
+                ExcerptPlot::new(
+                    excerpt.clone(),
+                    excerpt
+                        .excerpt
+                        .get_absolute_time_from_time_offset(collection.offset_guess),
+                )
+            })
+            .collect()
     }
 
-    fn update(&mut self, ctx: &egui::CtxRef, _: &mut epi::Frame<'_>) {
+    pub fn get_label_color(finished_cutting: bool) -> Color32 {
+        match finished_cutting {
+            true => config::CUT_LABEL_COLOR,
+            false => config::UNCUT_LABEL_COLOR,
+        }
+    }
+
+
+    fn add_plot_label(ui: &mut Ui, song: Option<&Song>, finished_cutting: bool) {
+        let color = StriputaryGui::get_label_color(finished_cutting);
+        if let Some(ref song) = song {
+            ui.add(Label::new(format!("{}", song.title)).text_color(color));
+        }
+    }
+
+    fn add_top_bar(&mut self, ctx: &egui::CtxRef) {
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             // The top panel is often a good place for a menu bar:
             egui::menu::bar(ui, |ui| {
@@ -122,7 +116,9 @@ impl epi::App for StriputaryGui {
                 }
             });
         });
+    }
 
+    fn add_side_bar(&mut self, ctx: &egui::CtxRef) {
         egui::SidePanel::left("side_panel").show(ctx, |ui| {
             if ui.button("Cut").clicked() {
                 self.cut_songs();
@@ -136,9 +132,9 @@ impl epi::App for StriputaryGui {
                 self.current_playback = Some(play_excerpt(excerpt, excerpt.get_relative_time(plot.cut_time)));
             }
         });
+    }
 
-        self.mark_cut_songs();
-
+    fn add_central_panel(&mut self, ctx: &egui::CtxRef) {
         egui::CentralPanel::default().show(ctx, |ui| {
             for plot in self.plots.iter_mut() {
                 ui.horizontal(|ui| {
@@ -148,18 +144,23 @@ impl epi::App for StriputaryGui {
                     });
                 });
                 ui.add(plot);
-                // ui.columns(2, |columns| {
-                //     if let Some(ref song) = plot.excerpt.song_before {
-                //         columns[0].label(format!("{}", song.title));
-                //     }
-                //     if let Some(ref song) = plot.excerpt.song_after {
-                //         columns[1].with_layout(Layout::left_to_right(), |ui| {
-                //             ui.label(format!("{}", song.title));
-                //         });
-                //     }
-                // });
             }
             egui::warn_if_debug_build(ui);
         });
+    }
+}
+
+impl epi::App for StriputaryGui {
+    fn name(&self) -> &str {
+        "Striputary"
+    }
+
+    fn update(&mut self, ctx: &egui::CtxRef, _: &mut epi::Frame<'_>) {
+        self.add_top_bar(ctx);
+        self.add_side_bar(ctx);
+
+        self.add_central_panel(ctx);
+
+        self.mark_cut_songs();
     }
 }
