@@ -7,10 +7,7 @@ use crate::{
     cut::CutInfo, excerpt_collection::ExcerptCollection, excerpt_collections::ExcerptCollections,
     song::Song,
 };
-use eframe::{
-    egui::{self, Align, Color32, Label, Layout, Ui},
-    epi,
-};
+use eframe::{egui::{self, Button, Color32, Label, Layout, Response, TextStyle, Ui}, epi};
 
 use self::{
     cutting_thread::CuttingThreadHandle,
@@ -29,7 +26,7 @@ pub struct StriputaryGui {
 impl StriputaryGui {
     pub fn new(collections: ExcerptCollections) -> Self {
         let collection = collections.get_selected();
-        let plots = StriputaryGui::get_plots(collection);
+        let plots = get_plots(collection);
         let thread = CuttingThreadHandle::default();
         let current_playback = None;
         Self {
@@ -95,36 +92,8 @@ impl StriputaryGui {
 
     fn select(&mut self, selection: usize) {
         self.collections.select(selection);
-        self.plots = StriputaryGui::get_plots(self.collections.get_selected());
+        self.plots = get_plots(self.collections.get_selected());
         self.last_touched_song = None;
-    }
-
-    fn get_plots(collection: &ExcerptCollection) -> Vec<ExcerptPlot> {
-        collection
-            .iter_excerpts()
-            .map(|excerpt| {
-                ExcerptPlot::new(
-                    excerpt.clone(),
-                    excerpt
-                        .excerpt
-                        .get_absolute_time_from_time_offset(collection.offset_guess),
-                )
-            })
-            .collect()
-    }
-
-    pub fn get_label_color(finished_cutting: bool) -> Color32 {
-        match finished_cutting {
-            true => config::CUT_LABEL_COLOR,
-            false => config::UNCUT_LABEL_COLOR,
-        }
-    }
-
-    fn add_plot_label(ui: &mut Ui, song: Option<&Song>, finished_cutting: bool) {
-        let color = StriputaryGui::get_label_color(finished_cutting);
-        if let Some(ref song) = song {
-            ui.add(Label::new(format!("{}", song.title)).text_color(color));
-        }
     }
 
     fn add_top_bar(&mut self, ctx: &egui::CtxRef) {
@@ -132,7 +101,8 @@ impl StriputaryGui {
             egui::menu::bar(ui, |ui| {
                 let mut selection: Option<usize> = None;
                 for (i, collection) in self.collections.enumerate() {
-                    if ui.button(collection.name()).clicked() {
+                    let button = add_collection_button(ui, self.collections.get_selected_index() == i, collection);
+                    if button.clicked() {
                         selection = Some(i);
                     }
                 }
@@ -158,13 +128,13 @@ impl StriputaryGui {
         egui::CentralPanel::default().show(ctx, |ui| {
             for (i, plot) in self.plots.iter_mut().enumerate() {
                 ui.horizontal(|ui| {
-                    Self::add_plot_label(
+                    add_plot_label(
                         ui,
                         plot.excerpt.song_before.as_ref(),
                         plot.finished_cutting_song_before,
                     );
                     ui.with_layout(Layout::right_to_left(), |ui| {
-                        Self::add_plot_label(
+                        add_plot_label(
                             ui,
                             plot.excerpt.song_after.as_ref(),
                             plot.finished_cutting_song_after,
@@ -192,5 +162,45 @@ impl epi::App for StriputaryGui {
         self.add_central_panel(ctx);
 
         self.mark_cut_songs();
+    }
+}
+
+
+fn get_plots(collection: &ExcerptCollection) -> Vec<ExcerptPlot> {
+    collection
+        .iter_excerpts()
+        .map(|excerpt| {
+            ExcerptPlot::new(
+                excerpt.clone(),
+                excerpt
+                    .excerpt
+                    .get_absolute_time_from_time_offset(collection.offset_guess),
+            )
+        })
+        .collect()
+}
+
+pub fn get_label_color(finished_cutting: bool) -> Color32 {
+    match finished_cutting {
+        true => config::CUT_LABEL_COLOR,
+        false => config::UNCUT_LABEL_COLOR,
+    }
+}
+
+fn add_collection_button(ui: &mut Ui, selected: bool, collection: &ExcerptCollection) -> Response {
+    let label = collection.name();
+    let mut button = Button::new(label).text_style(TextStyle::Heading);
+    if selected {
+        button = button.fill(config::SELECTED_COLLECTION_FILL_COLOR);
+        button = button.text_color(config::SELECTED_COLLECTION_TEXT_COLOR);
+    }
+    ui.add(button)
+}
+
+
+fn add_plot_label(ui: &mut Ui, song: Option<&Song>, finished_cutting: bool) {
+    let color = get_label_color(finished_cutting);
+    if let Some(ref song) = song {
+        ui.add(Label::new(format!("{}", song.title)).text_color(color));
     }
 }

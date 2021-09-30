@@ -35,4 +35,8 @@ impl ExcerptCollections {
     pub fn enumerate(&self) -> Box<dyn Iterator<Item = (usize, &ExcerptCollection)> + '_> {
         Box::new(self.collections.iter().enumerate())
     }
+
+    pub fn get_selected_index(&self) -> usize {
+        self.num_selected
+    }
 }
