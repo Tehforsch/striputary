@@ -43,3 +43,14 @@ impl ops::Sub<AudioTime> for AudioTime {
         AudioTime::from_time_same_spec(self.time - rhs.time, self)
     }
 }
+
+
+impl ops::Add<AudioTime> for AudioTime {
+    type Output = AudioTime;
+
+    fn add(self, rhs: AudioTime) -> AudioTime {
+        assert_eq!(self.sample_rate, rhs.sample_rate);
+        assert_eq!(self.channels, rhs.channels);
+        AudioTime::from_time_same_spec(self.time + rhs.time, self)
+    }
+}

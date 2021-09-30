@@ -11,6 +11,7 @@ pub struct ExcerptPlot {
     pub cut_time: AudioTime,
     pub finished_cutting_song_before: bool,
     pub finished_cutting_song_after: bool,
+    pub playback_marker: Option<AudioTime>,
 }
 
 impl ExcerptPlot {
@@ -20,6 +21,7 @@ impl ExcerptPlot {
             cut_time,
             finished_cutting_song_before: false,
             finished_cutting_song_after: false,
+            playback_marker: None,
         }
     }
 
@@ -54,12 +56,16 @@ impl ExcerptPlot {
             .excerpt
             .get_absolute_time_by_relative_progress(relative_progress as f64);
     }
+
+    pub fn show_playback_marker_at(&mut self, audio_time: AudioTime) {
+        self.playback_marker = Some(audio_time);
+    }
 }
 
 impl Widget for &mut ExcerptPlot {
     fn ui(self, ui: &mut Ui) -> Response {
         let (line_before, line_after) = self.get_lines();
-        let plot = Plot::new("volume")
+        let mut plot = Plot::new("volume")
             .line(line_before.color(self.get_line_color(self.finished_cutting_song_before)))
             .line(line_after.color(self.get_line_color(self.finished_cutting_song_after)))
             .legend(Legend::default())
@@ -70,6 +76,9 @@ impl Widget for &mut ExcerptPlot {
             .allow_zoom(false)
             .vline(VLine::new(self.cut_time.time))
             .show_background(false);
+        if let Some(time) = self.playback_marker {
+            plot = plot.vline(VLine::new(time.time));
+        }
         let response = ui.add(plot);
         if response.dragged() {
             if let Some(pos) = response.interact_pointer_pos() {
