@@ -114,7 +114,7 @@ impl StriputaryGui {
     }
 
     fn add_side_bar(&mut self, ctx: &egui::CtxRef) {
-        egui::SidePanel::left("side_panel").show(ctx, |ui| {
+        egui::SidePanel::left("side_panel").resizable(false).show(ctx, |ui| {
             if ui.button("Cut").clicked() {
                 self.cut_songs();
             }
