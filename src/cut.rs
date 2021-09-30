@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::audio_excerpt::AudioExcerpt;
+use crate::audio_time::AudioTime;
 use crate::config::{self, MAX_OFFSET, MIN_OFFSET, NUM_OFFSETS_TO_TRY, READ_BUFFER};
 use crate::excerpt_collection::{ExcerptCollection, NamedExcerpt};
 use crate::recording_session::RecordingSession;
@@ -14,12 +15,12 @@ pub struct CutInfo {
     pub song: Song,
     buffer_file: PathBuf,
     music_dir: PathBuf,
-    start_time: f64,
-    end_time: f64,
+    start_time: AudioTime,
+    end_time: AudioTime,
 }
 
 impl CutInfo {
-    pub fn new(session: &RecordingSession, song: Song, start_time: f64, end_time: f64) -> Self {
+    pub fn new(session: &RecordingSession, song: Song, start_time: AudioTime, end_time: AudioTime) -> Self {
         let buffer_file = session.get_buffer_file();
         let music_dir = session.get_music_dir();
         CutInfo {
@@ -89,7 +90,8 @@ pub fn get_excerpt_collection(session: RecordingSession) -> ExcerptCollection {
         .enumerate()
         .map(|(num, excerpt)| NamedExcerpt {
             excerpt,
-            song: songs.get(num).cloned(),
+            song_before: songs.get(num-1).cloned(),
+            song_after: songs.get(num).cloned(),
             num,
         })
         .collect();
@@ -122,20 +124,20 @@ fn get_all_valid_excerpts_and_songs(session: &RecordingSession) -> (Vec<AudioExc
 }
 
 pub fn cut_song(info: &CutInfo) -> Result<()> {
-    let difference = info.end_time - info.start_time;
+    let difference = info.end_time.time - info.start_time.time;
     let target_file = info.song.get_target_file(&info.music_dir);
     create_dir_all(target_file.parent().unwrap())
         .context("Failed to create subfolders of target file")?;
     println!(
         "Cutting song: {:.2}+{:.2}: {} to {}",
-        info.start_time,
+        info.start_time.time,
         difference,
         info.song,
         target_file.to_str().unwrap()
     );
     let out = Command::new("ffmpeg")
         .arg("-ss")
-        .arg(format!("{}", info.start_time))
+        .arg(format!("{}", info.start_time.time))
         .arg("-t")
         .arg(format!("{}", difference))
         .arg("-i")
@@ -161,6 +163,6 @@ pub fn cut_song(info: &CutInfo) -> Result<()> {
         .map(|_| ())
         .context(format!(
             "Failed to cut song: {} {} {} ({}+{})",
-            &info.song.title, &info.song.album, &info.song.artist, info.start_time, difference,
+            &info.song.title, &info.song.album, &info.song.artist, info.start_time.time, difference,
         ))
 }

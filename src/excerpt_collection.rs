@@ -1,11 +1,14 @@
 use crate::{audio_excerpt::AudioExcerpt, recording_session::RecordingSession, song::Song};
 
+#[derive(Clone)]
 pub struct NamedExcerpt {
     pub excerpt: AudioExcerpt,
-    pub song: Option<Song>,
+    pub song_before: Option<Song>,
+    pub song_after: Option<Song>,
     pub num: usize,
 }
 
+#[derive(Clone)]
 pub struct ExcerptCollection {
     pub session: RecordingSession,
     pub excerpts: Vec<NamedExcerpt>,

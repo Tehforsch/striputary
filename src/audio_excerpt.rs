@@ -1,5 +1,5 @@
 use crate::audio_time::AudioTime;
-use crate::config::{NUM_OFFSETS_TO_TRY, NUM_SAMPLES_PER_AVERAGE_VOLUME};
+use crate::config::{NUM_OFFSETS_TO_TRY, NUM_PLOT_DATA_POINTS, NUM_SAMPLES_PER_AVERAGE_VOLUME};
 use hound::WavSpec;
 use rodio::Source;
 use std::i16;
@@ -35,11 +35,15 @@ impl AudioExcerpt {
         average
     }
 
-    pub fn get_volume_plot_data(&self) -> Vec<f64> {
+    pub fn get_sample_times(&self) -> Vec<f32> {
         let width = self.end.time - self.start.time;
-        let step_size = width / NUM_OFFSETS_TO_TRY as f64;
-        let times = (1..NUM_OFFSETS_TO_TRY).map(|x| self.start.time + (x as f64) * step_size);
-        times.map(|time| self.get_volume_at(time)).collect()
+        let step_size = width as f32 / NUM_PLOT_DATA_POINTS as f32;
+        (1..NUM_PLOT_DATA_POINTS).map(|x| self.start.time as f32 + (x as f32) * step_size as f32).collect()
+    }
+
+    pub fn get_volume_plot_data(&self) -> Vec<f32> {
+        let times = self.get_sample_times();
+        times.into_iter().map(|time| self.get_volume_at(time as f64) as f32).collect()
     }
 
     pub fn get_absolute_time_by_relative_progress(&self, pos: f64) -> AudioTime {
@@ -56,6 +60,10 @@ impl AudioExcerpt {
     pub fn get_relative_progress_from_time_offset(&self, time_offset: f64) -> f64 {
         // time_offset is relative to the center
         0.5 + (time_offset / (self.end.time - self.start.time))
+    }
+
+    pub fn get_absolute_time_from_time_offset(&self, time_offset: f64) -> AudioTime {
+        self.get_absolute_time_by_relative_progress(self.get_relative_progress_from_time_offset(time_offset))
     }
 }
 

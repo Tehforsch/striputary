@@ -15,3 +15,5 @@ pub static MAX_OFFSET: f64 = 3.;
 pub static READ_BUFFER: f64 = 0.5;
 pub static NUM_OFFSETS_TO_TRY: i64 = 1000;
 pub static NUM_SAMPLES_PER_AVERAGE_VOLUME: usize = 2000;
+
+pub static NUM_PLOT_DATA_POINTS: i64 = 500;

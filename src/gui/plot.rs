@@ -1,155 +1,67 @@
-use eframe::egui::*;
 use eframe::egui::plot::*;
-use std::f64::consts::TAU;
-#[derive(PartialEq)]
-pub struct LineDemo {
-    animate: bool,
-    time: f64,
-    circle_radius: f64,
-    circle_center: Pos2,
-    square: bool,
-    proportional: bool,
-    line_style: LineStyle,
+use eframe::egui::*;
+
+use crate::audio_time::AudioTime;
+use crate::excerpt_collection::NamedExcerpt;
+
+use super::config;
+
+pub struct ExcerptPlot {
+    pub excerpt: NamedExcerpt,
+    pub cut_time: AudioTime,
+    pub finished_cutting_song_before: bool,
+    pub finished_cutting_song_after: bool,
 }
 
-impl Default for LineDemo {
-    fn default() -> Self {
-        Self {
-            animate: !cfg!(debug_assertions),
-            time: 0.0,
-            circle_radius: 1.5,
-            circle_center: Pos2::new(0.0, 0.0),
-            square: false,
-            proportional: true,
-            line_style: LineStyle::Solid,
+impl ExcerptPlot {
+    pub fn new(excerpt: NamedExcerpt, cut_time: AudioTime) -> Self {
+        Self { excerpt, cut_time, finished_cutting_song_before: false, finished_cutting_song_after: false }
+    }
+
+    fn get_lines(&self) -> (Line, Line) {
+        let x_values = self.excerpt.excerpt.get_sample_times();
+        let y_values = self.excerpt.excerpt.get_volume_plot_data();
+        let values_iter = x_values.into_iter().zip(y_values).map(|(x, y)| Value::new(x, y));
+        let (values_before_cut, values_after_cut): (Vec<_>, Vec<_>) = values_iter.partition(|value| value.x < self.cut_time.time);
+        (Line::new(Values::from_values(values_before_cut)), Line::new(Values::from_values(values_after_cut)))
+    }
+
+    pub fn get_line_color(&self, finished_cutting: bool) -> Color32 {
+        match finished_cutting {
+            true => Color32::GREEN,
+            false => Color32::RED,
         }
     }
-}
 
-impl LineDemo {
-    fn options_ui(&mut self, ui: &mut Ui) {
-        let Self {
-            animate,
-            time: _,
-            circle_radius,
-            circle_center,
-            square,
-            proportional,
-            line_style,
-            ..
-        } = self;
-
-        ui.horizontal(|ui| {
-            ui.group(|ui| {
-                ui.vertical(|ui| {
-                    ui.label("Circle:");
-                    ui.add(
-                        DragValue::new(circle_radius)
-                            .speed(0.1)
-                            .clamp_range(0.0..=f64::INFINITY)
-                            .prefix("r: "),
-                    );
-                    ui.horizontal(|ui| {
-                        ui.add(
-                            DragValue::new(&mut circle_center.x)
-                                .speed(0.1)
-                                .prefix("x: "),
-                        );
-                        ui.add(
-                            DragValue::new(&mut circle_center.y)
-                                .speed(1.0)
-                                .prefix("y: "),
-                        );
-                    });
-                });
-            });
-
-            ui.vertical(|ui| {
-                ui.style_mut().wrap = Some(false);
-                ui.checkbox(animate, "animate");
-                ui.checkbox(square, "square view")
-                    .on_hover_text("Always keep the viewport square.");
-                ui.checkbox(proportional, "Proportional data axes")
-                    .on_hover_text("Tick are the same size on both axes.");
-
-                ComboBox::from_label("Line style")
-                    .selected_text(line_style.to_string())
-                    .show_ui(ui, |ui| {
-                        [
-                            LineStyle::Solid,
-                            LineStyle::dashed_dense(),
-                            LineStyle::dashed_loose(),
-                            LineStyle::dotted_dense(),
-                            LineStyle::dotted_loose(),
-                        ]
-                        .iter()
-                        .for_each(|style| {
-                            ui.selectable_value(line_style, *style, style.to_string());
-                        });
-                    });
-            });
-        });
-    }
-
-    fn circle(&self) -> Line {
-        let n = 512;
-        let circle = (0..=n).map(|i| {
-            let t = remap(i as f64, 0.0..=(n as f64), 0.0..=TAU);
-            let r = self.circle_radius;
-            Value::new(
-                r * t.cos() + self.circle_center.x as f64,
-                r * t.sin() + self.circle_center.y as f64,
-            )
-        });
-        Line::new(Values::from_values_iter(circle))
-            .color(Color32::from_rgb(100, 200, 100))
-            .style(self.line_style)
-            .name("circle")
-    }
-
-    fn sin(&self) -> Line {
-        let time = self.time;
-        Line::new(Values::from_explicit_callback(
-            move |x| 0.5 * (2.0 * x).sin() * time.sin(),
-            ..,
-            512,
-        ))
-        .color(Color32::from_rgb(200, 100, 100))
-        .style(self.line_style)
-        .name("wave")
-    }
-
-    fn thingy(&self) -> Line {
-        let time = self.time;
-        Line::new(Values::from_parametric_callback(
-            move |t| ((2.0 * t + time).sin(), (3.0 * t).sin()),
-            0.0..=TAU,
-            256,
-        ))
-        .color(Color32::from_rgb(100, 150, 250))
-        .style(self.line_style)
-        .name("x = sin(2t), y = sin(3t)")
+    pub fn set_offset(&mut self, click_pos: Pos2, rect: Rect) {
+        let plot_begin = rect.min + (rect.center() - rect.min) * 0.05;
+        let plot_width = rect.width() / 1.1;
+        let relative_progress = (click_pos.x - plot_begin.x) / plot_width;
+        self.cut_time = self.excerpt.excerpt.get_absolute_time_by_relative_progress(relative_progress as f64);
     }
 }
 
-impl Widget for &mut LineDemo {
+impl Widget for &mut ExcerptPlot {
     fn ui(self, ui: &mut Ui) -> Response {
-        self.options_ui(ui);
-        if self.animate {
-            ui.ctx().request_repaint();
-            self.time += ui.input().unstable_dt.at_most(1.0 / 30.0) as f64;
-        };
-        let mut plot = Plot::new("lines_demo")
-            .line(self.circle())
-            .line(self.sin())
-            .line(self.thingy())
-            .legend(Legend::default());
-        if self.square {
-            plot = plot.view_aspect(1.0);
+        let (line_before, line_after) = self.get_lines();
+        let plot = Plot::new("volume")
+            .line(line_before.color(self.get_line_color(self.finished_cutting_song_before)))
+            .line(line_after.color(self.get_line_color(self.finished_cutting_song_after)))
+            .legend(Legend::default())
+            .view_aspect(config::PLOT_ASPECT)
+            .show_x(false)
+            .show_y(false)
+            .allow_drag(false)
+            .allow_zoom(false)
+            .vline(VLine::new(self.cut_time.time))
+            .show_background(false)
+            ;
+        let response = ui.add(plot);
+        if response.dragged() {
+            if let Some(pos) = response.interact_pointer_pos() {
+                self.set_offset(pos, response.rect);
+            }
         }
-        if self.proportional {
-            plot = plot.data_aspect(1.0);
-        }
-        ui.add(plot)
+        response
     }
 }
