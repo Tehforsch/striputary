@@ -1,11 +1,8 @@
-// pub static SONG_X_START: f32 = -200.0;
-// pub static SONG_X_END: f32 = 200.0;
-// pub static SONG_TEXT_X_DISTANCE: f32 = 150.0;
-
-// pub static SONG_Y_START: f32 = -100.0;
-// pub static SONG_HEIGHT: f32 = 100.0;
-// pub static Y_DISTANCE_PER_MOUSEWHEEL_TICK: f32 = 60.0;
-// pub static Y_OFFSET_PER_SONG: f32 = -120.0;
-// pub static SONG_TEXT_Y_OFFSET: f32 = -100.0;
+use eframe::egui::Color32;
 
 pub static PLOT_ASPECT: f32 = 100.0;
+pub static CUT_LINE_COLOR: Color32 = Color32::GREEN;
+pub static UNCUT_LINE_COLOR: Color32 = Color32::RED;
+
+pub static CUT_LABEL_COLOR: Color32 = Color32::GREEN;
+pub static UNCUT_LABEL_COLOR: Color32 = Color32::WHITE;

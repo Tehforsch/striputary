@@ -62,7 +62,7 @@ impl CuttingThreadHandle {
 
     pub fn get_cut_songs(&mut self) -> &Vec<Song> {
         if let Ok(received) = self.song_receiver.recv_timeout(Duration::from_millis(5)) {
-            self.cut_songs.push(dbg!(received));
+            self.cut_songs.push(received);
         }
         &self.cut_songs
     }

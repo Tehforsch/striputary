@@ -28,8 +28,8 @@ impl ExcerptPlot {
 
     pub fn get_line_color(&self, finished_cutting: bool) -> Color32 {
         match finished_cutting {
-            true => Color32::GREEN,
-            false => Color32::RED,
+            true => config::CUT_LINE_COLOR,
+            false => config::UNCUT_LINE_COLOR,
         }
     }
 

@@ -3,15 +3,15 @@ mod cutting_thread;
 mod plot;
 mod playback;
 
-use crate::{cut::CutInfo, excerpt_collection::ExcerptCollection, excerpt_collections::ExcerptCollections};
-use eframe::{egui, epi};
+use crate::{cut::CutInfo, excerpt_collection::ExcerptCollection, excerpt_collections::ExcerptCollections, song::Song};
+use eframe::{egui::{self, Align, Color32, Label, Layout, Ui}, epi};
 
 use self::{cutting_thread::CuttingThreadHandle, playback::{PlaybackThreadHandle, play_excerpt}, plot::ExcerptPlot};
 
 pub struct StriputaryGui {
     collections: ExcerptCollections,
     plots: Vec<ExcerptPlot>,
-    thread: CuttingThreadHandle,
+    cut_thread: CuttingThreadHandle,
     current_playback: Option<PlaybackThreadHandle>,
 }
 
@@ -24,7 +24,7 @@ impl StriputaryGui {
         Self {
             collections,
             plots,
-            thread,
+            cut_thread: thread,
             current_playback,
         }
     }
@@ -43,9 +43,24 @@ impl StriputaryGui {
             .collect()
     }
 
+    pub fn get_label_color(finished_cutting: bool) -> Color32 {
+        match finished_cutting {
+            true => config::CUT_LABEL_COLOR,
+            false => config::UNCUT_LABEL_COLOR,
+        }
+    }
+
+
+    fn add_plot_label(ui: &mut Ui, song: Option<&Song>, finished_cutting: bool) {
+        let color = StriputaryGui::get_label_color(finished_cutting);
+        if let Some(ref song) = song {
+            ui.add(Label::new(format!("{}", song.title)).text_color(color));
+        }
+    }
+
     fn cut_songs(&self) {
         let cut_infos = self.get_cut_info();
-        self.thread.send_cut_infos(cut_infos);
+        self.cut_thread.send_cut_infos(cut_infos);
     }
 
     fn get_cut_info(&self) -> Vec<CutInfo> {
@@ -64,7 +79,7 @@ impl StriputaryGui {
     }
 
     fn mark_cut_songs(&mut self) {
-        let cut_songs = self.thread.get_cut_songs();
+        let cut_songs = self.cut_thread.get_cut_songs();
         for song in cut_songs {
             for plot in self.plots.iter_mut() {
                 if let Some(ref song_before) = plot.excerpt.song_before {
@@ -126,10 +141,23 @@ impl epi::App for StriputaryGui {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             for plot in self.plots.iter_mut() {
-                // if let Some(ref song) = plot.excerpt.song {
-                    // ui.label(format!("{} - {}", song.artist, song.title));
-                // }
+                ui.horizontal(|ui| {
+                    Self::add_plot_label(ui, plot.excerpt.song_before.as_ref(), plot.finished_cutting_song_before);
+                    ui.with_layout(Layout::right_to_left(), |ui| {
+                        Self::add_plot_label(ui, plot.excerpt.song_after.as_ref(), plot.finished_cutting_song_after);
+                    });
+                });
                 ui.add(plot);
+                // ui.columns(2, |columns| {
+                //     if let Some(ref song) = plot.excerpt.song_before {
+                //         columns[0].label(format!("{}", song.title));
+                //     }
+                //     if let Some(ref song) = plot.excerpt.song_after {
+                //         columns[1].with_layout(Layout::left_to_right(), |ui| {
+                //             ui.label(format!("{}", song.title));
+                //         });
+                //     }
+                // });
             }
             egui::warn_if_debug_build(ui);
         });
