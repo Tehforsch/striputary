@@ -27,4 +27,12 @@ impl ExcerptCollections {
         }
         self.num_selected -= 1;
     }
+
+    pub fn select(&mut self, num: usize) {
+        self.num_selected = num;
+    }
+
+    pub fn enumerate(&self) -> Box<dyn Iterator<Item = (usize, &ExcerptCollection)> + '_> {
+        Box::new(self.collections.iter().enumerate())
+    }
 }

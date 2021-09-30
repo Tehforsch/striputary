@@ -2,24 +2,31 @@ mod config;
 mod cutting_thread;
 mod plot;
 
-use crate::{
-    cut::CutInfo, excerpt_collection::NamedExcerpt, excerpt_collections::ExcerptCollections,
-    song::Song,
-};
+use crate::{cut::CutInfo, excerpt_collection::{ExcerptCollection, NamedExcerpt}, excerpt_collections::ExcerptCollections, song::Song};
 use eframe::{egui, epi};
 
 use self::{cutting_thread::CuttingThreadHandle, plot::ExcerptPlot};
 
-pub struct TemplateApp {
+pub struct StriputaryGui {
     collections: ExcerptCollections,
     plots: Vec<ExcerptPlot>,
     thread: CuttingThreadHandle,
 }
 
-impl TemplateApp {
+impl StriputaryGui {
     pub fn new(collections: ExcerptCollections) -> Self {
         let collection = collections.get_selected();
-        let plots = collection
+        let plots = StriputaryGui::get_plots(collection);
+        let thread = CuttingThreadHandle::default();
+        Self {
+            collections,
+            plots,
+            thread,
+        }
+    }
+
+    fn get_plots(collection: &ExcerptCollection) -> Vec<ExcerptPlot> {
+        collection
             .iter_excerpts()
             .map(|excerpt| {
                 ExcerptPlot::new(
@@ -29,13 +36,7 @@ impl TemplateApp {
                         .get_absolute_time_from_time_offset(collection.offset_guess),
                 )
             })
-            .collect();
-        let thread = CuttingThreadHandle::default();
-        Self {
-            collections,
-            plots,
-            thread,
-        }
+            .collect()
     }
 
     fn cut_songs(&self) {
@@ -75,9 +76,14 @@ impl TemplateApp {
             }
         }
     }
+
+    fn select(&mut self, selection: usize) {
+        self.collections.select(selection);
+        self.plots = StriputaryGui::get_plots(self.collections.get_selected());
+    }
 }
 
-impl epi::App for TemplateApp {
+impl epi::App for StriputaryGui {
     fn name(&self) -> &str {
         "Striputary"
     }
@@ -86,11 +92,15 @@ impl epi::App for TemplateApp {
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             // The top panel is often a good place for a menu bar:
             egui::menu::bar(ui, |ui| {
-                egui::menu::menu(ui, "File", |ui| {
-                    if ui.button("Quit").clicked() {
-                        frame.quit();
+                let mut selection: Option<usize> = None;
+                for (i, collection) in self.collections.enumerate() {
+                    if ui.button(collection.name()).clicked() {
+                        selection = Some(i);
                     }
-                });
+                }
+                if let Some(selection) = selection {
+                    self.select(selection);
+                }
             });
         });
 

@@ -23,4 +23,12 @@ impl ExcerptCollection {
     pub fn get_excerpt(&self, num: usize) -> &NamedExcerpt {
         &self.excerpts[num]
     }
+
+    pub fn name(&self) -> String {
+        let first_song = self.session.songs.first();
+        match first_song {
+            Some(first_song) => format!("{} - {}", first_song.artist, first_song.album),
+            None => "".into(),
+        }
+    }
 }
