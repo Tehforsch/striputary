@@ -7,7 +7,10 @@ use crate::{
     cut::CutInfo, excerpt_collection::ExcerptCollection, excerpt_collections::ExcerptCollections,
     song::Song,
 };
-use eframe::{egui::{self, Button, Color32, Label, Layout, Response, TextStyle, Ui}, epi};
+use eframe::{
+    egui::{self, Button, Color32, Label, Layout, Response, TextStyle, Ui},
+    epi,
+};
 
 use self::{
     cutting_thread::CuttingThreadHandle,
@@ -101,7 +104,11 @@ impl StriputaryGui {
             ui.columns(self.collections.len(), |columns| {
                 let mut selection: Option<usize> = None;
                 for (i, collection) in self.collections.enumerate() {
-                    let button = add_collection_button(&mut columns[i], self.collections.get_selected_index() == i, collection);
+                    let button = add_collection_button(
+                        &mut columns[i],
+                        self.collections.get_selected_index() == i,
+                        collection,
+                    );
                     if button.clicked() {
                         selection = Some(i);
                     }
@@ -114,14 +121,16 @@ impl StriputaryGui {
     }
 
     fn add_side_bar(&mut self, ctx: &egui::CtxRef) {
-        egui::SidePanel::left("side_panel").resizable(false).show(ctx, |ui| {
-            if ui.button("Cut").clicked() {
-                self.cut_songs();
-            }
-            if ui.button("Playback").clicked() {
-                self.play_last_touched_song();
-            }
-        });
+        egui::SidePanel::left("side_panel")
+            .resizable(false)
+            .show(ctx, |ui| {
+                if ui.button("Cut").clicked() {
+                    self.cut_songs();
+                }
+                if ui.button("Playback").clicked() {
+                    self.play_last_touched_song();
+                }
+            });
     }
 
     fn add_central_panel(&mut self, ctx: &egui::CtxRef) {
@@ -165,7 +174,6 @@ impl epi::App for StriputaryGui {
     }
 }
 
-
 fn get_plots(collection: &ExcerptCollection) -> Vec<ExcerptPlot> {
     collection
         .iter_excerpts()
@@ -196,7 +204,6 @@ fn add_collection_button(ui: &mut Ui, selected: bool, collection: &ExcerptCollec
     }
     ui.add(button)
 }
-
 
 fn add_plot_label(ui: &mut Ui, song: Option<&Song>, finished_cutting: bool) {
     let color = get_label_color(finished_cutting);
