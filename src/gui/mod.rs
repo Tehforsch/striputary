@@ -2,7 +2,7 @@ mod config;
 mod cutting_thread;
 mod plot;
 
-use crate::{cut::CutInfo, excerpt_collection::{ExcerptCollection, NamedExcerpt}, excerpt_collections::ExcerptCollections, song::Song};
+use crate::{cut::CutInfo, excerpt_collection::ExcerptCollection, excerpt_collections::ExcerptCollections};
 use eframe::{egui, epi};
 
 use self::{cutting_thread::CuttingThreadHandle, plot::ExcerptPlot};
@@ -88,7 +88,7 @@ impl epi::App for StriputaryGui {
         "Striputary"
     }
 
-    fn update(&mut self, ctx: &egui::CtxRef, frame: &mut epi::Frame<'_>) {
+    fn update(&mut self, ctx: &egui::CtxRef, _: &mut epi::Frame<'_>) {
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             // The top panel is often a good place for a menu bar:
             egui::menu::bar(ui, |ui| {

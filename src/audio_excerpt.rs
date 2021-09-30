@@ -1,5 +1,5 @@
 use crate::audio_time::AudioTime;
-use crate::config::{NUM_OFFSETS_TO_TRY, NUM_PLOT_DATA_POINTS, NUM_SAMPLES_PER_AVERAGE_VOLUME};
+use crate::config::{NUM_PLOT_DATA_POINTS, NUM_SAMPLES_PER_AVERAGE_VOLUME};
 use hound::WavSpec;
 use rodio::Source;
 use std::i16;
