@@ -167,9 +167,7 @@ impl epi::App for StriputaryGui {
     fn update(&mut self, ctx: &egui::CtxRef, _: &mut epi::Frame<'_>) {
         self.add_top_bar(ctx);
         self.add_side_bar(ctx);
-
         self.add_central_panel(ctx);
-
         self.mark_cut_songs();
     }
 }
