@@ -1,16 +1,18 @@
 mod config;
 mod cutting_thread;
 mod plot;
+mod playback;
 
 use crate::{cut::CutInfo, excerpt_collection::ExcerptCollection, excerpt_collections::ExcerptCollections};
 use eframe::{egui, epi};
 
-use self::{cutting_thread::CuttingThreadHandle, plot::ExcerptPlot};
+use self::{cutting_thread::CuttingThreadHandle, playback::{PlaybackThreadHandle, play_excerpt}, plot::ExcerptPlot};
 
 pub struct StriputaryGui {
     collections: ExcerptCollections,
     plots: Vec<ExcerptPlot>,
     thread: CuttingThreadHandle,
+    current_playback: Option<PlaybackThreadHandle>,
 }
 
 impl StriputaryGui {
@@ -18,10 +20,12 @@ impl StriputaryGui {
         let collection = collections.get_selected();
         let plots = StriputaryGui::get_plots(collection);
         let thread = CuttingThreadHandle::default();
+        let current_playback = None;
         Self {
             collections,
             plots,
             thread,
+            current_playback,
         }
     }
 
@@ -107,6 +111,14 @@ impl epi::App for StriputaryGui {
         egui::SidePanel::left("side_panel").show(ctx, |ui| {
             if ui.button("Cut").clicked() {
                 self.cut_songs();
+            }
+            if ui.button("Playback").clicked() {
+                let plot = &self.plots[0];
+                let excerpt = &plot.excerpt.excerpt;
+                if let Some(ref thread) = self.current_playback {
+                    thread.shut_down();
+                }
+                self.current_playback = Some(play_excerpt(excerpt, excerpt.get_relative_time(plot.cut_time)));
             }
         });
 

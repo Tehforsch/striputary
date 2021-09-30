@@ -57,6 +57,10 @@ impl AudioExcerpt {
         AudioTime::from_time_and_spec((self.end.time - self.start.time) * pos, self.spec)
     }
 
+    pub fn get_relative_time(&self, absolute_time: AudioTime) -> AudioTime {
+        absolute_time - self.start
+    }
+
     pub fn get_relative_progress_from_time_offset(&self, time_offset: f64) -> f64 {
         // time_offset is relative to the center
         0.5 + (time_offset / (self.end.time - self.start.time))
