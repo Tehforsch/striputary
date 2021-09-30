@@ -39,4 +39,8 @@ impl ExcerptCollections {
     pub fn get_selected_index(&self) -> usize {
         self.num_selected
     }
+
+    pub fn len(&self) -> usize {
+        self.collections.len()
+    }
 }

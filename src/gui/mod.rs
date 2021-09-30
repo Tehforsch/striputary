@@ -98,10 +98,10 @@ impl StriputaryGui {
 
     fn add_top_bar(&mut self, ctx: &egui::CtxRef) {
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
-            egui::menu::bar(ui, |ui| {
+            ui.columns(self.collections.len(), |columns| {
                 let mut selection: Option<usize> = None;
                 for (i, collection) in self.collections.enumerate() {
-                    let button = add_collection_button(ui, self.collections.get_selected_index() == i, collection);
+                    let button = add_collection_button(&mut columns[i], self.collections.get_selected_index() == i, collection);
                     if button.clicked() {
                         selection = Some(i);
                     }
