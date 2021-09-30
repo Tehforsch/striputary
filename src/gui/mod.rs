@@ -3,11 +3,8 @@ mod cutting_thread;
 mod playback;
 mod plot;
 
-use crate::{cut::CutInfo, excerpt_collection::ExcerptCollection, song::Song};
-use eframe::{
-    egui::{self, Button, Color32, Label, Layout, Response, TextStyle, Ui},
-    epi,
-};
+use crate::{audio_time::AudioTime, cut::CutInfo, excerpt_collection::ExcerptCollection, song::Song};
+use eframe::{egui::{self, Button, Color32, Label, Layout, Pos2, Response, TextStyle, Ui}, epi};
 
 use self::{
     cutting_thread::CuttingThreadHandle,
@@ -160,6 +157,7 @@ impl StriputaryGui {
     fn add_central_panel(&mut self, ctx: &egui::CtxRef) {
         let collection_index = self.selected_collection;
         egui::CentralPanel::default().show(ctx, |ui| {
+            let mut clicked_pos: Option<Pos2> = None;
             for (plot_song, plot) in self.plots.iter_mut().enumerate().map(|(song_index, plot)| {
                 (
                     SongIdentifier {
@@ -194,9 +192,13 @@ impl StriputaryGui {
                         }
                     }
                 }
+                plot.move_cut_marker_to_pos = clicked_pos;
                 let plot = ui.add(plot);
                 if plot.is_pointer_button_down_on() {
                     self.last_touched_song = Some(plot_song);
+                    if let Some(pos) = plot.interact_pointer_pos() {
+                        clicked_pos = Some(pos);
+                    }
                 };
             }
             egui::warn_if_debug_build(ui);
