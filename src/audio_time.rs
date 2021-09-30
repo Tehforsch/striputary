@@ -44,7 +44,6 @@ impl ops::Sub<AudioTime> for AudioTime {
     }
 }
 
-
 impl ops::Add<AudioTime> for AudioTime {
     type Output = AudioTime;
 

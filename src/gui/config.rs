@@ -14,4 +14,3 @@ pub static CUT_KEY: Key = Key::Enter;
 pub static PLAYBACK_KEY: Key = Key::Space;
 pub static SELECT_PREVIOUS_KEY: Key = Key::ArrowLeft;
 pub static SELECT_NEXT_KEY: Key = Key::ArrowRight;
-

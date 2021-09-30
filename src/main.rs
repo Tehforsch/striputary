@@ -6,8 +6,6 @@ pub mod cut;
 pub mod dbus;
 pub mod errors;
 pub mod excerpt_collection;
-pub mod excerpt_collections;
-// pub mod gui;
 pub mod gui;
 pub mod path_utils;
 pub mod record;
@@ -28,7 +26,6 @@ use anyhow::{anyhow, Context, Result};
 use args::Opts;
 use clap::Clap;
 use cut::get_excerpt_collection;
-use excerpt_collections::ExcerptCollections;
 use path_utils::get_yaml_files;
 use record::record_new_session;
 use service_config::ServiceConfig;
@@ -112,8 +109,7 @@ fn load_sessions_and_cut(session_dir: &Path) -> Result<()> {
 }
 
 fn run_gui(sessions: Vec<RecordingSession>) {
-    let collections =
-        ExcerptCollections::new(sessions.into_iter().map(get_excerpt_collection).collect());
+    let collections = sessions.into_iter().map(get_excerpt_collection).collect();
     let app = StriputaryGui::new(collections);
     let native_options = eframe::NativeOptions::default();
     eframe::run_native(Box::new(app), native_options);

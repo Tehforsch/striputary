@@ -24,8 +24,13 @@ impl PlaybackThreadHandle {
 
     pub fn get_elapsed_audio_time(&self) -> AudioTime {
         let time_expired = SystemTime::now().duration_since(self.start_system_time);
-        let time_expired_secs = time_expired.unwrap_or(Duration::from_millis(0)).as_secs_f64();
-        AudioTime::from_time_same_spec(self.start_audio_time.time + time_expired_secs, self.start_audio_time)
+        let time_expired_secs = time_expired
+            .unwrap_or(Duration::from_millis(0))
+            .as_secs_f64();
+        AudioTime::from_time_same_spec(
+            self.start_audio_time.time + time_expired_secs,
+            self.start_audio_time,
+        )
     }
 }
 
@@ -42,5 +47,9 @@ pub fn play_excerpt(excerpt: &AudioExcerpt, start_time: AudioTime) -> PlaybackTh
         sink.play();
         if let Ok(_) = shutdown_receiver.recv() {}
     });
-    PlaybackThreadHandle { shutdown_sender, start_system_time: SystemTime::now(), start_audio_time: start_time }
+    PlaybackThreadHandle {
+        shutdown_sender,
+        start_system_time: SystemTime::now(),
+        start_audio_time: start_time,
+    }
 }

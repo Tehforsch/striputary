@@ -3,10 +3,7 @@ mod cutting_thread;
 mod playback;
 mod plot;
 
-use crate::{
-    audio_time::AudioTime, cut::CutInfo, excerpt_collection::ExcerptCollection,
-    excerpt_collections::ExcerptCollections, song::Song,
-};
+use crate::{cut::CutInfo, excerpt_collection::ExcerptCollection, song::Song};
 use eframe::{
     egui::{self, Button, Color32, Label, Layout, Response, TextStyle, Ui},
     epi,
@@ -18,33 +15,36 @@ use self::{
     plot::ExcerptPlot,
 };
 
+type CollectionIdentifier = usize;
+
 #[derive(PartialEq, Eq, Copy, Clone)]
-pub struct SongIdentifier {
+struct SongIdentifier {
     song_index: usize,
-    collection_index: usize,
+    collection_index: CollectionIdentifier,
 }
 
 pub struct StriputaryGui {
-    collections: ExcerptCollections,
+    collections: Vec<ExcerptCollection>,
     plots: Vec<ExcerptPlot>,
     cut_thread: CuttingThreadHandle,
     current_playback: Option<(SongIdentifier, PlaybackThreadHandle)>,
     last_touched_song: Option<SongIdentifier>,
+    selected_collection: CollectionIdentifier,
 }
 
 impl StriputaryGui {
-    pub fn new(collections: ExcerptCollections) -> Self {
-        let collection = collections.get_selected();
-        let plots = get_plots(collection);
+    pub fn new(collections: Vec<ExcerptCollection>) -> Self {
         let thread = CuttingThreadHandle::default();
-        let current_playback = None;
-        Self {
+        let mut gui = Self {
             collections,
-            plots,
+            plots: vec![],
             cut_thread: thread,
-            current_playback,
+            current_playback: None,
             last_touched_song: None,
-        }
+            selected_collection: 0,
+        };
+        gui.select(0);
+        gui
     }
 
     fn cut_songs(&self) {
@@ -53,7 +53,7 @@ impl StriputaryGui {
     }
 
     fn get_cut_info(&self) -> Vec<CutInfo> {
-        let collection = self.collections.get_selected();
+        let collection = self.get_selected_collection();
         let mut cut_info: Vec<CutInfo> = vec![];
         for (plot_start, plot_end) in self.plots.iter().zip(self.plots[1..].iter()) {
             let song = plot_start.excerpt.song_after.as_ref().unwrap();
@@ -99,21 +99,36 @@ impl StriputaryGui {
         }
     }
 
-    fn select(&mut self, selection: usize) {
-        self.collections.select(selection);
-        self.plots = get_plots(self.collections.get_selected());
+    fn select(&mut self, selection: CollectionIdentifier) {
+        self.selected_collection = selection;
+        self.plots = get_plots(self.get_selected_collection());
+    }
+
+    pub fn get_selected_collection(&self) -> &ExcerptCollection {
+        &self.collections[self.selected_collection]
+    }
+
+    pub fn select_next_collection(&mut self) {
+        if self.selected_collection == self.collections.len() - 1 {
+            return;
+        }
+        self.select(self.selected_collection + 1);
+    }
+
+    pub fn select_previous_collection(&mut self) {
+        if self.selected_collection == 0 {
+            return;
+        }
+        self.select(self.selected_collection - 1);
     }
 
     fn add_top_bar(&mut self, ctx: &egui::CtxRef) {
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             ui.columns(self.collections.len(), |columns| {
                 let mut selection: Option<usize> = None;
-                for (i, collection) in self.collections.enumerate() {
-                    let button = add_collection_button(
-                        &mut columns[i],
-                        self.collections.get_selected_index() == i,
-                        collection,
-                    );
+                for (i, collection) in self.collections.iter().enumerate() {
+                    let is_selected = self.selected_collection == i;
+                    let button = add_collection_button(&mut columns[i], is_selected, collection);
                     if button.clicked() {
                         selection = Some(i);
                     }
@@ -129,7 +144,8 @@ impl StriputaryGui {
         egui::SidePanel::left("side_panel")
             .resizable(false)
             .show(ctx, |ui| {
-                let mut add_large_button = |name| { ui.add(Button::new(name).text_style(TextStyle::Heading)) };
+                let mut add_large_button =
+                    |name| ui.add(Button::new(name).text_style(TextStyle::Heading));
                 let cut_button = add_large_button("Cut");
                 let playback_button = add_large_button("Playback");
                 if cut_button.clicked() || ctx.input().key_pressed(config::CUT_KEY) {
@@ -142,7 +158,7 @@ impl StriputaryGui {
     }
 
     fn add_central_panel(&mut self, ctx: &egui::CtxRef) {
-        let collection_index = self.collections.get_selected_index();
+        let collection_index = self.selected_collection;
         egui::CentralPanel::default().show(ctx, |ui| {
             for (plot_song, plot) in self.plots.iter_mut().enumerate().map(|(song_index, plot)| {
                 (
@@ -199,10 +215,10 @@ impl epi::App for StriputaryGui {
         self.add_central_panel(ctx);
         self.mark_cut_songs();
         if ctx.input().key_pressed(config::SELECT_NEXT_KEY) {
-            self.collections.select_next();
+            self.select_next_collection();
         }
         if ctx.input().key_pressed(config::SELECT_PREVIOUS_KEY) {
-            self.collections.select_previous();
+            self.select_previous_collection();
         }
         ctx.request_repaint();
     }
