@@ -4,11 +4,13 @@ use crate::config::{
 use crate::dbus::{collect_dbus_info, previous_song, start_playback, stop_playback};
 use crate::recording_session::RecordingSession;
 use crate::run_args::RunArgs;
+use crate::song::Song;
 use crate::{recorder, yaml_session};
 use anyhow::{anyhow, Context, Result};
 use std::fs::create_dir_all;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
@@ -28,14 +30,20 @@ pub enum RecordingStatus {
 pub struct RecordingThreadHandle {
     handle: JoinHandle<Result<()>>,
     is_running: Arc<AtomicBool>,
+    receiver: Receiver<Song>,
 }
 
 impl RecordingThreadHandle {
     pub fn new(run_args: &RunArgs) -> Self {
         let is_running = Arc::new(AtomicBool::new(true));
-        let mut thread = RecordingThread::new(is_running.clone(), run_args);
+        let (sender, receiver) = channel();
+        let mut thread = RecordingThread::new(is_running.clone(), sender, run_args);
         let handle = thread::spawn(move || thread.record_sessions_and_save_session_files());
-        Self { handle, is_running }
+        Self {
+            handle,
+            is_running,
+            receiver,
+        }
     }
 
     pub fn check_still_running(&self) -> bool {
@@ -45,23 +53,23 @@ impl RecordingThreadHandle {
     pub fn get_result(self) -> Result<()> {
         self.handle.join().unwrap()
     }
+
+    pub fn get_new_songs(&self) -> Option<Song> {
+        self.receiver.recv_timeout(Duration::from_millis(100)).ok()
+    }
 }
 
-pub enum FallibleRecordingThreadHandle {
+pub enum RecordingThreadHandleStatus {
     Running(RecordingThreadHandle),
     Failed(anyhow::Error),
     Stopped,
 }
 
-impl FallibleRecordingThreadHandle {
-    pub fn new(run_args: &RunArgs) -> Self {
-        Self::Running(RecordingThreadHandle::new(run_args))
-    }
-
-    pub fn handle(&mut self) {
+impl RecordingThreadHandleStatus {
+    pub fn update(&mut self) {
         take_mut::take(self, |tmp_self| {
             let thread_failed = match tmp_self {
-                FallibleRecordingThreadHandle::Running(ref thread) => !thread.check_still_running(),
+                Self::Running(ref thread) => !thread.check_still_running(),
                 _ => false,
             };
 
@@ -79,10 +87,44 @@ impl FallibleRecordingThreadHandle {
             tmp_self
         });
     }
+}
+
+pub struct FallibleRecordingThreadHandle {
+    pub status: RecordingThreadHandleStatus,
+    recorded_songs: Vec<Song>,
+}
+
+impl FallibleRecordingThreadHandle {
+    pub fn new_stopped() -> Self {
+        Self {
+            status: RecordingThreadHandleStatus::Stopped,
+            recorded_songs: vec![],
+        }
+    }
+
+    pub fn new_running(run_args: &RunArgs) -> Self {
+        Self {
+            status: RecordingThreadHandleStatus::Running(RecordingThreadHandle::new(run_args)),
+            recorded_songs: vec![],
+        }
+    }
+
+    pub fn update(&mut self) {
+        self.status.update();
+        self.update_songs();
+    }
+
+    fn update_songs(&mut self) {
+        if let RecordingThreadHandleStatus::Running(ref thread) = self.status {
+            if let Some(song) = thread.get_new_songs() {
+                self.recorded_songs.push(song)
+            }
+        }
+    }
 
     pub fn is_running(&self) -> bool {
-        match self {
-            Self::Running(_) => true,
+        match self.status {
+            RecordingThreadHandleStatus::Running(_) => true,
             _ => false,
         }
     }
@@ -92,14 +134,16 @@ pub struct RecordingThread {
     run_args: RunArgs,
     recorded_sessions: Vec<RecordingSession>,
     is_running: Arc<AtomicBool>,
+    sender: Sender<Song>,
 }
 
 impl RecordingThread {
-    pub fn new(is_running: Arc<AtomicBool>, run_args: &RunArgs) -> Self {
+    pub fn new(is_running: Arc<AtomicBool>, sender: Sender<Song>, run_args: &RunArgs) -> Self {
         Self {
             run_args: run_args.clone(),
             recorded_sessions: vec![],
             is_running,
+            sender,
         }
     }
 
@@ -110,6 +154,7 @@ impl RecordingThread {
                 let buffer_file = self.run_args.get_buffer_file(num);
                 let (status, session) = self.record_new_session(&session_file, &buffer_file)?;
                 yaml_session::save(&session)?;
+                self.recorded_sessions.push(session);
                 if status == RecordingExitStatus::FinishedOrInterrupted {
                     break;
                 }
@@ -136,8 +181,6 @@ impl RecordingThread {
         let record_start_time = Instant::now();
         // Check for dbus signals while recording until terminated
         let (status, session) = self.polling_loop(session_file, &record_start_time)?;
-        // Whether the loop ended because of the user interrupt (ctrl-c) or
-        // because the playback was stopped doesn't matter - kill the recording processes
         recorder::stop_recording(recording_handles)?;
         Ok((status, session))
     }
@@ -179,11 +222,19 @@ impl RecordingThread {
         println!("Start playback.");
         start_playback(&self.run_args.service_config)?;
         loop {
-            let playback_status = collect_dbus_info(&mut session, &self.run_args.service_config)?;
+            let (new_song, playback_status) =
+                collect_dbus_info(&mut session, &self.run_args.service_config)?;
             if let RecordingStatus::Finished(exit_status) = playback_status {
                 return Ok((exit_status, session));
             }
+            if let Some(song) = new_song {
+                self.add_new_song(song);
+            }
         }
+    }
+
+    fn add_new_song(&self, song: Song) {
+        self.sender.send(song).unwrap();
     }
 
     fn final_buffer_phase(&self) {

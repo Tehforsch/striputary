@@ -6,7 +6,7 @@ mod plot;
 use crate::{
     cut::CutInfo,
     excerpt_collection::ExcerptCollection,
-    record::{FallibleRecordingThreadHandle, RecordingThreadHandle},
+    record::{FallibleRecordingThreadHandle, RecordingThreadHandle, RecordingThreadHandleStatus},
     run_args::RunArgs,
     song::Song,
 };
@@ -51,7 +51,7 @@ impl StriputaryGui {
             collections,
             plots: vec![],
             cut_thread,
-            record_thread: FallibleRecordingThreadHandle::Stopped,
+            record_thread: FallibleRecordingThreadHandle::new_stopped(),
             current_playback: None,
             last_touched_song: None,
             selected_collection: 0,
@@ -121,7 +121,7 @@ impl StriputaryGui {
 
     fn start_recording(&mut self) {
         if !self.record_thread.is_running() {
-            self.record_thread = FallibleRecordingThreadHandle::new(&self.run_args);
+            self.record_thread = FallibleRecordingThreadHandle::new_running(&self.run_args);
         }
     }
 
@@ -193,7 +193,7 @@ impl StriputaryGui {
         if !self.record_thread.is_running() {
             self.add_record_button(ui);
         }
-        if let FallibleRecordingThreadHandle::Failed(ref error) = self.record_thread {
+        if let RecordingThreadHandleStatus::Failed(ref error) = self.record_thread.status {
             self.add_recording_thread_error_message(ui, error);
         }
     }
@@ -268,7 +268,7 @@ impl epi::App for StriputaryGui {
     }
 
     fn update(&mut self, ctx: &egui::CtxRef, _: &mut epi::Frame<'_>) {
-        self.record_thread.handle();
+        self.record_thread.update();
         self.add_top_bar(ctx);
         self.add_side_bar(ctx);
         self.add_central_panel(ctx);
