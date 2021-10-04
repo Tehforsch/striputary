@@ -4,10 +4,7 @@ use std::{
     time::Duration,
 };
 
-use crate::{
-    cut::{cut_song, CutInfo},
-    song::Song,
-};
+use crate::{config, cut::{cut_song, CutInfo}, song::Song};
 
 struct CuttingThread {
     pub to_cut: Vec<CutInfo>,
@@ -68,7 +65,7 @@ impl CuttingThreadHandle {
     }
 
     pub fn get_cut_songs(&mut self) -> &Vec<Song> {
-        if let Ok(received) = self.song_receiver.recv_timeout(Duration::from_millis(5)) {
+        if let Ok(received) = self.song_receiver.recv_timeout(Duration::from_millis(config::RECV_CUT_SONG_TIMEOUT)) {
             self.cut_songs.push(received);
         }
         &self.cut_songs

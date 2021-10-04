@@ -34,7 +34,7 @@ impl RecordingThreadHandleStatus {
 
 pub struct FallibleRecordingThreadHandle {
     pub status: RecordingThreadHandleStatus,
-    recorded_songs: Vec<Song>,
+    pub recorded_songs: Vec<Song>,
 }
 
 impl FallibleRecordingThreadHandle {

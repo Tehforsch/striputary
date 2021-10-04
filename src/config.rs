@@ -17,3 +17,6 @@ pub static NUM_OFFSETS_TO_TRY: i64 = 1000;
 pub static NUM_SAMPLES_PER_AVERAGE_VOLUME: usize = 2000;
 
 pub static NUM_PLOT_DATA_POINTS: i64 = 500;
+
+pub static RECV_RECORDED_SONG_TIMEOUT: u64 = 2;
+pub static RECV_CUT_SONG_TIMEOUT: u64 = 2;

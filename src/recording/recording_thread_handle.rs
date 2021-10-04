@@ -6,6 +6,7 @@ use std::thread::{self, JoinHandle};
 use std::time::{Duration};
 
 
+use crate::config;
 use crate::run_args::RunArgs;
 use crate::song::Song;
 
@@ -40,6 +41,6 @@ impl RecordingThreadHandle {
     }
 
     pub fn get_new_songs(&self) -> Option<Song> {
-        self.receiver.recv_timeout(Duration::from_millis(100)).ok()
+        self.receiver.recv_timeout(Duration::from_millis(config::RECV_RECORDED_SONG_TIMEOUT)).ok()
     }
 }
