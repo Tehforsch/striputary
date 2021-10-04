@@ -11,21 +11,18 @@ use crate::{
 };
 
 struct CuttingThread {
-    pub to_cut: Vec<CutInfo>,
-    receiver: Receiver<CutInfo>,
+    pub to_cut: DataStream<CutInfo>,
     song_sender: Sender<Song>,
 }
 
 impl CuttingThread {
     pub fn cutting_loop(&mut self) {
         loop {
-            if let Some(info) = self.to_cut.pop() {
+            if let Some(info) = self.to_cut.get_data_mut().pop() {
                 cut_song(&info).unwrap();
                 self.song_sender.send(info.song).unwrap();
             }
-            if let Ok(received) = self.receiver.recv() {
-                self.to_cut.push(received);
-            }
+            self.to_cut.update_no_timeout();
         }
     }
 }
@@ -33,8 +30,7 @@ impl CuttingThread {
 impl CuttingThread {
     fn new(receiver: Receiver<CutInfo>, song_sender: Sender<Song>) -> Self {
         CuttingThread {
-            to_cut: vec![],
-            receiver,
+            to_cut: DataStream::new(receiver),
             song_sender,
         }
     }
