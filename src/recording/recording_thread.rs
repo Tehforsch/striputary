@@ -13,9 +13,9 @@ use crate::song::Song;
 use crate::{yaml_session};
 use anyhow::{anyhow, Context, Result};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::{Sender};
 use std::sync::Arc;
-use std::thread::{self, JoinHandle};
+use std::thread::{self};
 use std::time::{Duration, Instant};
 
 use super::recording_status::RecordingExitStatus;
