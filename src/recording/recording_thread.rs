@@ -6,7 +6,7 @@ use std::fs::create_dir_all;
 use std::path::Path;
 
 use crate::recording::recorder;
-use crate::dbus::{collect_dbus_info, previous_song, start_playback, stop_playback};
+use super::dbus::{collect_dbus_info, previous_song, start_playback, stop_playback};
 use crate::recording_session::RecordingSession;
 use crate::run_args::RunArgs;
 use crate::song::Song;

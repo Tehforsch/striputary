@@ -1,3 +1,4 @@
+mod dbus;
 pub mod record;
 pub mod recorder;
 pub mod recording_thread;

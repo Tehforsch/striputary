@@ -3,7 +3,6 @@ pub mod audio_excerpt;
 pub mod audio_time;
 pub mod config;
 pub mod cut;
-pub mod dbus;
 pub mod errors;
 pub mod excerpt_collection;
 pub mod gui;
