@@ -29,7 +29,7 @@ impl<T> DataStream<T> {
         &self.data
     }
 
-    pub fn get_data_mut(&mut self) -> &mut Vec<T>{
+    pub fn get_data_mut(&mut self) -> &mut Vec<T> {
         &mut self.data
     }
 }
