@@ -29,46 +29,30 @@ impl RecordingThreadHandleStatus {
             }
             tmp_self
         });
-    }
-}
-
-pub struct FallibleRecordingThreadHandle {
-    pub status: RecordingThreadHandleStatus,
-    pub recorded_songs: Vec<Song>,
-}
-
-impl FallibleRecordingThreadHandle {
-    pub fn new_stopped() -> Self {
-        Self {
-            status: RecordingThreadHandleStatus::Stopped,
-            recorded_songs: vec![],
+        if let Self::Running(ref mut thread) = self {
+            thread.update();
         }
+    }
+
+    pub fn new_stopped() -> Self {
+        Self::Stopped
     }
 
     pub fn new_running(run_args: &RunArgs) -> Self {
-        Self {
-            status: RecordingThreadHandleStatus::Running(RecordingThreadHandle::new(run_args)),
-            recorded_songs: vec![],
-        }
-    }
-
-    pub fn update(&mut self) {
-        self.status.update();
-        self.update_songs();
-    }
-
-    fn update_songs(&mut self) {
-        if let RecordingThreadHandleStatus::Running(ref thread) = self.status {
-            if let Some(song) = thread.get_new_songs() {
-                self.recorded_songs.push(song)
-            }
-        }
+        Self::Running(RecordingThreadHandle::new(run_args))
     }
 
     pub fn is_running(&self) -> bool {
-        match self.status {
+        match self {
             RecordingThreadHandleStatus::Running(_) => true,
             _ => false,
+        }
+    }
+
+    pub fn get_songs(&self) -> &[Song] {
+        match self {
+            Self::Running(thread) => thread.songs.get_data(),
+            _ => &[],
         }
     }
 }

@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 pub static STRIPUTARY_SINK_NAME: &str = "striputary";
 
 pub static DEFAULT_BUFFER_FILE: &str = "buffer.wav";
@@ -18,5 +20,6 @@ pub static NUM_SAMPLES_PER_AVERAGE_VOLUME: usize = 2000;
 
 pub static NUM_PLOT_DATA_POINTS: i64 = 500;
 
-pub static RECV_RECORDED_SONG_TIMEOUT: u64 = 2;
-pub static RECV_CUT_SONG_TIMEOUT: u64 = 2;
+pub static RECV_CUT_SONG_TIMEOUT: Duration = Duration::from_millis(2);
+pub static RECV_RECORDED_SONG_TIMEOUT: Duration = Duration::from_millis(2);
+pub static RECV_RECORDED_SESSION_TIMEOUT: Duration = Duration::from_millis(2);

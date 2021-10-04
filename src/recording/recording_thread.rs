@@ -5,36 +5,40 @@ use crate::recording::recording_status::RecordingStatus;
 use std::fs::create_dir_all;
 use std::path::Path;
 
-use crate::recording::recorder;
 use super::dbus::{collect_dbus_info, previous_song, start_playback, stop_playback};
+use crate::recording::recorder;
 use crate::recording_session::RecordingSession;
 use crate::run_args::RunArgs;
 use crate::song::Song;
-use crate::{yaml_session};
+use crate::yaml_session;
 use anyhow::{anyhow, Context, Result};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{Sender};
+use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::thread::{self};
 use std::time::{Duration, Instant};
 
 use super::recording_status::RecordingExitStatus;
 
-
 pub struct RecordingThread {
     run_args: RunArgs,
-    recorded_sessions: Vec<RecordingSession>,
     is_running: Arc<AtomicBool>,
-    sender: Sender<Song>,
+    song_sender: Sender<Song>,
+    session_sender: Sender<RecordingSession>,
 }
 
 impl RecordingThread {
-    pub fn new(is_running: Arc<AtomicBool>, sender: Sender<Song>, run_args: &RunArgs) -> Self {
+    pub fn new(
+        is_running: Arc<AtomicBool>,
+        session_sender: Sender<RecordingSession>,
+        song_sender: Sender<Song>,
+        run_args: &RunArgs,
+    ) -> Self {
         Self {
             run_args: run_args.clone(),
-            recorded_sessions: vec![],
             is_running,
-            sender,
+            song_sender,
+            session_sender,
         }
     }
 
@@ -45,7 +49,7 @@ impl RecordingThread {
                 let buffer_file = self.run_args.get_buffer_file(num);
                 let (status, session) = self.record_new_session(&session_file, &buffer_file)?;
                 yaml_session::save(&session)?;
-                self.recorded_sessions.push(session);
+                self.session_sender.send(session).unwrap();
                 if status == RecordingExitStatus::FinishedOrInterrupted {
                     break;
                 }
@@ -113,19 +117,21 @@ impl RecordingThread {
         println!("Start playback.");
         start_playback(&self.run_args.service_config)?;
         loop {
-            let (new_song, playback_status) =
-                collect_dbus_info(&mut session, &self.run_args.service_config)?;
+            let playback_status = collect_dbus_info(&mut session, &self.run_args.service_config)?;
+            let num_songs_before = session.songs.len();
             if let RecordingStatus::Finished(exit_status) = playback_status {
                 return Ok((exit_status, session));
             }
-            if let Some(song) = new_song {
-                self.add_new_song(song);
+            let num_songs_after = session.songs.len();
+            // There should only be one new song if the delay between dbus signals is not too large, but you never know
+            for song_index in num_songs_before - 1..num_songs_after - 1 {
+                self.add_new_song(session.songs[song_index].clone());
             }
         }
     }
 
     fn add_new_song(&self, song: Song) {
-        self.sender.send(song).unwrap();
+        self.song_sender.send(song).unwrap();
     }
 
     fn final_buffer_phase(&self) {

@@ -3,16 +3,17 @@ pub mod audio_excerpt;
 pub mod audio_time;
 pub mod config;
 pub mod cut;
+pub mod data_stream;
 pub mod errors;
 pub mod excerpt_collection;
 pub mod gui;
+pub mod recording;
 pub mod recording_session;
 pub mod run_args;
 pub mod service_config;
 pub mod song;
 pub mod wav;
 pub mod yaml_session;
-pub mod recording;
 
 use crate::gui::StriputaryGui;
 use crate::recording_session::RecordingSession;

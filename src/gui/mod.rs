@@ -3,7 +3,11 @@ mod cutting_thread;
 mod playback;
 mod plot;
 
-use crate::{cut::CutInfo, excerpt_collection::ExcerptCollection, recording::fallible_recording_thread_handle::{FallibleRecordingThreadHandle, RecordingThreadHandleStatus}, run_args::RunArgs, song::Song};
+use crate::{
+    cut::CutInfo, excerpt_collection::ExcerptCollection,
+    recording::recording_thread_handle_status::RecordingThreadHandleStatus, run_args::RunArgs,
+    song::Song,
+};
 
 use eframe::{
     egui::{self, Button, Color32, Label, Layout, Pos2, Response, TextStyle, Ui},
@@ -29,7 +33,7 @@ pub struct StriputaryGui {
     collections: Vec<ExcerptCollection>,
     plots: Vec<ExcerptPlot>,
     cut_thread: CuttingThreadHandle,
-    record_thread: FallibleRecordingThreadHandle,
+    record_thread: RecordingThreadHandleStatus,
     current_playback: Option<(SongIdentifier, PlaybackThreadHandle)>,
     last_touched_song: Option<SongIdentifier>,
     selected_collection: CollectionIdentifier,
@@ -44,7 +48,7 @@ impl StriputaryGui {
             collections,
             plots: vec![],
             cut_thread,
-            record_thread: FallibleRecordingThreadHandle::new_stopped(),
+            record_thread: RecordingThreadHandleStatus::new_stopped(),
             current_playback: None,
             last_touched_song: None,
             selected_collection: 0,
@@ -114,7 +118,7 @@ impl StriputaryGui {
 
     fn start_recording(&mut self) {
         if !self.record_thread.is_running() {
-            self.record_thread = FallibleRecordingThreadHandle::new_running(&self.run_args);
+            self.record_thread = RecordingThreadHandleStatus::new_running(&self.run_args);
         }
     }
 
@@ -186,7 +190,7 @@ impl StriputaryGui {
         if !self.record_thread.is_running() {
             self.add_record_button(ui);
         }
-        if let RecordingThreadHandleStatus::Failed(ref error) = self.record_thread.status {
+        if let RecordingThreadHandleStatus::Failed(ref error) = self.record_thread {
             self.add_recording_thread_error_message(ui, error);
         }
     }
@@ -201,6 +205,24 @@ impl StriputaryGui {
     fn add_recording_thread_error_message(&self, ui: &mut Ui, error: &anyhow::Error) {
         let label = Label::new(error.to_string()).text_color(Color32::RED);
         ui.add(label);
+    }
+
+    fn add_labels_for_recorded_songs(&self, ui: &mut Ui) {
+        if self.record_thread.is_running() {
+            let songs = self.record_thread.get_songs();
+            for song in songs.iter().rev() {
+                let mut label = Label::new(song.to_string());
+                label = label.text_style(TextStyle::Heading);
+                if songs
+                    .last()
+                    .map(|last_song| last_song == song)
+                    .unwrap_or(false)
+                {
+                    label = label.underline();
+                }
+                ui.add(label);
+            }
+        }
     }
 
     fn add_central_panel(&mut self, ctx: &egui::CtxRef) {
@@ -251,6 +273,7 @@ impl StriputaryGui {
                     }
                 };
             }
+            self.add_labels_for_recorded_songs(ui);
         });
     }
 }

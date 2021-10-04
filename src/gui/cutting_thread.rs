@@ -1,10 +1,14 @@
 use std::{
     sync::mpsc::{channel, Receiver, Sender},
     thread::{self, JoinHandle},
-    time::Duration,
 };
 
-use crate::{config, cut::{cut_song, CutInfo}, song::Song};
+use crate::data_stream::DataStream;
+use crate::{
+    config,
+    cut::{cut_song, CutInfo},
+    song::Song,
+};
 
 struct CuttingThread {
     pub to_cut: Vec<CutInfo>,
@@ -39,8 +43,7 @@ impl CuttingThread {
 pub struct CuttingThreadHandle {
     _handle: JoinHandle<()>,
     sender: Sender<CutInfo>,
-    song_receiver: Receiver<Song>,
-    cut_songs: Vec<Song>,
+    cut_songs: DataStream<Song>,
 }
 
 impl Default for CuttingThreadHandle {
@@ -51,8 +54,7 @@ impl Default for CuttingThreadHandle {
         CuttingThreadHandle {
             _handle: handle,
             sender,
-            song_receiver,
-            cut_songs: vec![],
+            cut_songs: DataStream::new(song_receiver),
         }
     }
 }
@@ -64,10 +66,8 @@ impl CuttingThreadHandle {
         }
     }
 
-    pub fn get_cut_songs(&mut self) -> &Vec<Song> {
-        if let Ok(received) = self.song_receiver.recv_timeout(Duration::from_millis(config::RECV_CUT_SONG_TIMEOUT)) {
-            self.cut_songs.push(received);
-        }
-        &self.cut_songs
+    pub fn get_cut_songs(&mut self) -> &[Song] {
+        self.cut_songs.update(config::RECV_CUT_SONG_TIMEOUT);
+        &self.cut_songs.get_data()
     }
 }

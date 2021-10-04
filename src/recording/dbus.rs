@@ -17,7 +17,7 @@ use std::process::Command;
 pub fn collect_dbus_info(
     session: &mut RecordingSession,
     service_config: &ServiceConfig,
-) -> Result<(Option<Song>, RecordingStatus)> {
+) -> Result<RecordingStatus> {
     let c = Connection::new_session().unwrap();
     // Add a match for this signal
     let bus_name = service_config.dbus_bus_name.clone();
@@ -30,15 +30,14 @@ pub fn collect_dbus_info(
             return handle_dbus_properties_changed_signal(session, pc);
         }
     }
-    Ok((None, RecordingStatus::Running))
+    Ok(RecordingStatus::Running)
 }
 
 pub fn handle_dbus_properties_changed_signal(
     session: &mut RecordingSession,
     properties: PC,
-) -> Result<(Option<Song>, RecordingStatus)> {
+) -> Result<RecordingStatus> {
     let playback_stopped = is_playback_stopped(&properties);
-    let mut new_song = None;
     if !playback_stopped {
         let song = get_song_from_dbus_properties(properties);
         // We get multiple dbus messages on every song change for every property that changes.
@@ -49,22 +48,19 @@ pub fn handle_dbus_properties_changed_signal(
             if let Some(last_song) = last_song {
                 if last_song.album != song.album {
                     println!("This is a new album - creating a new recording session");
-                    return Ok((
-                        None,
-                        RecordingStatus::Finished(RecordingExitStatus::AlbumFinished),
+                    return Ok(RecordingStatus::Finished(
+                        RecordingExitStatus::AlbumFinished,
                     ));
                 }
             }
-            new_song = Some(song.clone());
             session.songs.push(song);
             yaml_session::save(&session)?;
         }
     }
     match playback_stopped {
-        false => Ok((new_song, RecordingStatus::Running)),
-        true => Ok((
-            new_song,
-            RecordingStatus::Finished(RecordingExitStatus::FinishedOrInterrupted),
+        false => Ok(RecordingStatus::Running),
+        true => Ok(RecordingStatus::Finished(
+            RecordingExitStatus::FinishedOrInterrupted,
         )),
     }
 }

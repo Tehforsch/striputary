@@ -32,8 +32,8 @@ impl fmt::Display for Song {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "({} - {} - {}_{} ({}))",
-            self.artist, self.album, self.title, self.track_number, self.length
+            "{} - {} - {} ({}s)",
+            self.artist, self.album, self.title, self.length
         )
     }
 }
