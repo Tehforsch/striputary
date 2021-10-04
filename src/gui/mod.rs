@@ -3,15 +3,8 @@ mod cutting_thread;
 mod playback;
 mod plot;
 
-use crate::{
-    cut::CutInfo,
-    excerpt_collection::ExcerptCollection,
-    record::{FallibleRecordingThreadHandle, RecordingThreadHandle, RecordingThreadHandleStatus},
-    run_args::RunArgs,
-    song::Song,
-};
+use crate::{cut::CutInfo, excerpt_collection::ExcerptCollection, recording::fallible_recording_thread_handle::{FallibleRecordingThreadHandle, RecordingThreadHandleStatus}, run_args::RunArgs, song::Song};
 
-use anyhow::Result;
 use eframe::{
     egui::{self, Button, Color32, Label, Layout, Pos2, Response, TextStyle, Ui},
     epi,

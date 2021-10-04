@@ -1,4 +1,4 @@
-use crate::record::{RecordingExitStatus, RecordingStatus};
+use crate::recording::recording_status::{RecordingExitStatus, RecordingStatus};
 use crate::recording_session::RecordingSession;
 use crate::service_config::ServiceConfig;
 use crate::song::Song;
