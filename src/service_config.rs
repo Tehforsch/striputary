@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Result};
 
+#[derive(Clone)]
 pub struct ServiceConfig {
     pub sink_name: String,
     pub dbus_bus_name: String,

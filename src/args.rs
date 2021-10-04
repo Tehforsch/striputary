@@ -2,13 +2,7 @@ use clap::Clap;
 use std::path::PathBuf;
 
 #[derive(Clap, Debug)]
-pub struct OffsetPosition {
-    pub position: f64,
-}
-
-#[derive(Clap, Debug)]
 pub enum Action {
-    Run,
     Record,
     Cut,
 }

@@ -49,13 +49,11 @@ impl ExcerptPlot {
         }
     }
 
-
     pub fn get_audio_time_from_click_pos(&self, click_pos: Pos2, rect: Rect) -> AudioTime {
         let plot_begin = rect.min + (rect.center() - rect.min) * 0.0888;
         let plot_width = rect.width() / 1.1;
         let relative_progress = (click_pos.x - plot_begin.x) / plot_width;
-        self
-            .excerpt
+        self.excerpt
             .excerpt
             .get_absolute_time_by_relative_progress(relative_progress as f64)
     }
@@ -88,7 +86,9 @@ impl Widget for &mut ExcerptPlot {
         }
         let response = ui.add(plot);
         if response.dragged() || self.move_cut_marker_to_pos.is_some() {
-            let pos = response.interact_pointer_pos().or(self.move_cut_marker_to_pos);
+            let pos = response
+                .interact_pointer_pos()
+                .or(self.move_cut_marker_to_pos);
             if let Some(pos) = pos {
                 self.cut_time = self.get_audio_time_from_click_pos(pos, response.rect);
             }

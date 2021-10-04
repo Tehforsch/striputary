@@ -24,3 +24,4 @@ anyhow = "1.0.13"
 # bevy_prototype_lyon = "0.3.1"
 rodio = "0.14"
 eframe = "0.14.0" # Gives us egui, epi and web+native backends
+take_mut = "0.2.2"

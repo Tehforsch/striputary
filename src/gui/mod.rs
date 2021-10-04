@@ -3,8 +3,19 @@ mod cutting_thread;
 mod playback;
 mod plot;
 
-use crate::{audio_time::AudioTime, cut::CutInfo, excerpt_collection::ExcerptCollection, song::Song};
-use eframe::{egui::{self, Button, Color32, Label, Layout, Pos2, Response, TextStyle, Ui}, epi};
+use crate::{
+    cut::CutInfo,
+    excerpt_collection::ExcerptCollection,
+    record::{FallibleRecordingThreadHandle, RecordingThreadHandle},
+    run_args::RunArgs,
+    song::Song,
+};
+
+use anyhow::Result;
+use eframe::{
+    egui::{self, Button, Color32, Label, Layout, Pos2, Response, TextStyle, Ui},
+    epi,
+};
 
 use self::{
     cutting_thread::CuttingThreadHandle,
@@ -21,9 +32,11 @@ struct SongIdentifier {
 }
 
 pub struct StriputaryGui {
+    run_args: RunArgs,
     collections: Vec<ExcerptCollection>,
     plots: Vec<ExcerptPlot>,
     cut_thread: CuttingThreadHandle,
+    record_thread: FallibleRecordingThreadHandle,
     current_playback: Option<(SongIdentifier, PlaybackThreadHandle)>,
     last_touched_song: Option<SongIdentifier>,
     selected_collection: CollectionIdentifier,
@@ -31,18 +44,20 @@ pub struct StriputaryGui {
 }
 
 impl StriputaryGui {
-    pub fn new(collections: Vec<ExcerptCollection>) -> Self {
-        let thread = CuttingThreadHandle::default();
+    pub fn new(run_args: &RunArgs, collections: Vec<ExcerptCollection>) -> Self {
+        let cut_thread = CuttingThreadHandle::default();
         let mut gui = Self {
+            run_args: run_args.clone(),
             collections,
             plots: vec![],
-            cut_thread: thread,
+            cut_thread,
+            record_thread: FallibleRecordingThreadHandle::Stopped,
             current_playback: None,
             last_touched_song: None,
             selected_collection: 0,
             should_repaint: false,
         };
-        gui.select(0);
+        gui.try_select(0);
         gui
     }
 
@@ -52,7 +67,7 @@ impl StriputaryGui {
     }
 
     fn get_cut_info(&self) -> Vec<CutInfo> {
-        let collection = self.get_selected_collection();
+        let collection = self.get_selected_collection().unwrap();
         let mut cut_info: Vec<CutInfo> = vec![];
         for (plot_start, plot_end) in self.plots.iter().zip(self.plots[1..].iter()) {
             let song = plot_start.excerpt.song_after.as_ref().unwrap();
@@ -104,27 +119,36 @@ impl StriputaryGui {
         }
     }
 
-    fn select(&mut self, selection: CollectionIdentifier) {
-        self.selected_collection = selection;
-        self.plots = get_plots(self.get_selected_collection());
+    fn start_recording(&mut self) {
+        if !self.record_thread.is_running() {
+            self.record_thread = FallibleRecordingThreadHandle::new(&self.run_args);
+        }
     }
 
-    pub fn get_selected_collection(&self) -> &ExcerptCollection {
-        &self.collections[self.selected_collection]
+    fn try_select(&mut self, selection: CollectionIdentifier) {
+        self.selected_collection = selection;
+        self.plots = match self.get_selected_collection() {
+            None => vec![],
+            Some(collection) => get_plots(collection),
+        }
+    }
+
+    pub fn get_selected_collection(&self) -> Option<&ExcerptCollection> {
+        self.collections.get(self.selected_collection)
     }
 
     pub fn select_next_collection(&mut self) {
         if self.selected_collection == self.collections.len() - 1 {
             return;
         }
-        self.select(self.selected_collection + 1);
+        self.try_select(self.selected_collection + 1);
     }
 
     pub fn select_previous_collection(&mut self) {
         if self.selected_collection == 0 {
             return;
         }
-        self.select(self.selected_collection - 1);
+        self.try_select(self.selected_collection - 1);
     }
 
     fn add_top_bar(&mut self, ctx: &egui::CtxRef) {
@@ -139,20 +163,23 @@ impl StriputaryGui {
                     }
                 }
                 if let Some(selection) = selection {
-                    self.select(selection);
+                    self.try_select(selection);
                 }
             });
         });
+    }
+
+    fn add_large_button(&self, ui: &mut Ui, name: &str) -> Response {
+        ui.add(Button::new(name).text_style(TextStyle::Heading))
     }
 
     fn add_side_bar(&mut self, ctx: &egui::CtxRef) {
         egui::SidePanel::left("side_panel")
             .resizable(false)
             .show(ctx, |ui| {
-                let mut add_large_button =
-                    |name| ui.add(Button::new(name).text_style(TextStyle::Heading));
-                let cut_button = add_large_button("Cut");
-                let playback_button = add_large_button("Playback");
+                let cut_button = self.add_large_button(ui, "Cut");
+                let playback_button = self.add_large_button(ui, "Playback");
+                self.add_record_button_or_error_message(ui);
                 if cut_button.clicked() || ctx.input().key_pressed(config::CUT_KEY) {
                     self.cut_songs();
                 }
@@ -160,6 +187,27 @@ impl StriputaryGui {
                     self.play_last_touched_song();
                 }
             });
+    }
+
+    fn add_record_button_or_error_message(&mut self, ui: &mut Ui) {
+        if !self.record_thread.is_running() {
+            self.add_record_button(ui);
+        }
+        if let FallibleRecordingThreadHandle::Failed(ref error) = self.record_thread {
+            self.add_recording_thread_error_message(ui, error);
+        }
+    }
+
+    fn add_record_button(&mut self, ui: &mut Ui) {
+        let record_button = self.add_large_button(ui, "Record");
+        if record_button.clicked() {
+            self.start_recording();
+        }
+    }
+
+    fn add_recording_thread_error_message(&self, ui: &mut Ui, error: &anyhow::Error) {
+        let label = Label::new(error.to_string()).text_color(Color32::RED);
+        ui.add(label);
     }
 
     fn add_central_panel(&mut self, ctx: &egui::CtxRef) {
@@ -210,7 +258,6 @@ impl StriputaryGui {
                     }
                 };
             }
-            egui::warn_if_debug_build(ui);
         });
     }
 }
@@ -221,6 +268,7 @@ impl epi::App for StriputaryGui {
     }
 
     fn update(&mut self, ctx: &egui::CtxRef, _: &mut epi::Frame<'_>) {
+        self.record_thread.handle();
         self.add_top_bar(ctx);
         self.add_side_bar(ctx);
         self.add_central_panel(ctx);
