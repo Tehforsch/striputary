@@ -1,5 +1,7 @@
 use std::time::Duration;
 
+pub static CONFIG_FILE_NAME: &str = "config.yaml";
+
 pub static STRIPUTARY_SINK_NAME: &str = "striputary";
 
 pub static DEFAULT_BUFFER_FILE: &str = "buffer.wav";

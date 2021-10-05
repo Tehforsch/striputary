@@ -2,6 +2,7 @@ pub mod args;
 pub mod audio_excerpt;
 pub mod audio_time;
 pub mod config;
+pub mod config_file;
 pub mod cut;
 pub mod data_stream;
 pub mod errors;
@@ -15,60 +16,65 @@ pub mod song;
 pub mod wav;
 pub mod yaml_session;
 
+use std::path::{Path, PathBuf};
+
 use crate::gui::StriputaryGui;
 use crate::recording_session::RecordingSession;
 use anyhow::{anyhow, Result};
 use args::Opts;
+use chrono::Local;
 use clap::Clap;
-use cut::get_excerpt_collection;
+use config_file::ConfigFile;
 use run_args::RunArgs;
 use service_config::ServiceConfig;
 
 fn main() -> Result<(), anyhow::Error> {
     let args = Opts::parse();
+    let config_file = ConfigFile::read();
+    let output_dir = args
+        .output_dir
+        .or(config_file.ok().map(|file| file.output_dir));
     let service_config = ServiceConfig::from_service_name(&get_service_name(&args.service_name))?;
-    run_striputary(&args, service_config)
+    match output_dir {
+        Some(dir) => {
+            run_striputary(&dir, service_config, args.record)
+        }
+        None => panic!("Need an output folder - either pass it as a command line argument or specify it in the config file (probably ~/.config/striputary/config.yaml")
+    }
 }
 
 fn get_service_name(service_name: &Option<String>) -> &str {
     service_name.as_deref().unwrap_or(config::DEFAULT_SERVICE)
 }
 
-fn run_striputary(args: &Opts, stream_config: ServiceConfig) -> Result<()> {
-    let run_args = RunArgs::new(&args.session_dir, stream_config);
-    match &args.action {
-        args::Action::Record => {
-            run_gui_record(&run_args);
-        }
-        args::Action::Cut => {
-            load_sessions_and_cut(&run_args)?;
-        }
+fn run_striputary(output_dir: &Path, stream_config: ServiceConfig, record: bool) -> Result<()> {
+    let run_args = RunArgs::new(&get_session_dir(output_dir), stream_config);
+    let sessions = match record {
+        true => vec![],
+        false => load_sessions(&run_args)?,
     };
+    run_gui(&run_args, sessions);
     Ok(())
 }
 
-fn load_sessions_and_cut(run_args: &RunArgs) -> Result<()> {
+fn get_session_dir(output_dir: &Path) -> PathBuf {
+    let date_string = Local::now().format("%Y-%m-%d-%H-%M-%S").to_string();
+    output_dir.join(&date_string)
+}
+
+fn load_sessions(run_args: &RunArgs) -> Result<Vec<RecordingSession>> {
     let files = run_args.get_yaml_files();
     if files.is_empty() {
         return Err(anyhow!("No session files found!"));
     }
-    let sessions = files
+    files
         .iter()
         .map(|yaml_file| yaml_session::load(&yaml_file))
-        .collect::<Result<Vec<_>>>();
-    run_gui_cut(run_args, sessions?);
-    Ok(())
+        .collect::<Result<Vec<_>>>()
 }
 
-fn run_gui_record(run_args: &RunArgs) {
-    let app = StriputaryGui::new(run_args, vec![]);
-    let native_options = eframe::NativeOptions::default();
-    eframe::run_native(Box::new(app), native_options);
-}
-
-fn run_gui_cut(run_args: &RunArgs, sessions: Vec<RecordingSession>) {
-    let collections = sessions.into_iter().map(get_excerpt_collection).collect();
-    let app = StriputaryGui::new(run_args, collections);
+fn run_gui(run_args: &RunArgs, sessions: Vec<RecordingSession>) {
+    let app = StriputaryGui::new(run_args, sessions);
     let native_options = eframe::NativeOptions::default();
     eframe::run_native(Box::new(app), native_options);
 }

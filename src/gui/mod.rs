@@ -3,11 +3,7 @@ mod cutting_thread;
 mod playback;
 mod plot;
 
-use crate::{
-    cut::CutInfo, excerpt_collection::ExcerptCollection,
-    recording::recording_thread_handle_status::RecordingThreadHandleStatus, run_args::RunArgs,
-    song::Song,
-};
+use crate::{cut::{CutInfo, get_excerpt_collection}, excerpt_collection::ExcerptCollection, recording::recording_thread_handle_status::RecordingThreadHandleStatus, recording_session::RecordingSession, run_args::RunArgs, song::Song};
 
 use eframe::{
     egui::{self, Button, Color32, Label, Layout, Pos2, Response, TextStyle, Ui},
@@ -41,7 +37,8 @@ pub struct StriputaryGui {
 }
 
 impl StriputaryGui {
-    pub fn new(run_args: &RunArgs, collections: Vec<ExcerptCollection>) -> Self {
+    pub fn new(run_args: &RunArgs, sessions: Vec<RecordingSession>) -> Self {
+        let collections = sessions.into_iter().map(get_excerpt_collection).collect();
         let cut_thread = CuttingThreadHandle::default();
         let mut gui = Self {
             run_args: run_args.clone(),
