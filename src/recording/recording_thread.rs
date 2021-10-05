@@ -117,12 +117,12 @@ impl RecordingThread {
         println!("Start playback.");
         start_playback(&self.run_args.service_config)?;
         loop {
-            let playback_status = collect_dbus_info(&mut session, &self.run_args.service_config)?;
             let num_songs_before = session.songs.len();
+            let playback_status = collect_dbus_info(&mut session, &self.run_args.service_config)?;
+            let num_songs_after = session.songs.len();
             if let RecordingStatus::Finished(exit_status) = playback_status {
                 return Ok((exit_status, session));
             }
-            let num_songs_after = session.songs.len();
             // There should only be one new song if the delay between dbus signals is not too large, but you never know
             for song_index in num_songs_before - 1..num_songs_after - 1 {
                 self.add_new_song(session.songs[song_index].clone());
