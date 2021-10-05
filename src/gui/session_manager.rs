@@ -11,7 +11,7 @@ use crate::cut::get_excerpt_collection;
 use crate::excerpt_collection::ExcerptCollection;
 use crate::recording_session::RecordingSession;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum SessionIdentifier {
     Old(usize),
     New,
@@ -56,6 +56,10 @@ impl SessionManager {
 
     pub fn select_new(&mut self) {
         self.selected = SessionIdentifier::New;
+    }
+
+    pub fn is_currently_selected(&self, identifier: &SessionIdentifier) -> bool {
+        self.selected == *identifier
     }
 
     pub fn get_currently_selected(&self) -> PathBuf {

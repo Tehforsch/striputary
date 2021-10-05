@@ -161,12 +161,19 @@ impl StriputaryGui {
             .show(ctx, |ui| {
                 self.add_record_button_or_error_message(ui);
                 ui.add(Label::new("Previous sessions:").text_style(TextStyle::Heading));
-                let dirs_with_indices: Vec<_> = self
+                let mut dirs_with_indices: Vec<_> = self
                     .session_manager
                     .iter_relative_paths_with_indices()
                     .collect();
+                dirs_with_indices.sort_by_key(|(_, dir)| dir.clone());
+                dirs_with_indices.reverse();
                 for (i, dir_name) in dirs_with_indices.iter() {
-                    let button = Button::new(dir_name).text_style(TextStyle::Heading);
+                    let mut button = Button::new(dir_name).text_style(TextStyle::Heading);
+                    if self.session_manager.is_currently_selected(i) {
+                        button = button
+                            .fill(config::SELECTED_FILL_COLOR)
+                            .text_color(config::SELECTED_TEXT_COLOR);
+                    }
                     if ui.add(button).clicked() {
                         self.select_session(*i);
                     }
