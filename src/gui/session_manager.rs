@@ -26,7 +26,9 @@ pub struct SessionManager {
 
 impl SessionManager {
     pub fn new(dir: &Path) -> Self {
-        let dirs = get_dirs(dir).unwrap();
+        let mut dirs = get_dirs(dir).unwrap();
+        dirs.sort();
+        dirs.reverse();
         let mut manager = Self {
             output_dir: dir.into(),
             dirs,
