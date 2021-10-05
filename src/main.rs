@@ -14,7 +14,6 @@ pub mod run_args;
 pub mod service_config;
 pub mod song;
 pub mod wav;
-pub mod yaml_session;
 
 use std::path::Path;
 

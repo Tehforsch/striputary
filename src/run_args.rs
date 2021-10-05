@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use crate::service_config::ServiceConfig;
+use crate::{config, service_config::ServiceConfig};
 
 #[derive(Clone)]
 pub struct RunArgs {
@@ -16,11 +16,11 @@ impl RunArgs {
         }
     }
 
-    pub fn get_yaml_file(&self, num: i32) -> PathBuf {
-        self.session_dir.join(format!("{}.yaml", num))
+    pub fn get_yaml_file(&self) -> PathBuf {
+        self.session_dir.join(config::DEFAULT_SESSION_FILE)
     }
 
-    pub fn get_buffer_file(&self, num: i32) -> PathBuf {
-        self.session_dir.join(format!("{}.wav", num))
+    pub fn get_buffer_file(&self) -> PathBuf {
+        self.session_dir.join(config::DEFAULT_BUFFER_FILE)
     }
 }

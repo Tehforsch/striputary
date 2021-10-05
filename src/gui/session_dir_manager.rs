@@ -9,7 +9,7 @@ use chrono::Local;
 
 use crate::cut::get_excerpt_collection;
 use crate::excerpt_collection::ExcerptCollection;
-use crate::recording_session::load_sessions;
+use crate::recording_session::RecordingSession;
 
 #[derive(Clone, Copy)]
 pub enum SessionDirIdentifier {
@@ -65,16 +65,14 @@ impl SessionDirManager {
         }
     }
 
-    pub fn get_currently_selected_collections(&self) -> Vec<ExcerptCollection> {
+    pub fn get_currently_selected_collection(&self) -> Option<ExcerptCollection> {
         let session_dir = self.get_currently_selected();
         if session_dir.is_dir() {
-            let sessions = load_sessions(&session_dir).unwrap_or(vec![]);
-            sessions
-                .into_iter()
+            RecordingSession::from_parent_dir(&session_dir)
                 .map(|session| get_excerpt_collection(session))
-                .collect()
+                .ok()
         } else {
-            vec![]
+            None
         }
     }
 

@@ -6,6 +6,7 @@ pub static STRIPUTARY_SINK_NAME: &str = "striputary";
 
 pub static DEFAULT_BUFFER_FILE: &str = "buffer.wav";
 pub static DEFAULT_SESSION_FILE: &str = "session.yaml";
+pub static DEFAULT_MUSIC_DIR: &str = "music";
 
 pub static DEFAULT_SERVICE: &str = "spotify";
 // This should be more than 3-4 seconds at least

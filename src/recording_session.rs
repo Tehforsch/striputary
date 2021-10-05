@@ -1,14 +1,15 @@
-use anyhow::{anyhow, Result};
-
+use crate::config;
 use crate::song::Song;
-use crate::yaml_session;
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
+use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 use std::vec::Vec;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RecordingSession {
+    #[serde(skip_serializing)]
     pub filename: PathBuf,
     pub songs: Vec<Song>,
     pub estimated_time_first_song: f64,
@@ -24,34 +25,33 @@ impl RecordingSession {
     }
 
     pub fn get_buffer_file(&self) -> PathBuf {
-        Path::new(&self.filename.to_str().unwrap().replace("yaml", "wav")).into()
+        self.filename
+            .parent()
+            .unwrap()
+            .join(config::DEFAULT_BUFFER_FILE)
     }
 
     pub fn get_music_dir(&self) -> PathBuf {
-        self.filename.parent().unwrap().join(Path::new("music"))
+        self.filename
+            .parent()
+            .unwrap()
+            .join(Path::new(config::DEFAULT_MUSIC_DIR))
     }
-}
 
-pub fn load_sessions(session_dir: &Path) -> Result<Vec<RecordingSession>> {
-    let files = get_yaml_files(session_dir);
-    if files.is_empty() {
-        return Err(anyhow!("No session files found!"));
+    pub fn save(&self) -> Result<()> {
+        let data = serde_yaml::to_string(self).context("Unable to convert session to yaml")?;
+        fs::write(&self.filename, data).context("Unable to write session file")
     }
-    files
-        .iter()
-        .map(|yaml_file| yaml_session::load(&yaml_file))
-        .collect::<Result<Vec<_>>>()
-}
 
-pub fn get_yaml_files(session_dir: &Path) -> Vec<PathBuf> {
-    let mut files = vec![];
-    for i in 0.. {
-        let file = session_dir.join(format!("{}.yaml", i));
-        if file.is_file() {
-            files.push(file);
-        } else {
-            break;
-        }
+    pub fn from_file(filename: &Path) -> Result<Self> {
+        let data = fs::read_to_string(filename).context("Unable to read session file")?;
+        let mut session: RecordingSession =
+            serde_yaml::from_str(&data).context("Unable to load session file content.")?;
+        session.filename = filename.into();
+        Ok(session)
     }
-    files
+
+    pub fn from_parent_dir(dirname: &Path) -> Result<Self> {
+        Self::from_file(&dirname.join(config::DEFAULT_SESSION_FILE))
+    }
 }

@@ -2,7 +2,6 @@ use crate::recording::recording_status::{RecordingExitStatus, RecordingStatus};
 use crate::recording_session::RecordingSession;
 use crate::service_config::ServiceConfig;
 use crate::song::Song;
-use crate::yaml_session;
 use anyhow::{Context, Result};
 use dbus::arg::RefArg;
 use dbus::ffidisp::stdintf::org_freedesktop_dbus::PropertiesPropertiesChanged as PC;
@@ -45,16 +44,8 @@ pub fn handle_dbus_properties_changed_signal(
         let last_song = session.songs.last();
         if session.songs.is_empty() || last_song.unwrap() != &song {
             println!("Now recording song: {:?}", song);
-            if let Some(last_song) = last_song {
-                if last_song.album != song.album {
-                    println!("This is a new album - creating a new recording session");
-                    return Ok(RecordingStatus::Finished(
-                        RecordingExitStatus::AlbumFinished,
-                    ));
-                }
-            }
             session.songs.push(song);
-            yaml_session::save(&session)?;
+            session.save()?;
         }
     }
     match playback_stopped {

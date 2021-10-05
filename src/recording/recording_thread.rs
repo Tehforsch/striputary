@@ -10,7 +10,6 @@ use crate::recording::recorder;
 use crate::recording_session::RecordingSession;
 use crate::run_args::RunArgs;
 use crate::song::Song;
-use crate::yaml_session;
 use anyhow::{anyhow, Context, Result};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
@@ -24,59 +23,34 @@ pub struct RecordingThread {
     run_args: RunArgs,
     is_running: Arc<AtomicBool>,
     song_sender: Sender<Song>,
-    session_sender: Sender<RecordingSession>,
 }
 
 impl RecordingThread {
-    pub fn new(
-        is_running: Arc<AtomicBool>,
-        session_sender: Sender<RecordingSession>,
-        song_sender: Sender<Song>,
-        run_args: &RunArgs,
-    ) -> Self {
+    pub fn new(is_running: Arc<AtomicBool>, song_sender: Sender<Song>, run_args: &RunArgs) -> Self {
         Self {
             run_args: run_args.clone(),
             is_running,
             song_sender,
-            session_sender,
         }
     }
 
-    pub fn record_sessions_and_save_session_files(&mut self) -> Result<()> {
-        let result = (|| {
-            for num in 0.. {
-                let session_file = self.run_args.get_yaml_file(num);
-                let buffer_file = self.run_args.get_buffer_file(num);
-                let (status, session) = self.record_new_session(&session_file, &buffer_file)?;
-                yaml_session::save(&session)?;
-                self.session_sender.send(session).unwrap();
-                if status == RecordingExitStatus::FinishedOrInterrupted {
-                    break;
-                }
-            }
-            Ok(())
-        })();
-        self.is_running.store(false, Ordering::SeqCst);
-        result
-    }
-
-    pub fn record_new_session(
-        &self,
-        session_file: &Path,
-        buffer_file: &Path,
-    ) -> Result<(RecordingExitStatus, RecordingSession)> {
+    pub fn record_new_session(&self) -> Result<(RecordingExitStatus, RecordingSession)> {
         create_dir_all(&self.run_args.session_dir).context("Failed to create session directory")?;
-        if buffer_file.exists() {
+        if self.run_args.get_buffer_file().exists() {
             return Err(anyhow!(
                 "Buffer file already exists, not recording a new session."
             ));
         }
-        let recording_handles =
-            recorder::start_recording(&buffer_file, &self.run_args.service_config)?;
+        let recording_handles = recorder::start_recording(
+            &self.run_args.get_buffer_file(),
+            &self.run_args.service_config,
+        )?;
         let record_start_time = Instant::now();
-        // Check for dbus signals while recording until terminated
-        let (status, session) = self.polling_loop(session_file, &record_start_time)?;
+        let (status, session) =
+            self.polling_loop(&self.run_args.get_yaml_file(), &record_start_time)?;
         recorder::stop_recording(recording_handles)?;
+        session.save()?;
+        self.is_running.store(false, Ordering::SeqCst);
         Ok((status, session))
     }
 
