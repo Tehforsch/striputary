@@ -26,6 +26,7 @@ use self::{
     cutting_thread::CuttingThreadHandle,
     playback::{play_excerpt, PlaybackThreadHandle},
     plot::ExcerptPlot,
+    session_dir_manager::SessionDirIdentifier,
 };
 
 type CollectionIdentifier = usize;
@@ -127,6 +128,8 @@ impl StriputaryGui {
     }
 
     fn start_recording(&mut self) {
+        self.session_dir_manager.select_new();
+        self.load_selected_session();
         if !self.record_thread.is_running() {
             self.record_thread = RecordingThreadHandleStatus::new_running(&self.get_run_args());
         }
@@ -140,7 +143,11 @@ impl StriputaryGui {
     }
 
     fn select_session_folder_by_index(&mut self, index: usize) {
-        self.session_dir_manager.select(index);
+        self.select_session_folder(SessionDirIdentifier::Old(index));
+    }
+
+    fn select_session_folder(&mut self, identifier: SessionDirIdentifier) {
+        self.session_dir_manager.select(identifier);
         self.load_selected_session();
     }
 
@@ -205,7 +212,6 @@ impl StriputaryGui {
             .show(ctx, |ui| {
                 let cut_button = self.add_large_button(ui, "Cut");
                 let playback_button = self.add_large_button(ui, "Playback");
-                self.add_record_button_or_error_message(ui);
                 if cut_button.clicked() || ctx.input().key_pressed(config::CUT_KEY) {
                     self.cut_songs();
                 }
@@ -219,16 +225,16 @@ impl StriputaryGui {
         egui::SidePanel::left("dir_select")
             .resizable(false)
             .show(ctx, |ui| {
+                self.add_record_button_or_error_message(ui);
                 ui.add(Label::new("Previous sessions:").text_style(TextStyle::Heading));
                 let dirs_with_indices: Vec<_> = self
                     .session_dir_manager
-                    .iter_relative_paths()
-                    .enumerate()
+                    .iter_relative_paths_with_indices()
                     .collect();
                 for (i, dir_name) in dirs_with_indices.iter() {
                     let button = Button::new(dir_name).text_style(TextStyle::Heading);
                     if ui.add(button).clicked() {
-                        self.select_session_folder_by_index(*i);
+                        self.select_session_folder(*i);
                     }
                 }
             });
@@ -244,7 +250,7 @@ impl StriputaryGui {
     }
 
     fn add_record_button(&mut self, ui: &mut Ui) {
-        let record_button = self.add_large_button(ui, "Record");
+        let record_button = self.add_large_button(ui, "Record new session");
         if record_button.clicked() {
             self.start_recording();
         }

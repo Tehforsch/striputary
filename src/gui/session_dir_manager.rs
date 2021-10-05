@@ -11,10 +11,17 @@ use crate::cut::get_excerpt_collection;
 use crate::excerpt_collection::ExcerptCollection;
 use crate::recording_session::load_sessions;
 
+#[derive(Clone, Copy)]
+pub enum SessionDirIdentifier {
+    Old(usize),
+    New,
+}
+
 pub struct SessionDirManager {
     output_dir: PathBuf,
     dirs: Vec<PathBuf>,
-    selected: Option<usize>,
+    new_dir: PathBuf,
+    selected: SessionDirIdentifier,
 }
 
 impl SessionDirManager {
@@ -23,34 +30,38 @@ impl SessionDirManager {
         let mut manager = Self {
             output_dir: dir.into(),
             dirs,
-            selected: None,
+            new_dir: get_new_name(dir),
+            selected: SessionDirIdentifier::New,
         };
         manager.select_latest();
         manager
     }
 
-    pub fn select(&mut self, index: usize) {
-        self.selected = Some(index);
+    pub fn select(&mut self, identifier: SessionDirIdentifier) {
+        self.selected = identifier;
     }
 
     fn select_latest(&mut self) {
         let dirs = get_dirs(&self.output_dir).unwrap();
-        self.selected = dirs
+        self.selected = match dirs
             .into_iter()
             .enumerate()
             .max_by_key(|(_, dir)| dir.metadata().unwrap().modified().unwrap())
-            .map(|(index, _)| index);
+            .map(|(index, _)| index)
+        {
+            Some(index) => SessionDirIdentifier::Old(index),
+            None => SessionDirIdentifier::New,
+        };
     }
 
-    fn get_new(&self) -> PathBuf {
-        let date_string = Local::now().format("%Y-%m-%d-%H-%M-%S").to_string();
-        self.output_dir.join(&date_string)
+    pub fn select_new(&mut self) {
+        self.selected = SessionDirIdentifier::New;
     }
 
     pub fn get_currently_selected(&self) -> PathBuf {
         match self.selected {
-            Some(index) => self.dirs[index].clone(),
-            None => self.get_new(),
+            SessionDirIdentifier::Old(index) => self.dirs[index].clone(),
+            SessionDirIdentifier::New => self.new_dir.clone(),
         }
     }
 
@@ -67,11 +78,23 @@ impl SessionDirManager {
         }
     }
 
-    pub fn iter_relative_paths(&self) -> Box<dyn Iterator<Item = String> + '_> {
+    pub fn iter_relative_paths_with_indices(
+        &self,
+    ) -> Box<dyn Iterator<Item = (SessionDirIdentifier, String)> + '_> {
         Box::new(
-            self.dirs
-                .iter()
-                .map(|dir| dir.file_stem().unwrap().to_str().unwrap().to_owned()),
+            self.enumerate()
+                .map(|(index, dir)| (index, dir.file_stem().unwrap().to_str().unwrap().to_owned())),
+        )
+    }
+
+    fn enumerate(&self) -> Box<dyn Iterator<Item = (SessionDirIdentifier, &PathBuf)> + '_> {
+        Box::new(
+            std::iter::once((SessionDirIdentifier::New, &self.new_dir)).chain(
+                self.dirs
+                    .iter()
+                    .enumerate()
+                    .map(|(index, dir)| (SessionDirIdentifier::Old(index), dir)),
+            ),
         )
     }
 }
@@ -95,4 +118,9 @@ fn iter_dirs(dir: &Path) -> Result<impl Iterator<Item = PathBuf>> {
 
 pub fn get_dirs(dir: &Path) -> Result<Vec<PathBuf>> {
     Ok(iter_dirs(dir)?.collect())
+}
+
+fn get_new_name(output_dir: &Path) -> PathBuf {
+    let date_string = Local::now().format("%Y-%m-%d-%H-%M-%S").to_string();
+    output_dir.join(&date_string)
 }
