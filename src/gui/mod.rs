@@ -4,14 +4,13 @@ mod playback;
 mod plot;
 mod session_dir_manager;
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use crate::{
-    cut::{get_excerpt_collection, CutInfo},
+    cut::CutInfo,
     excerpt_collection::ExcerptCollection,
     gui::session_dir_manager::SessionDirManager,
     recording::recording_thread_handle_status::RecordingThreadHandleStatus,
-    recording_session::{load_sessions, RecordingSession},
     run_args::RunArgs,
     service_config::ServiceConfig,
     song::Song,
@@ -140,10 +139,6 @@ impl StriputaryGui {
             session_dir: self.session_dir_manager.get_currently_selected(),
             service_config: self.service_config.clone(),
         }
-    }
-
-    fn select_session_folder_by_index(&mut self, index: usize) {
-        self.select_session_folder(SessionDirIdentifier::Old(index));
     }
 
     fn select_session_folder(&mut self, identifier: SessionDirIdentifier) {
