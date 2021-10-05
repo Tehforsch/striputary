@@ -33,7 +33,10 @@ impl fmt::Display for Song {
         write!(
             f,
             "{} - {} - {} ({}s)",
-            self.artist, self.album, self.title, self.length.round()
+            self.artist,
+            self.album,
+            self.title,
+            self.length.round()
         )
     }
 }

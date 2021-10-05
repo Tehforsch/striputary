@@ -23,17 +23,4 @@ impl RunArgs {
     pub fn get_buffer_file(&self, num: i32) -> PathBuf {
         self.session_dir.join(format!("{}.wav", num))
     }
-
-    pub fn get_yaml_files(&self) -> Vec<PathBuf> {
-        let mut files = vec![];
-        for i in 0.. {
-            let file = self.session_dir.join(format!("{}.yaml", i));
-            if file.is_file() {
-                files.push(file);
-            } else {
-                break;
-            }
-        }
-        files
-    }
 }

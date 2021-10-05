@@ -2,8 +2,20 @@ mod config;
 mod cutting_thread;
 mod playback;
 mod plot;
+mod session_dir_manager;
 
-use crate::{cut::{CutInfo, get_excerpt_collection}, excerpt_collection::ExcerptCollection, recording::recording_thread_handle_status::RecordingThreadHandleStatus, recording_session::RecordingSession, run_args::RunArgs, song::Song};
+use std::path::{Path, PathBuf};
+
+use crate::{
+    cut::{get_excerpt_collection, CutInfo},
+    excerpt_collection::ExcerptCollection,
+    gui::session_dir_manager::SessionDirManager,
+    recording::recording_thread_handle_status::RecordingThreadHandleStatus,
+    recording_session::{load_sessions, RecordingSession},
+    run_args::RunArgs,
+    service_config::ServiceConfig,
+    song::Song,
+};
 
 use eframe::{
     egui::{self, Button, Color32, Label, Layout, Pos2, Response, TextStyle, Ui},
@@ -34,24 +46,30 @@ pub struct StriputaryGui {
     last_touched_song: Option<SongIdentifier>,
     selected_collection: CollectionIdentifier,
     should_repaint: bool,
+    session_dir_manager: SessionDirManager,
 }
 
 impl StriputaryGui {
-    pub fn new(run_args: &RunArgs, sessions: Vec<RecordingSession>) -> Self {
-        let collections = sessions.into_iter().map(get_excerpt_collection).collect();
-        let cut_thread = CuttingThreadHandle::default();
+    pub fn new(dir: &Path, service_config: ServiceConfig) -> Self {
+        let session_dir_manager = SessionDirManager::new(dir);
+        let session_dir = session_dir_manager.get_currently_selected();
+        let run_args = RunArgs {
+            session_dir,
+            service_config,
+        };
         let mut gui = Self {
             run_args: run_args.clone(),
-            collections,
+            collections: vec![],
             plots: vec![],
-            cut_thread,
+            cut_thread: CuttingThreadHandle::default(),
             record_thread: RecordingThreadHandleStatus::new_stopped(),
             current_playback: None,
             last_touched_song: None,
             selected_collection: 0,
             should_repaint: false,
+            session_dir_manager,
         };
-        gui.try_select(0);
+        gui.load_selected_session();
         gui
     }
 
@@ -119,7 +137,26 @@ impl StriputaryGui {
         }
     }
 
-    fn try_select(&mut self, selection: CollectionIdentifier) {
+    fn select_session_folder_by_index(&mut self, index: usize) {
+        self.session_dir_manager.select(index);
+        self.load_selected_session();
+    }
+
+    fn load_selected_session(&mut self) {
+        let session_dir = self.session_dir_manager.get_currently_selected();
+        if session_dir.is_dir() {
+            let sessions = load_sessions(&session_dir).unwrap();
+            self.collections = sessions
+                .into_iter()
+                .map(|session| get_excerpt_collection(session))
+                .collect();
+        } else {
+            self.collections = vec![];
+        }
+        self.try_select_collection(0);
+    }
+
+    fn try_select_collection(&mut self, selection: CollectionIdentifier) {
         self.selected_collection = selection;
         self.plots = match self.get_selected_collection() {
             None => vec![],
@@ -135,14 +172,14 @@ impl StriputaryGui {
         if self.selected_collection == self.collections.len() - 1 {
             return;
         }
-        self.try_select(self.selected_collection + 1);
+        self.try_select_collection(self.selected_collection + 1);
     }
 
     pub fn select_previous_collection(&mut self) {
         if self.selected_collection == 0 {
             return;
         }
-        self.try_select(self.selected_collection - 1);
+        self.try_select_collection(self.selected_collection - 1);
     }
 
     fn add_top_bar(&mut self, ctx: &egui::CtxRef) {
@@ -157,7 +194,7 @@ impl StriputaryGui {
                     }
                 }
                 if let Some(selection) = selection {
-                    self.try_select(selection);
+                    self.try_select_collection(selection);
                 }
             });
         });
@@ -168,7 +205,7 @@ impl StriputaryGui {
     }
 
     fn add_side_bar(&mut self, ctx: &egui::CtxRef) {
-        egui::SidePanel::left("side_panel")
+        egui::SidePanel::left("buttons")
             .resizable(false)
             .show(ctx, |ui| {
                 let cut_button = self.add_large_button(ui, "Cut");
@@ -179,6 +216,25 @@ impl StriputaryGui {
                 }
                 if playback_button.clicked() || ctx.input().key_pressed(config::PLAYBACK_KEY) {
                     self.play_last_touched_song();
+                }
+            });
+    }
+
+    fn add_dir_selection_bar(&mut self, ctx: &egui::CtxRef) {
+        egui::SidePanel::left("dir_select")
+            .resizable(false)
+            .show(ctx, |ui| {
+                ui.add(Label::new("Previous sessions:").text_style(TextStyle::Heading));
+                let dirs_with_indices: Vec<_> = self
+                    .session_dir_manager
+                    .iter_relative_paths()
+                    .enumerate()
+                    .collect();
+                for (i, dir_name) in dirs_with_indices.iter() {
+                    let button = Button::new(dir_name).text_style(TextStyle::Heading);
+                    if ui.add(button).clicked() {
+                        self.select_session_folder_by_index(*i);
+                    }
                 }
             });
     }
@@ -283,6 +339,7 @@ impl epi::App for StriputaryGui {
     fn update(&mut self, ctx: &egui::CtxRef, _: &mut epi::Frame<'_>) {
         self.record_thread.update();
         self.add_top_bar(ctx);
+        self.add_dir_selection_bar(ctx);
         self.add_side_bar(ctx);
         self.add_central_panel(ctx);
         self.mark_cut_songs();

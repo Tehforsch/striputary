@@ -5,6 +5,4 @@ use std::path::PathBuf;
 pub struct Opts {
     pub output_dir: Option<PathBuf>,
     pub service_name: Option<String>,
-    #[clap(short)]
-    pub record: bool,
 }
