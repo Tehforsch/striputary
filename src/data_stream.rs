@@ -20,11 +20,6 @@ impl<T> DataStream<T> {
         }
     }
 
-    pub fn update_no_timeout(&mut self) {
-        let new_data = self.receiver.recv().unwrap();
-        self.data.push(new_data);
-    }
-
     pub fn get_data(&self) -> &[T] {
         &self.data
     }

@@ -22,7 +22,7 @@ impl CuttingThread {
                 cut_song(&info).unwrap();
                 self.song_sender.send(info.song).unwrap();
             }
-            self.to_cut.update_no_timeout();
+            self.to_cut.update(config::RECV_CUT_INFO_TIMEOUT);
         }
     }
 }
