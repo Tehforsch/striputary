@@ -64,7 +64,7 @@ impl StriputaryGui {
             should_repaint: false,
             session_dir_manager,
         };
-        gui.load_selected_session();
+        gui.load_selected_session_dir();
         gui
     }
 
@@ -128,7 +128,7 @@ impl StriputaryGui {
 
     fn start_recording(&mut self) {
         self.session_dir_manager.select_new();
-        self.load_selected_session();
+        self.load_selected_session_dir();
         if !self.record_thread.is_running() {
             self.record_thread = RecordingThreadHandleStatus::new_running(&self.get_run_args());
         }
@@ -141,12 +141,12 @@ impl StriputaryGui {
         }
     }
 
-    fn select_session_folder(&mut self, identifier: SessionDirIdentifier) {
+    fn select_session_dir(&mut self, identifier: SessionDirIdentifier) {
         self.session_dir_manager.select(identifier);
-        self.load_selected_session();
+        self.load_selected_session_dir();
     }
 
-    fn load_selected_session(&mut self) {
+    fn load_selected_session_dir(&mut self) {
         self.collections = self
             .session_dir_manager
             .get_currently_selected_collections();
@@ -229,7 +229,7 @@ impl StriputaryGui {
                 for (i, dir_name) in dirs_with_indices.iter() {
                     let button = Button::new(dir_name).text_style(TextStyle::Heading);
                     if ui.add(button).clicked() {
-                        self.select_session_folder(*i);
+                        self.select_session_dir(*i);
                     }
                 }
             });
