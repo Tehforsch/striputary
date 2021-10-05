@@ -71,7 +71,7 @@ impl SessionManager {
             RecordingSession::from_parent_dir(&session_dir)
                 .map(|session| get_excerpt_collection(session))
                 .map_err(|x| {
-                    println!("{}", x.to_string());
+                    println!("{}", x);
                     x
                 })
                 .ok()
