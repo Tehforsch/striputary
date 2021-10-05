@@ -3,6 +3,7 @@ use eframe::egui::*;
 
 use crate::audio_time::AudioTime;
 use crate::excerpt_collection::NamedExcerpt;
+use crate::song::Song;
 
 use super::config;
 
@@ -64,6 +65,19 @@ impl ExcerptPlot {
 
     pub fn hide_playback_marker(&mut self) {
         self.playback_marker = None;
+    }
+
+    pub fn mark_cut(&mut self, song: &Song) {
+        if let Some(ref song_before) = self.excerpt.song_before {
+            if song_before == song {
+                self.finished_cutting_song_before = true;
+            }
+        }
+        if let Some(ref song_after) = self.excerpt.song_after {
+            if song_after == song {
+                self.finished_cutting_song_after = true;
+            }
+        }
     }
 }
 

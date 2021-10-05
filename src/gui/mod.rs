@@ -90,22 +90,7 @@ impl StriputaryGui {
         let cut_songs = self.cut_thread.get_cut_songs();
         for song in cut_songs {
             for plot in self.plots.iter_mut() {
-                if let Some(ref song_before) = plot.excerpt.song_before {
-                    if song_before == song {
-                        if !plot.finished_cutting_song_before {
-                            plot.finished_cutting_song_before = true;
-                            self.should_repaint = true;
-                        }
-                    }
-                }
-                if let Some(ref song_after) = plot.excerpt.song_after {
-                    if song_after == song {
-                        if !plot.finished_cutting_song_after {
-                            plot.finished_cutting_song_after = true;
-                            self.should_repaint = true;
-                        }
-                    }
-                }
+                plot.mark_cut(song);
             }
         }
     }
