@@ -9,7 +9,7 @@ use std::vec::Vec;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RecordingSession {
-    #[serde(skip_serializing)]
+    #[serde(skip_serializing, skip_deserializing)]
     pub filename: PathBuf,
     pub songs: Vec<Song>,
     pub estimated_time_first_song: f64,

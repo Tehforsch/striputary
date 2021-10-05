@@ -70,6 +70,10 @@ impl SessionManager {
         if session_dir.is_dir() {
             RecordingSession::from_parent_dir(&session_dir)
                 .map(|session| get_excerpt_collection(session))
+                .map_err(|x| {
+                    println!("{}", x.to_string());
+                    x
+                })
                 .ok()
         } else {
             None
