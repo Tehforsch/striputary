@@ -2,15 +2,18 @@ mod config;
 mod cutting_thread;
 mod playback;
 mod plot;
-mod session_dir_manager;
+mod session_manager;
 
 use std::path::Path;
 
 use crate::{
-    cut::CutInfo, excerpt_collection::ExcerptCollection,
-    gui::session_dir_manager::SessionDirManager,
-    recording::recording_thread_handle_status::RecordingThreadHandleStatus, run_args::RunArgs,
-    service_config::ServiceConfig, song::Song,
+    cut::CutInfo,
+    excerpt_collection::ExcerptCollection,
+    gui::session_manager::{SessionIdentifier, SessionManager},
+    recording::recording_thread_handle_status::RecordingThreadHandleStatus,
+    run_args::RunArgs,
+    service_config::ServiceConfig,
+    song::Song,
 };
 
 use eframe::{
@@ -22,7 +25,6 @@ use self::{
     cutting_thread::CuttingThreadHandle,
     playback::{play_excerpt, PlaybackThreadHandle},
     plot::ExcerptPlot,
-    session_dir_manager::SessionDirIdentifier,
 };
 
 #[derive(PartialEq, Eq, Copy, Clone)]
@@ -39,12 +41,12 @@ pub struct StriputaryGui {
     current_playback: Option<(SongIdentifier, PlaybackThreadHandle)>,
     last_touched_song: Option<SongIdentifier>,
     should_repaint: bool,
-    session_dir_manager: SessionDirManager,
+    session_manager: SessionManager,
 }
 
 impl StriputaryGui {
     pub fn new(dir: &Path, service_config: ServiceConfig) -> Self {
-        let session_dir_manager = SessionDirManager::new(dir);
+        let session_manager = SessionManager::new(dir);
         let mut gui = Self {
             service_config,
             collection: None,
@@ -54,9 +56,9 @@ impl StriputaryGui {
             current_playback: None,
             last_touched_song: None,
             should_repaint: false,
-            session_dir_manager,
+            session_manager,
         };
-        gui.load_selected_session_dir();
+        gui.load_selected_session();
         gui
     }
 
@@ -123,8 +125,8 @@ impl StriputaryGui {
     }
 
     fn start_recording(&mut self) {
-        self.session_dir_manager.select_new();
-        self.load_selected_session_dir();
+        self.session_manager.select_new();
+        self.load_selected_session();
         if !self.record_thread.is_running() {
             self.record_thread = RecordingThreadHandleStatus::new_running(&self.get_run_args());
         }
@@ -132,18 +134,18 @@ impl StriputaryGui {
 
     fn get_run_args(&self) -> RunArgs {
         RunArgs {
-            session_dir: self.session_dir_manager.get_currently_selected(),
+            session_dir: self.session_manager.get_currently_selected(),
             service_config: self.service_config.clone(),
         }
     }
 
-    fn select_session_dir(&mut self, identifier: SessionDirIdentifier) {
-        self.session_dir_manager.select(identifier);
-        self.load_selected_session_dir();
+    fn select_session(&mut self, identifier: SessionIdentifier) {
+        self.session_manager.select(identifier);
+        self.load_selected_session();
     }
 
-    fn load_selected_session_dir(&mut self) {
-        self.collection = self.session_dir_manager.get_currently_selected_collection();
+    fn load_selected_session(&mut self) {
+        self.collection = self.session_manager.get_currently_selected_collection();
         if let Some(ref collection) = self.collection {
             self.plots = get_plots(collection);
         }
@@ -175,13 +177,13 @@ impl StriputaryGui {
                 self.add_record_button_or_error_message(ui);
                 ui.add(Label::new("Previous sessions:").text_style(TextStyle::Heading));
                 let dirs_with_indices: Vec<_> = self
-                    .session_dir_manager
+                    .session_manager
                     .iter_relative_paths_with_indices()
                     .collect();
                 for (i, dir_name) in dirs_with_indices.iter() {
                     let button = Button::new(dir_name).text_style(TextStyle::Heading);
                     if ui.add(button).clicked() {
-                        self.select_session_dir(*i);
+                        self.select_session(*i);
                     }
                 }
             });

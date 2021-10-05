@@ -12,32 +12,32 @@ use crate::excerpt_collection::ExcerptCollection;
 use crate::recording_session::RecordingSession;
 
 #[derive(Clone, Copy)]
-pub enum SessionDirIdentifier {
+pub enum SessionIdentifier {
     Old(usize),
     New,
 }
 
-pub struct SessionDirManager {
+pub struct SessionManager {
     output_dir: PathBuf,
     dirs: Vec<PathBuf>,
     new_dir: PathBuf,
-    selected: SessionDirIdentifier,
+    selected: SessionIdentifier,
 }
 
-impl SessionDirManager {
+impl SessionManager {
     pub fn new(dir: &Path) -> Self {
         let dirs = get_dirs(dir).unwrap();
         let mut manager = Self {
             output_dir: dir.into(),
             dirs,
             new_dir: get_new_name(dir),
-            selected: SessionDirIdentifier::New,
+            selected: SessionIdentifier::New,
         };
         manager.select_latest();
         manager
     }
 
-    pub fn select(&mut self, identifier: SessionDirIdentifier) {
+    pub fn select(&mut self, identifier: SessionIdentifier) {
         self.selected = identifier;
     }
 
@@ -49,19 +49,19 @@ impl SessionDirManager {
             .max_by_key(|(_, dir)| dir.metadata().unwrap().modified().unwrap())
             .map(|(index, _)| index)
         {
-            Some(index) => SessionDirIdentifier::Old(index),
-            None => SessionDirIdentifier::New,
+            Some(index) => SessionIdentifier::Old(index),
+            None => SessionIdentifier::New,
         };
     }
 
     pub fn select_new(&mut self) {
-        self.selected = SessionDirIdentifier::New;
+        self.selected = SessionIdentifier::New;
     }
 
     pub fn get_currently_selected(&self) -> PathBuf {
         match self.selected {
-            SessionDirIdentifier::Old(index) => self.dirs[index].clone(),
-            SessionDirIdentifier::New => self.new_dir.clone(),
+            SessionIdentifier::Old(index) => self.dirs[index].clone(),
+            SessionIdentifier::New => self.new_dir.clone(),
         }
     }
 
@@ -78,20 +78,20 @@ impl SessionDirManager {
 
     pub fn iter_relative_paths_with_indices(
         &self,
-    ) -> Box<dyn Iterator<Item = (SessionDirIdentifier, String)> + '_> {
+    ) -> Box<dyn Iterator<Item = (SessionIdentifier, String)> + '_> {
         Box::new(
             self.enumerate()
                 .map(|(index, dir)| (index, dir.file_stem().unwrap().to_str().unwrap().to_owned())),
         )
     }
 
-    fn enumerate(&self) -> Box<dyn Iterator<Item = (SessionDirIdentifier, &PathBuf)> + '_> {
+    fn enumerate(&self) -> Box<dyn Iterator<Item = (SessionIdentifier, &PathBuf)> + '_> {
         Box::new(
-            std::iter::once((SessionDirIdentifier::New, &self.new_dir)).chain(
+            std::iter::once((SessionIdentifier::New, &self.new_dir)).chain(
                 self.dirs
                     .iter()
                     .enumerate()
-                    .map(|(index, dir)| (SessionDirIdentifier::Old(index), dir)),
+                    .map(|(index, dir)| (SessionIdentifier::Old(index), dir)),
             ),
         )
     }
