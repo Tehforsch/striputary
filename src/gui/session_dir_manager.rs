@@ -7,6 +7,10 @@ use std::{
 use anyhow::Result;
 use chrono::Local;
 
+use crate::cut::get_excerpt_collection;
+use crate::excerpt_collection::ExcerptCollection;
+use crate::recording_session::load_sessions;
+
 pub struct SessionDirManager {
     output_dir: PathBuf,
     dirs: Vec<PathBuf>,
@@ -50,7 +54,20 @@ impl SessionDirManager {
         }
     }
 
-    pub fn iter_relative_paths(&self) -> Box<Iterator<Item = String> + '_> {
+    pub fn get_currently_selected_collections(&self) -> Vec<ExcerptCollection> {
+        let session_dir = self.get_currently_selected();
+        if session_dir.is_dir() {
+            let sessions = load_sessions(&session_dir).unwrap_or(vec![]);
+            sessions
+                .into_iter()
+                .map(|session| get_excerpt_collection(session))
+                .collect()
+        } else {
+            vec![]
+        }
+    }
+
+    pub fn iter_relative_paths(&self) -> Box<dyn Iterator<Item = String> + '_> {
         Box::new(
             self.dirs
                 .iter()

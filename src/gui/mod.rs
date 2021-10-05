@@ -37,7 +37,7 @@ struct SongIdentifier {
 }
 
 pub struct StriputaryGui {
-    run_args: RunArgs,
+    service_config: ServiceConfig,
     collections: Vec<ExcerptCollection>,
     plots: Vec<ExcerptPlot>,
     cut_thread: CuttingThreadHandle,
@@ -52,13 +52,8 @@ pub struct StriputaryGui {
 impl StriputaryGui {
     pub fn new(dir: &Path, service_config: ServiceConfig) -> Self {
         let session_dir_manager = SessionDirManager::new(dir);
-        let session_dir = session_dir_manager.get_currently_selected();
-        let run_args = RunArgs {
-            session_dir,
-            service_config,
-        };
         let mut gui = Self {
-            run_args: run_args.clone(),
+            service_config,
             collections: vec![],
             plots: vec![],
             cut_thread: CuttingThreadHandle::default(),
@@ -133,7 +128,14 @@ impl StriputaryGui {
 
     fn start_recording(&mut self) {
         if !self.record_thread.is_running() {
-            self.record_thread = RecordingThreadHandleStatus::new_running(&self.run_args);
+            self.record_thread = RecordingThreadHandleStatus::new_running(&self.get_run_args());
+        }
+    }
+
+    fn get_run_args(&self) -> RunArgs {
+        RunArgs {
+            session_dir: self.session_dir_manager.get_currently_selected(),
+            service_config: self.service_config.clone(),
         }
     }
 
@@ -143,16 +145,9 @@ impl StriputaryGui {
     }
 
     fn load_selected_session(&mut self) {
-        let session_dir = self.session_dir_manager.get_currently_selected();
-        if session_dir.is_dir() {
-            let sessions = load_sessions(&session_dir).unwrap();
-            self.collections = sessions
-                .into_iter()
-                .map(|session| get_excerpt_collection(session))
-                .collect();
-        } else {
-            self.collections = vec![];
-        }
+        self.collections = self
+            .session_dir_manager
+            .get_currently_selected_collections();
         self.try_select_collection(0);
     }
 
