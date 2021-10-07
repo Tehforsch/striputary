@@ -36,6 +36,7 @@ pub struct StriputaryGui {
     service_config: ServiceConfig,
     collection: Option<ExcerptCollection>,
     plots: Vec<ExcerptPlot>,
+    scroll_position: usize,
     cut_thread: CuttingThreadHandle,
     record_thread: RecordingThreadHandleStatus,
     current_playback: Option<(SongIdentifier, PlaybackThreadHandle)>,
@@ -51,6 +52,7 @@ impl StriputaryGui {
             service_config,
             collection: None,
             plots: vec![],
+            scroll_position: 0,
             cut_thread: CuttingThreadHandle::default(),
             record_thread: RecordingThreadHandleStatus::new_stopped(),
             current_playback: None,
@@ -132,8 +134,13 @@ impl StriputaryGui {
     fn load_selected_session(&mut self) {
         self.collection = self.session_manager.get_currently_selected_collection();
         if let Some(ref collection) = self.collection {
-            self.plots = get_plots(collection);
+            self.plots = self.get_plots(collection);
         }
+    }
+
+    fn scroll(&mut self, diff: i32) {
+        let max_num_plots = self.collection.as_ref().map(|collection| collection.excerpts.len()).unwrap_or(0);
+        self.scroll_position = (self.scroll_position as i32 + diff).min(max_num_plots as i32 - config::NUM_PLOTS_TO_SHOW as i32).max(0) as usize;
     }
 
     fn add_large_button(&self, ui: &mut Ui, name: &str) -> Response {
@@ -265,6 +272,30 @@ impl StriputaryGui {
             self.add_labels_for_recorded_songs(ui);
         });
     }
+
+    fn keyboard_control(&mut self, ctx: &egui::CtxRef) {
+        if ctx.input().key_pressed(config::SCROLL_UP_KEY) {
+            self.scroll(-1);
+        }
+        if ctx.input().key_pressed(config::SCROLL_DOWN_KEY) {
+            self.scroll(1);
+        }
+        println!("{}", self.scroll_position);
+    }
+
+    fn get_plots(&self, collection: &ExcerptCollection) -> Vec<ExcerptPlot> {
+        collection.excerpts[self.scroll_position..self.scroll_position+config::NUM_PLOTS_TO_SHOW]
+            .iter()
+            .map(|excerpt| {
+                ExcerptPlot::new(
+                    excerpt.clone(),
+                    excerpt
+                        .excerpt
+                        .get_absolute_time_from_time_offset(collection.offset_guess),
+                )
+            })
+            .collect()
+    }
 }
 
 impl epi::App for StriputaryGui {
@@ -282,21 +313,8 @@ impl epi::App for StriputaryGui {
             ctx.request_repaint();
             self.should_repaint = false;
         }
+        self.keyboard_control(ctx);
     }
-}
-
-fn get_plots(collection: &ExcerptCollection) -> Vec<ExcerptPlot> {
-    collection
-        .iter_excerpts()
-        .map(|excerpt| {
-            ExcerptPlot::new(
-                excerpt.clone(),
-                excerpt
-                    .excerpt
-                    .get_absolute_time_from_time_offset(collection.offset_guess),
-            )
-        })
-        .collect()
 }
 
 pub fn get_label_color(finished_cutting: bool) -> Color32 {

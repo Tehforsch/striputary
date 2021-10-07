@@ -12,3 +12,7 @@ pub static SELECTED_TEXT_COLOR: Color32 = Color32::BLACK;
 
 pub static CUT_KEY: Key = Key::Enter;
 pub static PLAYBACK_KEY: Key = Key::Space;
+pub static SCROLL_DOWN_KEY: Key = Key::ArrowDown;
+pub static SCROLL_UP_KEY: Key = Key::ArrowUp;
+
+pub static NUM_PLOTS_TO_SHOW: usize = 16;
