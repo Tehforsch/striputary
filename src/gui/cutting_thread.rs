@@ -1,14 +1,14 @@
-use std::{
-    sync::mpsc::{channel, Receiver, Sender},
-    thread::{self, JoinHandle},
-};
+use std::sync::mpsc::channel;
+use std::sync::mpsc::Receiver;
+use std::sync::mpsc::Sender;
+use std::thread::JoinHandle;
+use std::thread::{self};
 
+use crate::config;
+use crate::cut::cut_song;
+use crate::cut::CutInfo;
 use crate::data_stream::DataStream;
-use crate::{
-    config,
-    cut::{cut_song, CutInfo},
-    song::Song,
-};
+use crate::song::Song;
 
 struct CuttingThread {
     pub to_cut: DataStream<CutInfo>,

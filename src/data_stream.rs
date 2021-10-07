@@ -1,4 +1,5 @@
-use std::{sync::mpsc::Receiver, time::Duration};
+use std::sync::mpsc::Receiver;
+use std::time::Duration;
 
 pub struct DataStream<T> {
     receiver: Receiver<T>,

@@ -6,26 +6,30 @@ mod session_manager;
 
 use std::path::Path;
 
-use crate::{
-    cut::CutInfo,
-    excerpt_collection::ExcerptCollection,
-    gui::session_manager::{SessionIdentifier, SessionManager},
-    recording::recording_thread_handle_status::RecordingThreadHandleStatus,
-    run_args::RunArgs,
-    service_config::ServiceConfig,
-    song::Song,
-};
+use crate::cut::CutInfo;
+use crate::excerpt_collection::ExcerptCollection;
+use crate::gui::session_manager::SessionIdentifier;
+use crate::gui::session_manager::SessionManager;
+use crate::recording::recording_thread_handle_status::RecordingThreadHandleStatus;
+use crate::run_args::RunArgs;
+use crate::service_config::ServiceConfig;
+use crate::song::Song;
 
-use eframe::{
-    egui::{self, Button, Color32, Label, Layout, Pos2, Response, TextStyle, Ui},
-    epi,
-};
+use eframe::egui::Button;
+use eframe::egui::Color32;
+use eframe::egui::Label;
+use eframe::egui::Layout;
+use eframe::egui::Pos2;
+use eframe::egui::Response;
+use eframe::egui::TextStyle;
+use eframe::egui::Ui;
+use eframe::egui::{self};
+use eframe::epi;
 
-use self::{
-    cutting_thread::CuttingThreadHandle,
-    playback::{play_excerpt, PlaybackThreadHandle},
-    plot::ExcerptPlot,
-};
+use self::cutting_thread::CuttingThreadHandle;
+use self::playback::play_excerpt;
+use self::playback::PlaybackThreadHandle;
+use self::plot::ExcerptPlot;
 
 #[derive(PartialEq, Eq, Copy, Clone)]
 struct SongIdentifier {
@@ -139,8 +143,14 @@ impl StriputaryGui {
     }
 
     fn scroll(&mut self, diff: i32) {
-        let max_num_plots = self.collection.as_ref().map(|collection| collection.excerpts.len()).unwrap_or(0);
-        self.scroll_position = (self.scroll_position as i32 + diff).min(max_num_plots as i32 - config::NUM_PLOTS_TO_SHOW as i32).max(0) as usize;
+        let max_num_plots = self
+            .collection
+            .as_ref()
+            .map(|collection| collection.excerpts.len())
+            .unwrap_or(0);
+        self.scroll_position = (self.scroll_position as i32 + diff)
+            .min(max_num_plots as i32 - config::NUM_PLOTS_TO_SHOW as i32)
+            .max(0) as usize;
     }
 
     fn add_large_button(&self, ui: &mut Ui, name: &str) -> Response {
@@ -284,7 +294,7 @@ impl StriputaryGui {
     }
 
     fn get_plots(&self, collection: &ExcerptCollection) -> Vec<ExcerptPlot> {
-        collection.excerpts[self.scroll_position..self.scroll_position+config::NUM_PLOTS_TO_SHOW]
+        collection.excerpts[self.scroll_position..self.scroll_position + config::NUM_PLOTS_TO_SHOW]
             .iter()
             .map(|excerpt| {
                 ExcerptPlot::new(

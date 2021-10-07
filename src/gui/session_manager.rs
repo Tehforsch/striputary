@@ -1,8 +1,7 @@
+use std::fs::DirEntry;
+use std::fs::{self};
+use std::path::Path;
 use std::path::PathBuf;
-use std::{
-    fs::{self, DirEntry},
-    path::Path,
-};
 
 use anyhow::Result;
 use chrono::Local;

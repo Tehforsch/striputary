@@ -1,8 +1,12 @@
-use anyhow::{anyhow, Context, Result};
-use regex::{Captures, Regex};
+use anyhow::anyhow;
+use anyhow::Context;
+use anyhow::Result;
+use regex::Captures;
+use regex::Regex;
 use std::path::Path;
 use std::process::Command;
-use subprocess::{Exec, Popen};
+use subprocess::Exec;
+use subprocess::Popen;
 
 use crate::config::STRIPUTARY_SINK_NAME;
 use crate::service_config::ServiceConfig;

@@ -1,4 +1,6 @@
-use crate::{audio_excerpt::AudioExcerpt, recording_session::RecordingSession, song::Song};
+use crate::audio_excerpt::AudioExcerpt;
+use crate::recording_session::RecordingSession;
+use crate::song::Song;
 
 #[derive(Clone)]
 pub struct NamedExcerpt {

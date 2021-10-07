@@ -1,12 +1,19 @@
-use anyhow::{Context, Result};
+use anyhow::Context;
+use anyhow::Result;
 use std::fs::create_dir_all;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::path::PathBuf;
 use std::process::Command;
 
 use crate::audio_excerpt::AudioExcerpt;
 use crate::audio_time::AudioTime;
-use crate::config::{self, MAX_OFFSET, MIN_OFFSET, NUM_OFFSETS_TO_TRY, READ_BUFFER};
-use crate::excerpt_collection::{ExcerptCollection, NamedExcerpt};
+use crate::config::MAX_OFFSET;
+use crate::config::MIN_OFFSET;
+use crate::config::NUM_OFFSETS_TO_TRY;
+use crate::config::READ_BUFFER;
+use crate::config::{self};
+use crate::excerpt_collection::ExcerptCollection;
+use crate::excerpt_collection::NamedExcerpt;
 use crate::recording_session::RecordingSession;
 use crate::song::Song;
 use crate::wav::extract_audio;

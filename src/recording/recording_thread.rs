@@ -1,21 +1,28 @@
-use crate::config::{
-    TIME_AFTER_SESSION_END, TIME_BEFORE_SESSION_START, WAIT_TIME_BEFORE_FIRST_SONG,
-};
+use crate::config::TIME_AFTER_SESSION_END;
+use crate::config::TIME_BEFORE_SESSION_START;
+use crate::config::WAIT_TIME_BEFORE_FIRST_SONG;
 use crate::recording::recording_status::RecordingStatus;
 use std::fs::create_dir_all;
 use std::path::Path;
 
-use super::dbus::{collect_dbus_info, previous_song, start_playback, stop_playback};
+use super::dbus::collect_dbus_info;
+use super::dbus::previous_song;
+use super::dbus::start_playback;
+use super::dbus::stop_playback;
 use crate::recording::recorder;
 use crate::recording_session::RecordingSession;
 use crate::run_args::RunArgs;
 use crate::song::Song;
-use anyhow::{anyhow, Context, Result};
-use std::sync::atomic::{AtomicBool, Ordering};
+use anyhow::anyhow;
+use anyhow::Context;
+use anyhow::Result;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::thread::{self};
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use std::time::Instant;
 
 use super::recording_status::RecordingExitStatus;
 

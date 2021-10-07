@@ -1,4 +1,5 @@
-use anyhow::{anyhow, Result};
+use anyhow::anyhow;
+use anyhow::Result;
 
 #[derive(Clone)]
 pub struct ServiceConfig {

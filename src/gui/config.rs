@@ -1,4 +1,5 @@
-use eframe::egui::{Color32, Key};
+use eframe::egui::Color32;
+use eframe::egui::Key;
 
 pub static PLOT_ASPECT: f32 = 100.0;
 pub static CUT_LINE_COLOR: Color32 = Color32::GREEN;
