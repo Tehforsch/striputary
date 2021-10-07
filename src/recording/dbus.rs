@@ -1,16 +1,18 @@
-use crate::recording::recording_status::RecordingExitStatus;
-use crate::recording::recording_status::RecordingStatus;
-use crate::recording_session::RecordingSession;
-use crate::service_config::ServiceConfig;
-use crate::song::Song;
+use std::collections::HashMap;
+use std::process::Command;
+
 use anyhow::Context;
 use anyhow::Result;
 use dbus::arg::RefArg;
 use dbus::ffidisp::stdintf::org_freedesktop_dbus::PropertiesPropertiesChanged as PC;
 use dbus::ffidisp::Connection;
 use dbus::message::SignalArgs;
-use std::collections::HashMap;
-use std::process::Command;
+
+use crate::recording::recording_status::RecordingExitStatus;
+use crate::recording::recording_status::RecordingStatus;
+use crate::recording_session::RecordingSession;
+use crate::service_config::ServiceConfig;
+use crate::song::Song;
 
 /// Collect dbus information on the songs.
 /// We could collect the dbus timestamps but they are basically useless

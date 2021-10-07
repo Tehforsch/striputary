@@ -1,13 +1,15 @@
-use crate::config;
-use crate::song::Song;
-use anyhow::Context;
-use anyhow::Result;
-use serde::Deserialize;
-use serde::Serialize;
 use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 use std::vec::Vec;
+
+use anyhow::Context;
+use anyhow::Result;
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::config;
+use crate::song::Song;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RecordingSession {

@@ -1,8 +1,9 @@
-use serde::Deserialize;
-use serde::Serialize;
 use std::fmt;
 use std::path::Path;
 use std::path::PathBuf;
+
+use serde::Deserialize;
+use serde::Serialize;
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 pub struct Song {

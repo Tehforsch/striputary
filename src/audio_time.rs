@@ -1,5 +1,6 @@
-use hound::WavSpec;
 use std::ops;
+
+use hound::WavSpec;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct AudioTime {

@@ -17,12 +17,13 @@ pub mod wav;
 
 use std::path::Path;
 
-use crate::gui::StriputaryGui;
 use anyhow::Result;
 use args::Opts;
 use clap::Clap;
 use config_file::ConfigFile;
 use service_config::ServiceConfig;
+
+use crate::gui::StriputaryGui;
 
 fn main() -> Result<(), anyhow::Error> {
     let args = Opts::parse();

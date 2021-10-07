@@ -1,11 +1,10 @@
 use eframe::egui::plot::*;
 use eframe::egui::*;
 
+use super::config;
 use crate::audio_time::AudioTime;
 use crate::excerpt_collection::NamedExcerpt;
 use crate::song::Song;
-
-use super::config;
 
 pub struct ExcerptPlot {
     pub excerpt: NamedExcerpt,

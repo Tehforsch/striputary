@@ -6,15 +6,6 @@ mod session_manager;
 
 use std::path::Path;
 
-use crate::cut::CutInfo;
-use crate::excerpt_collection::ExcerptCollection;
-use crate::gui::session_manager::SessionIdentifier;
-use crate::gui::session_manager::SessionManager;
-use crate::recording::recording_thread_handle_status::RecordingThreadHandleStatus;
-use crate::run_args::RunArgs;
-use crate::service_config::ServiceConfig;
-use crate::song::Song;
-
 use eframe::egui::Button;
 use eframe::egui::Color32;
 use eframe::egui::Label;
@@ -30,6 +21,14 @@ use self::cutting_thread::CuttingThreadHandle;
 use self::playback::play_excerpt;
 use self::playback::PlaybackThreadHandle;
 use self::plot::ExcerptPlot;
+use crate::cut::CutInfo;
+use crate::excerpt_collection::ExcerptCollection;
+use crate::gui::session_manager::SessionIdentifier;
+use crate::gui::session_manager::SessionManager;
+use crate::recording::recording_thread_handle_status::RecordingThreadHandleStatus;
+use crate::run_args::RunArgs;
+use crate::service_config::ServiceConfig;
+use crate::song::Song;
 
 #[derive(PartialEq, Eq, Copy, Clone)]
 struct SongIdentifier {

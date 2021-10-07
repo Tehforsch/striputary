@@ -1,9 +1,11 @@
+use std::i16;
+
+use hound::WavSpec;
+use rodio::Source;
+
 use crate::audio_time::AudioTime;
 use crate::config::NUM_PLOT_DATA_POINTS;
 use crate::config::NUM_SAMPLES_PER_AVERAGE_VOLUME;
-use hound::WavSpec;
-use rodio::Source;
-use std::i16;
 
 #[derive(Clone)]
 pub struct AudioExcerpt {

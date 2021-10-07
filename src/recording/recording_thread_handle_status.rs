@@ -1,7 +1,6 @@
+use super::recording_thread_handle::RecordingThreadHandle;
 use crate::run_args::RunArgs;
 use crate::song::Song;
-
-use super::recording_thread_handle::RecordingThreadHandle;
 
 pub enum RecordingThreadHandleStatus {
     Running(RecordingThreadHandle),

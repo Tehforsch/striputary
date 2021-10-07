@@ -1,5 +1,6 @@
-use clap::Clap;
 use std::path::PathBuf;
+
+use clap::Clap;
 
 #[derive(Clap, Debug)]
 pub struct Opts {

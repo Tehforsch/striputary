@@ -1,4 +1,3 @@
-use anyhow::Result;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
 use std::sync::mpsc::channel;
@@ -6,14 +5,15 @@ use std::sync::Arc;
 use std::thread::JoinHandle;
 use std::thread::{self};
 
+use anyhow::Result;
+
+use super::recording_status::RecordingExitStatus;
+use super::recording_thread::RecordingThread;
 use crate::config;
 use crate::data_stream::DataStream;
 use crate::recording_session::RecordingSession;
 use crate::run_args::RunArgs;
 use crate::song::Song;
-
-use super::recording_status::RecordingExitStatus;
-use super::recording_thread::RecordingThread;
 
 pub struct RecordingThreadHandle {
     handle: JoinHandle<Result<(RecordingExitStatus, RecordingSession)>>,

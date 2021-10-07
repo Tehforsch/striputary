@@ -1,7 +1,8 @@
+use std::path::Path;
+
 use crate::audio_excerpt::AudioExcerpt;
 use crate::audio_time::AudioTime;
 use crate::errors::MissingSongError;
-use std::path::Path;
 
 pub fn get_volume_average_over_channels(samples: Vec<i16>) -> Vec<i16> {
     samples
