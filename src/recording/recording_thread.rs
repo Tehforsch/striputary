@@ -105,7 +105,7 @@ impl RecordingThread {
                 return Ok((exit_status, session));
             }
             // There should only be one new song if the delay between dbus signals is not too large, but you never know
-            for song_index in num_songs_before - 1..num_songs_after - 1 {
+            for song_index in num_songs_before..num_songs_after {
                 self.add_new_song(session.songs[song_index].clone());
             }
         }
