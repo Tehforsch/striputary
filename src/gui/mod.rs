@@ -238,7 +238,7 @@ impl StriputaryGui {
         egui::CentralPanel::default().show(ctx, |ui| {
             let mut clicked_pos: Option<Pos2> = None;
             for (plot_song, plot) in self
-                .plots
+                .plots[self.scroll_position..self.scroll_position + config::NUM_PLOTS_TO_SHOW]
                 .iter_mut()
                 .enumerate()
                 .map(|(song_index, plot)| (SongIdentifier { song_index }, plot))
@@ -289,11 +289,10 @@ impl StriputaryGui {
         if ctx.input().key_pressed(config::SCROLL_DOWN_KEY) {
             self.scroll(1);
         }
-        println!("{}", self.scroll_position);
     }
 
     fn get_plots(&self, collection: &ExcerptCollection) -> Vec<ExcerptPlot> {
-        collection.excerpts[self.scroll_position..self.scroll_position + config::NUM_PLOTS_TO_SHOW]
+        collection.excerpts
             .iter()
             .map(|excerpt| {
                 ExcerptPlot::new(
