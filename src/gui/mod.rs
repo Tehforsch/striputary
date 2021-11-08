@@ -234,11 +234,17 @@ impl StriputaryGui {
         }
     }
 
+    fn get_visible_plots(plots: &mut Vec<ExcerptPlot>, scroll_position: usize) -> &mut [ExcerptPlot] {
+        let min = scroll_position.min(plots.len());
+        let max = (scroll_position + config::NUM_PLOTS_TO_SHOW).min(plots.len());
+        &mut plots[min..max]
+    }
+
     fn add_central_panel(&mut self, ctx: &egui::CtxRef) {
         egui::CentralPanel::default().show(ctx, |ui| {
             let mut clicked_pos: Option<Pos2> = None;
-            for (plot_song, plot) in self
-                .plots[self.scroll_position..self.scroll_position + config::NUM_PLOTS_TO_SHOW]
+            for (plot_song, plot) in
+                Self::get_visible_plots(&mut self.plots, self.scroll_position)
                 .iter_mut()
                 .enumerate()
                 .map(|(song_index, plot)| (SongIdentifier { song_index }, plot))
@@ -292,7 +298,8 @@ impl StriputaryGui {
     }
 
     fn get_plots(&self, collection: &ExcerptCollection) -> Vec<ExcerptPlot> {
-        collection.excerpts
+        collection
+            .excerpts
             .iter()
             .map(|excerpt| {
                 ExcerptPlot::new(
