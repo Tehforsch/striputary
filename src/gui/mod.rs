@@ -234,19 +234,18 @@ impl StriputaryGui {
         }
     }
 
-    fn get_visible_plots(plots: &mut Vec<ExcerptPlot>, scroll_position: usize) -> &mut [ExcerptPlot] {
+    fn enumerate_visible_plots_mut(plots: &mut Vec<ExcerptPlot>, scroll_position: usize) -> impl Iterator<Item=(usize, &mut ExcerptPlot)> {
         let min = scroll_position.min(plots.len());
         let max = (scroll_position + config::NUM_PLOTS_TO_SHOW).min(plots.len());
-        &mut plots[min..max]
+        let slice = &mut plots[min..max];
+        slice.iter_mut().enumerate().map(move |(i, s)| (i + scroll_position, s))
     }
 
     fn add_central_panel(&mut self, ctx: &egui::CtxRef) {
         egui::CentralPanel::default().show(ctx, |ui| {
             let mut clicked_pos: Option<Pos2> = None;
             for (plot_song, plot) in
-                Self::get_visible_plots(&mut self.plots, self.scroll_position)
-                .iter_mut()
-                .enumerate()
+                Self::enumerate_visible_plots_mut(&mut self.plots, self.scroll_position)
                 .map(|(song_index, plot)| (SongIdentifier { song_index }, plot))
             {
                 ui.horizontal(|ui| {
