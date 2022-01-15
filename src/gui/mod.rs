@@ -120,15 +120,17 @@ impl StriputaryGui {
         self.session_manager.select_new();
         self.load_selected_session();
         if !self.record_thread.is_running() {
-            self.record_thread = RecordingThreadHandleStatus::new_running(&self.get_run_args());
+            if let Some(ref run_args) = self.get_run_args() {
+                self.record_thread = RecordingThreadHandleStatus::new_running(run_args);
+            }
         }
     }
 
-    fn get_run_args(&self) -> RunArgs {
-        RunArgs {
-            session_dir: self.session_manager.get_currently_selected(),
+    fn get_run_args(&self) -> Option<RunArgs> {
+        Some(RunArgs {
+            session_dir: self.session_manager.get_currently_selected()?,
             service_config: self.service_config.clone(),
-        }
+        })
     }
 
     fn select_session(&mut self, identifier: SessionIdentifier) {
@@ -164,7 +166,7 @@ impl StriputaryGui {
         )
     }
 
-    fn add_left_panel(&mut self, ctx: &egui::CtxRef) {
+    fn add_side_panel(&mut self, ctx: &egui::CtxRef) {
         egui::SidePanel::left("side_bar")
             .resizable(false)
             .min_width(config::MIN_SIDE_BAR_WIDTH)
@@ -222,12 +224,10 @@ impl StriputaryGui {
     }
 
     fn add_labels_for_recorded_songs(&self, ui: &mut Ui) {
-        if self.record_thread.is_running() {
-            let songs = self.record_thread.get_songs();
-            for song in songs.iter().rev() {
-                let label = Label::new(RichText::new(song.to_string()));
-                ui.add(label);
-            }
+        let songs = self.record_thread.get_songs();
+        for song in songs.iter().rev() {
+            let label = Label::new(RichText::new(song.to_string()));
+            ui.add(label);
         }
     }
 
@@ -284,17 +284,20 @@ impl StriputaryGui {
         let mouse_pos = ctx.input().pointer.interact_pos();
         let mut clicked_song_and_offset: Option<(SongIdentifier, AudioTime)> = None;
         egui::CentralPanel::default().show(ctx, |ui| {
-            for (plot_song, plot) in self
-                .enumerate_visible_plots()
-                .map(|(song_index, plot)| (SongIdentifier { song_index }, plot))
-            {
-                Self::add_plot_labels(ui, plot);
-                let offset = plot.show_and_get_offset(plot_song.song_index, ui, mouse_pos);
-                if let Some(offset) = offset {
-                    clicked_song_and_offset = Some((plot_song, offset));
-                };
+            if self.record_thread.is_running() {
+                self.add_labels_for_recorded_songs(ui);
+            } else {
+                for (plot_song, plot) in self
+                    .enumerate_visible_plots()
+                    .map(|(song_index, plot)| (SongIdentifier { song_index }, plot))
+                {
+                    Self::add_plot_labels(ui, plot);
+                    let offset = plot.show_and_get_offset(plot_song.song_index, ui, mouse_pos);
+                    if let Some(offset) = offset {
+                        clicked_song_and_offset = Some((plot_song, offset));
+                    };
+                }
             }
-            self.add_labels_for_recorded_songs(ui);
         });
         if let Some((clicked_song, offset)) = clicked_song_and_offset {
             self.last_touched_song = Some(clicked_song);
@@ -351,7 +354,7 @@ impl epi::App for StriputaryGui {
 
     fn update(&mut self, ctx: &egui::CtxRef, _: &epi::Frame) {
         self.record_thread.update();
-        self.add_left_panel(ctx);
+        self.add_side_panel(ctx);
         self.handle_playback_markers();
         self.add_central_panel(ctx);
         self.mark_cut_songs();

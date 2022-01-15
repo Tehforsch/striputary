@@ -20,7 +20,7 @@ pub struct SessionManager {
     output_dir: PathBuf,
     dirs: Vec<PathBuf>,
     new_dir: PathBuf,
-    selected: SessionIdentifier,
+    selected: Option<SessionIdentifier>,
 }
 
 impl SessionManager {
@@ -32,46 +32,44 @@ impl SessionManager {
             output_dir: dir.into(),
             dirs,
             new_dir: get_new_name(dir),
-            selected: SessionIdentifier::New,
+            selected: None,
         };
         manager.select_latest();
         manager
     }
 
     pub fn select(&mut self, identifier: SessionIdentifier) {
-        self.selected = identifier;
+        self.selected = Some(identifier);
     }
 
     fn select_latest(&mut self) {
         let dirs = get_dirs(&self.output_dir).unwrap();
-        self.selected = match dirs
+        self.selected = dirs
             .into_iter()
             .enumerate()
             .max_by_key(|(_, dir)| dir.metadata().unwrap().modified().unwrap())
-            .map(|(index, _)| index)
-        {
-            Some(index) => SessionIdentifier::Old(index),
-            None => SessionIdentifier::New,
-        };
+            .map(|(index, _)| SessionIdentifier::Old(index));
     }
 
     pub fn select_new(&mut self) {
-        self.selected = SessionIdentifier::New;
+        self.selected = Some(SessionIdentifier::New);
     }
 
     pub fn is_currently_selected(&self, identifier: &SessionIdentifier) -> bool {
-        self.selected == *identifier
+        self.selected
+            .map(|selected| selected == *identifier)
+            .unwrap_or(false)
     }
 
-    pub fn get_currently_selected(&self) -> PathBuf {
-        match self.selected {
+    pub fn get_currently_selected(&self) -> Option<PathBuf> {
+        Some(match self.selected? {
             SessionIdentifier::Old(index) => self.dirs[index].clone(),
             SessionIdentifier::New => self.new_dir.clone(),
-        }
+        })
     }
 
     pub fn get_currently_selected_collection(&self) -> Option<ExcerptCollection> {
-        let session_dir = self.get_currently_selected();
+        let session_dir = self.get_currently_selected()?;
         if session_dir.is_dir() {
             RecordingSession::from_parent_dir(&session_dir)
                 .map(|session| get_excerpt_collection(session))
@@ -87,22 +85,18 @@ impl SessionManager {
 
     pub fn iter_relative_paths_with_indices(
         &self,
-    ) -> Box<dyn Iterator<Item = (SessionIdentifier, String)> + '_> {
+    ) -> impl Iterator<Item = (SessionIdentifier, String)> + '_ {
         Box::new(
             self.enumerate()
                 .map(|(index, dir)| (index, dir.file_stem().unwrap().to_str().unwrap().to_owned())),
         )
     }
 
-    fn enumerate(&self) -> Box<dyn Iterator<Item = (SessionIdentifier, &PathBuf)> + '_> {
-        Box::new(
-            std::iter::once((SessionIdentifier::New, &self.new_dir)).chain(
-                self.dirs
-                    .iter()
-                    .enumerate()
-                    .map(|(index, dir)| (SessionIdentifier::Old(index), dir)),
-            ),
-        )
+    fn enumerate(&self) -> impl Iterator<Item = (SessionIdentifier, &PathBuf)> {
+        self.dirs
+            .iter()
+            .enumerate()
+            .map(|(index, dir)| (SessionIdentifier::Old(index), dir))
     }
 }
 
