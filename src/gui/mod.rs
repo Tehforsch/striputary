@@ -14,6 +14,7 @@ use eframe::egui::Pos2;
 use eframe::egui::Response;
 use eframe::egui::TextStyle;
 use eframe::egui::Ui;
+use eframe::egui::Vec2;
 use eframe::egui::{self};
 use eframe::epi;
 
@@ -153,46 +154,43 @@ impl StriputaryGui {
     }
 
     fn add_large_button(&self, ui: &mut Ui, name: &str) -> Response {
-        ui.add(Button::new(name).text_style(TextStyle::Heading))
+        ui.add_sized(
+            Vec2::new(config::CUT_BUTTON_SIZE_X, config::CUT_BUTTON_SIZE_Y),
+            Button::new(name).text_style(TextStyle::Heading),
+        )
     }
 
-    fn add_side_bar(&mut self, ctx: &egui::CtxRef) {
-        egui::SidePanel::left("buttons")
+    fn add_left_panel(&mut self, ctx: &egui::CtxRef) {
+        egui::SidePanel::left("side_bar")
             .resizable(false)
+            .min_width(config::MIN_SIDE_BAR_WIDTH)
             .show(ctx, |ui| {
-                let cut_button = self.add_large_button(ui, "Cut");
-                let playback_button = self.add_large_button(ui, "Playback");
+                let cut_button = self.add_large_button(ui, "Cut all songs");
                 if cut_button.clicked() || ctx.input().key_pressed(config::CUT_KEY) {
                     self.cut_songs();
                 }
-                if playback_button.clicked() || ctx.input().key_pressed(config::PLAYBACK_KEY) {
-                    self.play_last_touched_song();
-                }
+                self.add_dir_selection_bar(ui);
             });
     }
 
-    fn add_dir_selection_bar(&mut self, ctx: &egui::CtxRef) {
-        egui::SidePanel::left("dir_select")
-            .resizable(false)
-            .show(ctx, |ui| {
-                self.add_record_button_or_error_message(ui);
-                ui.add(Label::new("Previous sessions:").text_style(TextStyle::Heading));
-                let dirs_with_indices: Vec<_> = self
-                    .session_manager
-                    .iter_relative_paths_with_indices()
-                    .collect();
-                for (i, dir_name) in dirs_with_indices.iter() {
-                    let mut button = Button::new(dir_name).text_style(TextStyle::Heading);
-                    if self.session_manager.is_currently_selected(i) {
-                        button = button
-                            .fill(config::SELECTED_FILL_COLOR)
-                            .text_color(config::SELECTED_TEXT_COLOR);
-                    }
-                    if ui.add(button).clicked() {
-                        self.select_session(*i);
-                    }
-                }
-            });
+    fn add_dir_selection_bar(&mut self, ui: &mut Ui) {
+        self.add_record_button_or_error_message(ui);
+        ui.add(Label::new("Previous sessions:").text_style(TextStyle::Heading));
+        let dirs_with_indices: Vec<_> = self
+            .session_manager
+            .iter_relative_paths_with_indices()
+            .collect();
+        for (i, dir_name) in dirs_with_indices.iter() {
+            let mut button = Button::new(dir_name).text_style(TextStyle::Heading);
+            if self.session_manager.is_currently_selected(i) {
+                button = button
+                    .fill(config::SELECTED_FILL_COLOR)
+                    .text_color(config::SELECTED_TEXT_COLOR);
+            }
+            if ui.add(button).clicked() {
+                self.select_session(*i);
+            }
+        }
     }
 
     fn add_record_button_or_error_message(&mut self, ui: &mut Ui) {
@@ -234,11 +232,17 @@ impl StriputaryGui {
         }
     }
 
-    fn enumerate_visible_plots_mut(plots: &mut Vec<ExcerptPlot>, scroll_position: usize) -> impl Iterator<Item=(usize, &mut ExcerptPlot)> {
+    fn enumerate_visible_plots_mut(
+        plots: &mut Vec<ExcerptPlot>,
+        scroll_position: usize,
+    ) -> impl Iterator<Item = (usize, &mut ExcerptPlot)> {
         let min = scroll_position.min(plots.len());
         let max = (scroll_position + config::NUM_PLOTS_TO_SHOW).min(plots.len());
         let slice = &mut plots[min..max];
-        slice.iter_mut().enumerate().map(move |(i, s)| (i + scroll_position, s))
+        slice
+            .iter_mut()
+            .enumerate()
+            .map(move |(i, s)| (i + scroll_position, s))
     }
 
     fn add_central_panel(&mut self, ctx: &egui::CtxRef) {
@@ -246,7 +250,7 @@ impl StriputaryGui {
             let mut clicked_pos: Option<Pos2> = None;
             for (plot_song, plot) in
                 Self::enumerate_visible_plots_mut(&mut self.plots, self.scroll_position)
-                .map(|(song_index, plot)| (SongIdentifier { song_index }, plot))
+                    .map(|(song_index, plot)| (SongIdentifier { song_index }, plot))
             {
                 ui.horizontal(|ui| {
                     add_plot_label(
@@ -294,6 +298,9 @@ impl StriputaryGui {
         if ctx.input().key_pressed(config::SCROLL_DOWN_KEY) {
             self.scroll(1);
         }
+        if ctx.input().key_pressed(config::PLAYBACK_KEY) {
+            self.play_last_touched_song();
+        }
     }
 
     fn get_plots(&self, collection: &ExcerptCollection) -> Vec<ExcerptPlot> {
@@ -319,8 +326,7 @@ impl epi::App for StriputaryGui {
 
     fn update(&mut self, ctx: &egui::CtxRef, _: &mut epi::Frame<'_>) {
         self.record_thread.update();
-        self.add_dir_selection_bar(ctx);
-        self.add_side_bar(ctx);
+        self.add_left_panel(ctx);
         self.add_central_panel(ctx);
         self.mark_cut_songs();
         if self.should_repaint {

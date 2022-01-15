@@ -17,3 +17,8 @@ pub static SCROLL_DOWN_KEY: Key = Key::ArrowDown;
 pub static SCROLL_UP_KEY: Key = Key::ArrowUp;
 
 pub static NUM_PLOTS_TO_SHOW: usize = 16;
+
+pub static CUT_BUTTON_SIZE_X: f32 = 200.0;
+pub static CUT_BUTTON_SIZE_Y: f32 = 50.0;
+
+pub static MIN_SIDE_BAR_WIDTH: f32 = 200.0;
