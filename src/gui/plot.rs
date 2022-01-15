@@ -47,13 +47,8 @@ impl ExcerptPlot {
         }
     }
 
-    pub fn get_audio_time_from_click_pos(&self, click_pos_x: f32, rect: Rect) -> AudioTime {
-        let plot_begin = rect.min + (rect.center() - rect.min) * 0.0888;
-        let plot_width = rect.width() / 1.1;
-        let relative_progress = (click_pos_x - plot_begin.x) / plot_width;
-        self.excerpt
-            .excerpt
-            .get_absolute_time_by_relative_progress(relative_progress as f64)
+    pub fn get_audio_time_from_time_secs(&self, time_secs: f64) -> AudioTime {
+        AudioTime::from_time_same_spec(time_secs, self.excerpt.excerpt.start)
     }
 
     pub fn show_playback_marker_at(&mut self, audio_time: AudioTime) {
@@ -77,8 +72,15 @@ impl ExcerptPlot {
         }
     }
 
-    pub fn show(&mut self, num: usize, ui: &mut Ui, move_marker: Option<f32>) -> Response {
+    pub fn show(
+        &mut self,
+        num: usize,
+        ui: &mut Ui,
+        click_pos: Option<Pos2>,
+        clicked_any_plot_above: bool,
+    ) -> Response {
         let (line_before, line_after) = self.get_lines();
+        let mut plot_pos: Option<_> = None;
         let response = Plot::new(num)
             .legend(Legend::default())
             .view_aspect(config::PLOT_ASPECT)
@@ -97,15 +99,12 @@ impl ExcerptPlot {
                 if let Some(time) = self.playback_marker {
                     plot_ui.vline(VLine::new(time.time));
                 }
+                plot_pos = click_pos.map(|click_pos| plot_ui.plot_from_screen(click_pos));
             })
             .response;
-        if response.dragged() || move_marker.is_some() {
-            let pos = response
-                .interact_pointer_pos()
-                .map(|pos| pos.x)
-                .or(move_marker);
-            if let Some(pos) = pos {
-                self.cut_time = self.get_audio_time_from_click_pos(pos, response.rect);
+        if response.dragged() || clicked_any_plot_above {
+            if let Some(pos) = plot_pos {
+                self.cut_time = self.get_audio_time_from_time_secs(pos.x);
             }
         }
         response

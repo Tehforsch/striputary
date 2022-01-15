@@ -244,8 +244,9 @@ impl StriputaryGui {
     }
 
     fn add_central_panel(&mut self, ctx: &egui::CtxRef) {
+        let mouse_pos = ctx.input().pointer.interact_pos();
         egui::CentralPanel::default().show(ctx, |ui| {
-            let mut clicked_pos: Option<f32> = None;
+            let mut clicked_any_plot_above: bool = false;
             for (plot_song, plot) in
                 Self::enumerate_visible_plots_mut(&mut self.plots, self.scroll_position)
                     .map(|(song_index, plot)| (SongIdentifier { song_index }, plot))
@@ -276,11 +277,11 @@ impl StriputaryGui {
                         }
                     }
                 }
-                let plot = plot.show(plot_song.song_index, ui, clicked_pos);
+                let plot = plot.show(plot_song.song_index, ui, mouse_pos, clicked_any_plot_above);
                 if plot.is_pointer_button_down_on() {
                     self.last_touched_song = Some(plot_song);
-                    if let Some(pos) = plot.interact_pointer_pos() {
-                        clicked_pos = Some(pos.x);
+                    if plot.interact_pointer_pos().is_some() {
+                        clicked_any_plot_above = true;
                     }
                 };
             }
