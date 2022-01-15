@@ -10,7 +10,6 @@ use eframe::egui::Button;
 use eframe::egui::Color32;
 use eframe::egui::Label;
 use eframe::egui::Layout;
-use eframe::egui::Pos2;
 use eframe::egui::Response;
 use eframe::egui::TextStyle;
 use eframe::egui::Ui;
@@ -247,7 +246,7 @@ impl StriputaryGui {
 
     fn add_central_panel(&mut self, ctx: &egui::CtxRef) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            let mut clicked_pos: Option<Pos2> = None;
+            let mut clicked_pos: Option<f32> = None;
             for (plot_song, plot) in
                 Self::enumerate_visible_plots_mut(&mut self.plots, self.scroll_position)
                     .map(|(song_index, plot)| (SongIdentifier { song_index }, plot))
@@ -278,12 +277,11 @@ impl StriputaryGui {
                         }
                     }
                 }
-                plot.move_cut_marker_to_pos = clicked_pos;
-                let plot = ui.add(plot);
+                let plot = plot.show(ui, clicked_pos);
                 if plot.is_pointer_button_down_on() {
                     self.last_touched_song = Some(plot_song);
                     if let Some(pos) = plot.interact_pointer_pos() {
-                        clicked_pos = Some(pos);
+                        clicked_pos = Some(pos.x);
                     }
                 };
             }
