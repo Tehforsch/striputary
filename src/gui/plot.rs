@@ -77,23 +77,28 @@ impl ExcerptPlot {
         }
     }
 
-    pub fn show(&mut self, ui: &mut Ui, move_marker: Option<f32>) -> Response {
+    pub fn show(&mut self, num: usize, ui: &mut Ui, move_marker: Option<f32>) -> Response {
         let (line_before, line_after) = self.get_lines();
-        let mut plot = Plot::new("volume")
-            .line(line_before.color(self.get_line_color(self.finished_cutting_song_before)))
-            .line(line_after.color(self.get_line_color(self.finished_cutting_song_after)))
+        let response = Plot::new(num)
             .legend(Legend::default())
             .view_aspect(config::PLOT_ASPECT)
             .show_x(false)
             .show_y(false)
             .allow_drag(false)
             .allow_zoom(false)
-            .vline(VLine::new(self.cut_time.time))
-            .show_background(false);
-        if let Some(time) = self.playback_marker {
-            plot = plot.vline(VLine::new(time.time));
-        }
-        let response = ui.add(plot);
+            .show_background(false)
+            .show(ui, |plot_ui| {
+                plot_ui.line(
+                    line_before.color(self.get_line_color(self.finished_cutting_song_before)),
+                );
+                plot_ui
+                    .line(line_after.color(self.get_line_color(self.finished_cutting_song_after)));
+                plot_ui.vline(VLine::new(self.cut_time.time));
+                if let Some(time) = self.playback_marker {
+                    plot_ui.vline(VLine::new(time.time));
+                }
+            })
+            .response;
         if response.dragged() || move_marker.is_some() {
             let pos = response
                 .interact_pointer_pos()

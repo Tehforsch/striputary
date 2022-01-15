@@ -11,6 +11,7 @@ use eframe::egui::Color32;
 use eframe::egui::Label;
 use eframe::egui::Layout;
 use eframe::egui::Response;
+use eframe::egui::RichText;
 use eframe::egui::TextStyle;
 use eframe::egui::Ui;
 use eframe::egui::Vec2;
@@ -148,14 +149,17 @@ impl StriputaryGui {
             .map(|collection| collection.excerpts.len())
             .unwrap_or(0);
         self.scroll_position = (self.scroll_position as i32 + diff)
-            .min(num_plots as i32 - config::NUM_PLOTS_TO_SHOW as i32 + config::ALLOWED_SCROLL_OVERSHOOT)
+            .min(
+                num_plots as i32 - config::NUM_PLOTS_TO_SHOW as i32
+                    + config::ALLOWED_SCROLL_OVERSHOOT,
+            )
             .max(0) as usize;
     }
 
     fn add_large_button(&self, ui: &mut Ui, name: &str) -> Response {
         ui.add_sized(
             Vec2::new(config::CUT_BUTTON_SIZE_X, config::CUT_BUTTON_SIZE_Y),
-            Button::new(name).text_style(TextStyle::Heading),
+            Button::new(RichText::new(name).text_style(TextStyle::Heading)),
         )
     }
 
@@ -174,18 +178,21 @@ impl StriputaryGui {
 
     fn add_dir_selection_bar(&mut self, ui: &mut Ui) {
         self.add_record_button_or_error_message(ui);
-        ui.add(Label::new("Previous sessions:").text_style(TextStyle::Heading));
+        ui.add(Label::new(
+            RichText::new("Previous sessions:").text_style(TextStyle::Heading),
+        ));
         let dirs_with_indices: Vec<_> = self
             .session_manager
             .iter_relative_paths_with_indices()
             .collect();
         for (i, dir_name) in dirs_with_indices.iter() {
-            let mut button = Button::new(dir_name).text_style(TextStyle::Heading);
-            if self.session_manager.is_currently_selected(i) {
-                button = button
-                    .fill(config::SELECTED_FILL_COLOR)
-                    .text_color(config::SELECTED_TEXT_COLOR);
-            }
+            let mut button_text = RichText::new(dir_name).text_style(TextStyle::Heading);
+            let button = if self.session_manager.is_currently_selected(i) {
+                button_text = button_text.color(config::SELECTED_TEXT_COLOR);
+                Button::new(button_text).fill(config::SELECTED_FILL_COLOR)
+            } else {
+                Button::new(button_text)
+            };
             if ui.add(button).clicked() {
                 self.select_session(*i);
             }
@@ -209,7 +216,7 @@ impl StriputaryGui {
     }
 
     fn add_recording_thread_error_message(&self, ui: &mut Ui, error: &anyhow::Error) {
-        let label = Label::new(error.to_string()).text_color(Color32::RED);
+        let label = Label::new(RichText::new(error.to_string()).color(Color32::RED));
         ui.add(label);
     }
 
@@ -217,15 +224,7 @@ impl StriputaryGui {
         if self.record_thread.is_running() {
             let songs = self.record_thread.get_songs();
             for song in songs.iter().rev() {
-                let mut label = Label::new(song.to_string());
-                label = label.text_style(TextStyle::Heading);
-                if songs
-                    .last()
-                    .map(|last_song| last_song == song)
-                    .unwrap_or(false)
-                {
-                    label = label.underline();
-                }
+                let label = Label::new(RichText::new(song.to_string()));
                 ui.add(label);
             }
         }
@@ -277,7 +276,7 @@ impl StriputaryGui {
                         }
                     }
                 }
-                let plot = plot.show(ui, clicked_pos);
+                let plot = plot.show(plot_song.song_index, ui, clicked_pos);
                 if plot.is_pointer_button_down_on() {
                     self.last_touched_song = Some(plot_song);
                     if let Some(pos) = plot.interact_pointer_pos() {
@@ -322,7 +321,7 @@ impl epi::App for StriputaryGui {
         "Striputary"
     }
 
-    fn update(&mut self, ctx: &egui::CtxRef, _: &mut epi::Frame<'_>) {
+    fn update(&mut self, ctx: &egui::CtxRef, _: &epi::Frame) {
         self.record_thread.update();
         self.add_left_panel(ctx);
         self.add_central_panel(ctx);
@@ -345,6 +344,8 @@ pub fn get_label_color(finished_cutting: bool) -> Color32 {
 fn add_plot_label(ui: &mut Ui, song: Option<&Song>, finished_cutting: bool) {
     let color = get_label_color(finished_cutting);
     if let Some(ref song) = song {
-        ui.add(Label::new(format!("{}", song.title)).text_color(color));
+        ui.add(Label::new(
+            RichText::new(format!("{}", song.title)).color(color),
+        ));
     }
 }
