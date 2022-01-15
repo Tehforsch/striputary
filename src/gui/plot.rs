@@ -73,7 +73,7 @@ impl ExcerptPlot {
     }
 
     pub fn show_and_get_offset(
-        &mut self,
+        &self,
         num: usize,
         ui: &mut Ui,
         click_pos: Option<Pos2>,

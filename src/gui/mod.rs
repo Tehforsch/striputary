@@ -231,17 +231,14 @@ impl StriputaryGui {
         }
     }
 
-    fn enumerate_visible_plots_mut(
-        plots: &mut Vec<ExcerptPlot>,
-        scroll_position: usize,
-    ) -> impl Iterator<Item = (usize, &mut ExcerptPlot)> {
-        let min = scroll_position.min(plots.len());
-        let max = (scroll_position + config::NUM_PLOTS_TO_SHOW).min(plots.len());
-        let slice = &mut plots[min..max];
+    fn enumerate_visible_plots(&self) -> impl Iterator<Item = (usize, &ExcerptPlot)> {
+        let min = self.scroll_position.min(self.plots.len());
+        let max = (self.scroll_position + config::NUM_PLOTS_TO_SHOW).min(self.plots.len());
+        let slice = &self.plots[min..max];
         slice
-            .iter_mut()
+            .iter()
             .enumerate()
-            .map(move |(i, s)| (i + scroll_position, s))
+            .map(move |(i, s)| (i + self.scroll_position, s))
     }
 
     fn move_all_markers_after(&mut self, clicked_song: SongIdentifier, offset: AudioTime) {
@@ -252,49 +249,55 @@ impl StriputaryGui {
         }
     }
 
+    fn add_plot_labels(ui: &mut Ui, plot: &ExcerptPlot) {
+        ui.horizontal(|ui| {
+            add_plot_label(
+                ui,
+                plot.excerpt.song_before.as_ref(),
+                plot.finished_cutting_song_before,
+            );
+            ui.with_layout(Layout::right_to_left(), |ui| {
+                add_plot_label(
+                    ui,
+                    plot.excerpt.song_after.as_ref(),
+                    plot.finished_cutting_song_after,
+                );
+            });
+        });
+    }
+
+    fn set_playback_marker_and_return_finished_state(
+        plot: &mut ExcerptPlot,
+        current_playback: &PlaybackThreadHandle,
+    ) -> bool {
+        let playback_time_relative = current_playback.get_elapsed_audio_time();
+        let playback_time_absolute = plot.excerpt.excerpt.start + playback_time_relative;
+        if playback_time_absolute < plot.excerpt.excerpt.end {
+            plot.show_playback_marker_at(playback_time_absolute);
+            return false;
+        } else {
+            return true;
+        }
+    }
+
     fn add_central_panel(&mut self, ctx: &egui::CtxRef) {
         let mouse_pos = ctx.input().pointer.interact_pos();
         let mut clicked_song_and_offset: Option<(SongIdentifier, AudioTime)> = None;
         egui::CentralPanel::default().show(ctx, |ui| {
-            for (plot_song, plot) in
-                Self::enumerate_visible_plots_mut(&mut self.plots, self.scroll_position)
-                    .map(|(song_index, plot)| (SongIdentifier { song_index }, plot))
+            for (plot_song, plot) in self
+                .enumerate_visible_plots()
+                .map(|(song_index, plot)| (SongIdentifier { song_index }, plot))
             {
-                ui.horizontal(|ui| {
-                    add_plot_label(
-                        ui,
-                        plot.excerpt.song_before.as_ref(),
-                        plot.finished_cutting_song_before,
-                    );
-                    ui.with_layout(Layout::right_to_left(), |ui| {
-                        add_plot_label(
-                            ui,
-                            plot.excerpt.song_after.as_ref(),
-                            plot.finished_cutting_song_after,
-                        );
-                    });
-                });
-                plot.hide_playback_marker();
-                if let Some((playback_song, ref current_playback)) = self.current_playback {
-                    if playback_song == plot_song {
-                        let playback_time_relative = current_playback.get_elapsed_audio_time();
-                        let playback_time_absolute =
-                            plot.excerpt.excerpt.start + playback_time_relative;
-                        if playback_time_absolute < plot.excerpt.excerpt.end {
-                            self.should_repaint = true;
-                            plot.show_playback_marker_at(playback_time_absolute);
-                        }
-                    }
-                }
+                Self::add_plot_labels(ui, plot);
                 let offset = plot.show_and_get_offset(plot_song.song_index, ui, mouse_pos);
                 if let Some(offset) = offset {
-                    self.last_touched_song = Some(plot_song);
                     clicked_song_and_offset = Some((plot_song, offset));
                 };
             }
             self.add_labels_for_recorded_songs(ui);
         });
         if let Some((clicked_song, offset)) = clicked_song_and_offset {
+            self.last_touched_song = Some(clicked_song);
             self.move_all_markers_after(clicked_song, offset);
         }
     }
@@ -308,6 +311,20 @@ impl StriputaryGui {
         }
         if ctx.input().key_pressed(config::PLAYBACK_KEY) {
             self.play_last_touched_song();
+        }
+    }
+
+    fn handle_playback_markers(&mut self) {
+        for mut plot in self.plots.iter_mut() {
+            plot.hide_playback_marker();
+            if let Some((playback_song, ref current_playback_handle)) = self.current_playback {
+                if playback_song.song_index == plot.excerpt.num {
+                    self.should_repaint = !Self::set_playback_marker_and_return_finished_state(
+                        &mut plot,
+                        current_playback_handle,
+                    );
+                }
+            }
         }
     }
 
@@ -335,6 +352,7 @@ impl epi::App for StriputaryGui {
     fn update(&mut self, ctx: &egui::CtxRef, _: &epi::Frame) {
         self.record_thread.update();
         self.add_left_panel(ctx);
+        self.handle_playback_markers();
         self.add_central_panel(ctx);
         self.mark_cut_songs();
         if self.should_repaint {
