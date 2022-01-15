@@ -65,3 +65,6 @@ Automatic offset detection works best when a number of songs were recorded becau
 ## Notes
 ### Other services
 Currently, this is only implemented for spotify. The approach doesn't rely on spotify-specific details though, so implementing this for other streaming services should be straightforward (It comes down to simply adding the corresponding dbus bus name and the pulse audio sink name entry in `src/service_config.rs`). 
+
+## Disclaimer
+Disclaimer: In an ideal world, you could use such recordings to reduce your personal dependence on large companies and simulatenously save some money which could then be used to support the actual artists whose music you are listening to (who get virtually nothing from their music being streamed). However, recording music off of streaming services is not only against the terms of service of pretty much all streaming providers but also possibly illegal and obviously immoral. Don't do it! This software has not been written with the idea of it being used but purely for educational purposes (handling audio files is lots of fun!).
