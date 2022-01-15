@@ -143,13 +143,13 @@ impl StriputaryGui {
     }
 
     fn scroll(&mut self, diff: i32) {
-        let max_num_plots = self
+        let num_plots = self
             .collection
             .as_ref()
             .map(|collection| collection.excerpts.len())
             .unwrap_or(0);
         self.scroll_position = (self.scroll_position as i32 + diff)
-            .min(max_num_plots as i32 - config::NUM_PLOTS_TO_SHOW as i32)
+            .min(num_plots as i32 - config::NUM_PLOTS_TO_SHOW as i32 + config::ALLOWED_SCROLL_OVERSHOOT)
             .max(0) as usize;
     }
 
