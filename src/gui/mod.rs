@@ -22,6 +22,7 @@ use self::cutting_thread::CuttingThreadHandle;
 use self::playback::play_excerpt;
 use self::playback::PlaybackThreadHandle;
 use self::plot::ExcerptPlot;
+use crate::audio_time::AudioTime;
 use crate::cut::CutInfo;
 use crate::excerpt_collection::ExcerptCollection;
 use crate::gui::session_manager::SessionIdentifier;
@@ -243,10 +244,18 @@ impl StriputaryGui {
             .map(move |(i, s)| (i + scroll_position, s))
     }
 
+    fn move_all_markers_after(&mut self, clicked_song: SongIdentifier, offset: AudioTime) {
+        for plot in self.plots.iter_mut() {
+            if plot.excerpt.num >= clicked_song.song_index {
+                plot.move_marker_to_offset(offset);
+            }
+        }
+    }
+
     fn add_central_panel(&mut self, ctx: &egui::CtxRef) {
         let mouse_pos = ctx.input().pointer.interact_pos();
+        let mut clicked_song_and_offset: Option<(SongIdentifier, AudioTime)> = None;
         egui::CentralPanel::default().show(ctx, |ui| {
-            let mut clicked_any_plot_above: bool = false;
             for (plot_song, plot) in
                 Self::enumerate_visible_plots_mut(&mut self.plots, self.scroll_position)
                     .map(|(song_index, plot)| (SongIdentifier { song_index }, plot))
@@ -277,16 +286,17 @@ impl StriputaryGui {
                         }
                     }
                 }
-                let plot = plot.show(plot_song.song_index, ui, mouse_pos, clicked_any_plot_above);
-                if plot.is_pointer_button_down_on() {
+                let offset = plot.show_and_get_offset(plot_song.song_index, ui, mouse_pos);
+                if let Some(offset) = offset {
                     self.last_touched_song = Some(plot_song);
-                    if plot.interact_pointer_pos().is_some() {
-                        clicked_any_plot_above = true;
-                    }
+                    clicked_song_and_offset = Some((plot_song, offset));
                 };
             }
             self.add_labels_for_recorded_songs(ui);
         });
+        if let Some((clicked_song, offset)) = clicked_song_and_offset {
+            self.move_all_markers_after(clicked_song, offset);
+        }
     }
 
     fn keyboard_control(&mut self, ctx: &egui::CtxRef) {

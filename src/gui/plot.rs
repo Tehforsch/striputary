@@ -47,10 +47,6 @@ impl ExcerptPlot {
         }
     }
 
-    pub fn get_audio_time_from_time_secs(&self, time_secs: f64) -> AudioTime {
-        AudioTime::from_time_same_spec(time_secs, self.excerpt.excerpt.start)
-    }
-
     pub fn show_playback_marker_at(&mut self, audio_time: AudioTime) {
         self.playback_marker = Some(audio_time);
     }
@@ -72,13 +68,16 @@ impl ExcerptPlot {
         }
     }
 
-    pub fn show(
+    pub fn move_marker_to_offset(&mut self, offset: AudioTime) {
+        self.cut_time = self.excerpt.excerpt.start + offset;
+    }
+
+    pub fn show_and_get_offset(
         &mut self,
         num: usize,
         ui: &mut Ui,
         click_pos: Option<Pos2>,
-        clicked_any_plot_above: bool,
-    ) -> Response {
+    ) -> Option<AudioTime> {
         let (line_before, line_after) = self.get_lines();
         let mut plot_pos: Option<_> = None;
         let response = Plot::new(num)
@@ -102,11 +101,12 @@ impl ExcerptPlot {
                 plot_pos = click_pos.map(|click_pos| plot_ui.plot_from_screen(click_pos));
             })
             .response;
-        if response.dragged() || clicked_any_plot_above {
-            if let Some(pos) = plot_pos {
-                self.cut_time = self.get_audio_time_from_time_secs(pos.x);
-            }
-        }
-        response
+        plot_pos
+            .map(|plot_pos| {
+                let absolute_time =
+                    AudioTime::from_time_same_spec(plot_pos.x, self.excerpt.excerpt.start);
+                self.excerpt.excerpt.get_relative_time(absolute_time)
+            })
+            .filter(|_| response.dragged())
     }
 }
