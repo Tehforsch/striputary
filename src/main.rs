@@ -19,7 +19,7 @@ use std::path::Path;
 
 use anyhow::Result;
 use args::Opts;
-use clap::Clap;
+use clap::Parser;
 use config_file::ConfigFile;
 use service_config::ServiceConfig;
 
