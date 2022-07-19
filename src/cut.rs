@@ -173,7 +173,7 @@ pub fn cut_song(info: &CutInfo) -> Result<()> {
         .arg(target_file.to_str().unwrap())
         .output();
     out.map(|_| ()).context(format!(
-        "Failed to cut song: {} {} {} ({}+{})",
+        "Failed to cut song: {} {} {} ({}+{}) (is ffmpeg installed?)",
         &info.song.title, &info.song.album, &info.song.artist, info.start_time.time, difference,
     ))
 }

@@ -33,7 +33,7 @@ fn start_recording_command(output_file: &Path) -> Result<Popen> {
         .arg(output_file.to_str().unwrap());
     parec_cmd
         .popen()
-        .context("Failed to execute record command")
+        .context("Failed to execute record command - is parec installed?")
 }
 
 fn setup_recording(service_config: &ServiceConfig) -> Result<()> {
@@ -56,7 +56,7 @@ fn redirect_sink(index: i32) -> Result<()> {
         .arg(format!("{}", index))
         .arg(STRIPUTARY_SINK_NAME)
         .output()
-        .context("Failed to execute sink redirection via pactl move-sink-input")?;
+        .context("Failed to execute sink redirection via pactl move-sink-input - is pactl installed?")?;
     Ok(())
 }
 
@@ -64,7 +64,7 @@ fn check_sink_exists() -> Result<bool> {
     let output = Command::new("pacmd")
         .arg("list-sinks")
         .output()
-        .context("Failed to execute sink list command (pacmd list-sinks).")?;
+        .context("Failed to execute sink list command (pacmd list-sinks) - is pacmd installed?.")?;
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
     Ok(stdout.contains(STRIPUTARY_SINK_NAME))
