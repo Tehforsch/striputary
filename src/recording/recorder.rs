@@ -56,7 +56,9 @@ fn redirect_sink(index: i32) -> Result<()> {
         .arg(format!("{}", index))
         .arg(STRIPUTARY_SINK_NAME)
         .output()
-        .context("Failed to execute sink redirection via pactl move-sink-input - is pactl installed?")?;
+        .context(
+            "Failed to execute sink redirection via pactl move-sink-input - is pactl installed?",
+        )?;
     Ok(())
 }
 
