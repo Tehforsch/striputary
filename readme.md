@@ -1,5 +1,7 @@
 # Striputary
 Striputary is a program to record an audio stream from spotify (but could be easily extended to work for other streaming services) and convert the recorded audio into individual songs. 
+![Graphical user interface](https://github.com/tehforsch/striputary/blob/master/pics/gui.png?raw=true)
+
 
 Striputary relies on 
 * Pulseaudio and parec for recording audio
