@@ -1,7 +1,9 @@
 use eframe::egui::plot::*;
 use eframe::egui::*;
 
-use super::config;
+use super::config::CUT_MARKER_COLOR;
+use super::config::CUT_MARKER_WIDTH;
+use super::config::{self};
 use crate::audio_time::AudioTime;
 use crate::excerpt_collection::NamedExcerpt;
 use crate::song::Song;
@@ -94,7 +96,10 @@ impl ExcerptPlot {
                 );
                 plot_ui
                     .line(line_after.color(self.get_line_color(self.finished_cutting_song_after)));
-                plot_ui.vline(VLine::new(self.cut_time.time));
+                plot_ui.vline(VLine::new(self.cut_time.time).stroke(Stroke {
+                    width: CUT_MARKER_WIDTH,
+                    color: CUT_MARKER_COLOR,
+                }));
                 if let Some(time) = self.playback_marker {
                     plot_ui.vline(VLine::new(time.time));
                 }

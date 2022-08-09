@@ -24,3 +24,6 @@ pub static CUT_BUTTON_SIZE_Y: f32 = 50.0;
 pub static MIN_SIDE_BAR_WIDTH: f32 = 200.0;
 
 pub static ALLOWED_SCROLL_OVERSHOOT: i32 = 3;
+
+pub static CUT_MARKER_WIDTH: f32 = 2.0;
+pub static CUT_MARKER_COLOR: Color32 = Color32::YELLOW;
