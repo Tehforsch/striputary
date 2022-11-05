@@ -152,10 +152,7 @@ impl StriputaryGui {
             .map(|collection| collection.excerpts.len())
             .unwrap_or(0);
         self.scroll_position = (self.scroll_position as i32 + diff)
-            .min(
-                num_plots as i32 - config::NUM_PLOTS_TO_SHOW as i32
-                    + config::ALLOWED_SCROLL_OVERSHOOT,
-            )
+            .min(num_plots as i32 - config::MIN_NUM_PLOTS_SHOWN)
             .max(0) as usize;
     }
 
@@ -231,9 +228,12 @@ impl StriputaryGui {
         }
     }
 
-    fn enumerate_visible_plots(&self) -> impl Iterator<Item = (usize, &ExcerptPlot)> {
+    fn enumerate_visible_plots(
+        &self,
+        num_shown: i32,
+    ) -> impl Iterator<Item = (usize, &ExcerptPlot)> {
         let min = self.scroll_position.min(self.plots.len());
-        let max = (self.scroll_position + config::NUM_PLOTS_TO_SHOW).min(self.plots.len());
+        let max = (self.scroll_position + num_shown as usize).min(self.plots.len());
         let slice = &self.plots[min..max];
         slice
             .iter()
@@ -283,12 +283,14 @@ impl StriputaryGui {
     fn add_central_panel(&mut self, ctx: &egui::CtxRef) {
         let mouse_pos = ctx.input().pointer.interact_pos();
         let mut clicked_song_and_offset: Option<(SongIdentifier, AudioTime)> = None;
+        let panel_height = ctx.used_size().y;
+        let num_plots_shown = (panel_height / config::PLOT_HEIGHT).ceil() as i32;
         egui::CentralPanel::default().show(ctx, |ui| {
             if self.record_thread.is_running() {
                 self.add_labels_for_recorded_songs(ui);
             } else {
                 for (plot_song, plot) in self
-                    .enumerate_visible_plots()
+                    .enumerate_visible_plots(num_plots_shown)
                     .map(|(song_index, plot)| (SongIdentifier { song_index }, plot))
                 {
                     Self::add_plot_labels(ui, plot);

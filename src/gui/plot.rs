@@ -84,7 +84,7 @@ impl ExcerptPlot {
         let mut plot_pos: Option<_> = None;
         let response = Plot::new(num)
             .legend(Legend::default())
-            .view_aspect(config::PLOT_ASPECT)
+            .height(config::PLOT_HEIGHT)
             .show_x(false)
             .show_y(false)
             .allow_drag(false)
