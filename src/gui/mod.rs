@@ -16,7 +16,9 @@ use eframe::egui::TextStyle;
 use eframe::egui::Ui;
 use eframe::egui::Vec2;
 use eframe::egui::{self};
-use eframe::epi;
+use eframe::emath::Align;
+use eframe::App;
+use eframe::Frame;
 
 use self::cutting_thread::CuttingThreadHandle;
 use self::playback::play_excerpt;
@@ -163,7 +165,7 @@ impl StriputaryGui {
         )
     }
 
-    fn add_side_panel(&mut self, ctx: &egui::CtxRef) {
+    fn add_side_panel(&mut self, ctx: &egui::Context) {
         egui::SidePanel::left("side_bar")
             .resizable(false)
             .min_width(config::MIN_SIDE_BAR_WIDTH)
@@ -256,7 +258,7 @@ impl StriputaryGui {
                 plot.excerpt.song_before.as_ref(),
                 plot.finished_cutting_song_before,
             );
-            ui.with_layout(Layout::right_to_left(), |ui| {
+            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 add_plot_label(
                     ui,
                     plot.excerpt.song_after.as_ref(),
@@ -280,7 +282,7 @@ impl StriputaryGui {
         }
     }
 
-    fn add_central_panel(&mut self, ctx: &egui::CtxRef) {
+    fn add_central_panel(&mut self, ctx: &egui::Context) {
         let mouse_pos = ctx.input().pointer.interact_pos();
         let mut clicked_song_and_offset: Option<(SongIdentifier, AudioTime)> = None;
         let panel_height = ctx.used_size().y;
@@ -307,7 +309,7 @@ impl StriputaryGui {
         }
     }
 
-    fn keyboard_control(&mut self, ctx: &egui::CtxRef) {
+    fn keyboard_control(&mut self, ctx: &egui::Context) {
         if ctx.input().key_pressed(config::SCROLL_UP_KEY) {
             self.scroll(-1);
         }
@@ -349,12 +351,8 @@ impl StriputaryGui {
     }
 }
 
-impl epi::App for StriputaryGui {
-    fn name(&self) -> &str {
-        "Striputary"
-    }
-
-    fn update(&mut self, ctx: &egui::CtxRef, _: &epi::Frame) {
+impl App for StriputaryGui {
+    fn update(&mut self, ctx: &egui::Context, _: &mut Frame) {
         self.record_thread.update();
         self.add_side_panel(ctx);
         self.handle_playback_markers();

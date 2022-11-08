@@ -47,5 +47,5 @@ fn get_service_name(service_name: &Option<String>) -> &str {
 fn run_gui(dir: &Path, service_config: ServiceConfig) {
     let app = StriputaryGui::new(dir, service_config);
     let native_options = eframe::NativeOptions::default();
-    eframe::run_native(Box::new(app), native_options);
+    eframe::run_native("striputary", native_options, Box::new(|_| Box::new(app)));
 }

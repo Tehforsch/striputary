@@ -33,12 +33,12 @@ impl ExcerptPlot {
         let values_iter = x_values
             .into_iter()
             .zip(y_values)
-            .map(|(x, y)| Value::new(x, y));
+            .map(|(x, y)| [x as f64, y as f64]);
         let (values_before_cut, values_after_cut): (Vec<_>, Vec<_>) =
-            values_iter.partition(|value| value.x < self.cut_time.time);
+            values_iter.partition(|value| value[0] < self.cut_time.time);
         (
-            Line::new(Values::from_values(values_before_cut)),
-            Line::new(Values::from_values(values_after_cut)),
+            Line::new(PlotPoints::new(values_before_cut)),
+            Line::new(PlotPoints::new(values_after_cut)),
         )
     }
 
