@@ -101,11 +101,14 @@ pub fn get_excerpt_collection(session: RecordingSession) -> ExcerptCollection {
     let excerpts: Vec<NamedExcerpt> = excerpts
         .into_iter()
         .enumerate()
-        .map(|(num, excerpt)| NamedExcerpt {
-            excerpt,
-            song_before: songs.get(num - 1).cloned(),
-            song_after: songs.get(num).cloned(),
-            num,
+        .map(|(num, excerpt)| {
+            let song_before = if num == 0 { None } else { songs.get(num) };
+            NamedExcerpt {
+                excerpt,
+                song_before: song_before.cloned(),
+                song_after: songs.get(num).cloned(),
+                num,
+            }
         })
         .collect();
     ExcerptCollection {
