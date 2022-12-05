@@ -10,15 +10,20 @@ pub struct Song {
     pub artist: String,
     pub album: String,
     pub title: String,
-    pub track_number: i64,
+    pub track_number: Option<i64>,
     pub length: f64,
 }
 
 impl Song {
     pub fn get_target_file(&self, music_dir: &Path) -> PathBuf {
+        let track_number_str = if let Some(track_number) = self.track_number {
+            format!("{:02}", track_number)
+        } else {
+            "".into()
+        };
         let file_name = format!(
-            "{:02}_{}.opus",
-            self.track_number,
+            "{}_{}.opus",
+            track_number_str,
             &sanitize_string(&self.title)
         );
         self.get_album_folder(music_dir).join(Path::new(&file_name))

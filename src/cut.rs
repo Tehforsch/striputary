@@ -151,7 +151,8 @@ pub fn cut_song(info: &CutInfo) -> Result<()> {
         info.song,
         target_file.to_str().unwrap()
     );
-    let out = Command::new("ffmpeg")
+    let mut command = Command::new("ffmpeg");
+    command
         .arg("-ss")
         .arg(format!("{}", info.start_time.time))
         .arg("-t")
@@ -169,9 +170,13 @@ pub fn cut_song(info: &CutInfo) -> Result<()> {
         .arg("-metadata")
         .arg(format!("artist={}", &info.song.artist))
         .arg("-metadata")
-        .arg(format!("albumartist={}", &info.song.artist))
-        .arg("-metadata")
-        .arg(format!("track={}", &info.song.track_number))
+        .arg(format!("albumartist={}", &info.song.artist));
+    if let Some(track_number) = info.song.track_number {
+        command
+            .arg("-metadata")
+            .arg(format!("track={}", track_number));
+    }
+    let out = command
         .arg("-y")
         .arg(target_file.to_str().unwrap())
         .output();

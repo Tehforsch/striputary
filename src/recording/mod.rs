@@ -1,4 +1,4 @@
-mod dbus;
+pub mod dbus;
 mod recorder;
 mod recording_status;
 mod recording_thread;
