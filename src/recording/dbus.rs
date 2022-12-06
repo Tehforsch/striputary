@@ -76,7 +76,17 @@ fn is_playback_stopped(properties: &PC) -> bool {
 }
 
 fn get_song_length(metadata: &MetadataDict) -> f64 {
-    (metadata["mpris:length"].as_u64().unwrap() as f64) * 1e-6
+    let val = &metadata["mpris:length"];
+    let length_microseconds = val
+        .as_u64()
+        .or(val.as_i64().map(|x| x as u64))
+        .unwrap_or_else(|| {
+            val.as_str()
+                .expect("Failed to parse song length as string")
+                .parse()
+                .expect("Failed to parse song length string as integer")
+        });
+    (length_microseconds as f64) * 1e-6
 }
 
 fn get_song_from_dbus_properties(properties: PC) -> Option<Song> {
