@@ -21,7 +21,6 @@ use anyhow::Result;
 use args::Opts;
 use clap::Parser;
 use config_file::ConfigFile;
-use service_config::ServiceConfig;
 
 use crate::gui::StriputaryGui;
 
@@ -31,10 +30,9 @@ fn main() -> Result<(), anyhow::Error> {
     let output_dir = args
         .output_dir
         .or(config_file.ok().map(|file| file.output_dir));
-    let service_config = ServiceConfig::from_service_name(&get_service_name(&args.service_name))?;
     match output_dir {
         Some(dir) => {
-            Ok(run_gui(&dir, service_config))
+            Ok(run_gui(&dir, args.service_name))
         }
         None => panic!("Need an output folder - either pass it as a command line argument or specify it in the config file (probably ~/.config/striputary/config.yaml")
     }
@@ -44,8 +42,8 @@ fn get_service_name(service_name: &Option<String>) -> &str {
     service_name.as_deref().unwrap_or(config::DEFAULT_SERVICE)
 }
 
-fn run_gui(dir: &Path, service_config: ServiceConfig) {
-    let app = StriputaryGui::new(dir, service_config);
+fn run_gui(dir: &Path, service_name: Option<String>) {
+    let app = StriputaryGui::new(dir, service_name);
     let native_options = eframe::NativeOptions::default();
     eframe::run_native("striputary", native_options, Box::new(|_| Box::new(app)));
 }

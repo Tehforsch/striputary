@@ -27,6 +27,7 @@ use self::plot::ExcerptPlot;
 use crate::audio_time::AudioTime;
 use crate::cut::CutInfo;
 use crate::excerpt_collection::ExcerptCollection;
+use crate::get_service_name;
 use crate::gui::session_manager::SessionIdentifier;
 use crate::gui::session_manager::SessionManager;
 use crate::recording::recording_thread_handle_status::RecordingThreadHandleStatus;
@@ -40,7 +41,7 @@ struct SongIdentifier {
 }
 
 pub struct StriputaryGui {
-    service_config: ServiceConfig,
+    service_name: Option<String>,
     collection: Option<ExcerptCollection>,
     plots: Vec<ExcerptPlot>,
     scroll_position: usize,
@@ -53,10 +54,10 @@ pub struct StriputaryGui {
 }
 
 impl StriputaryGui {
-    pub fn new(dir: &Path, service_config: ServiceConfig) -> Self {
+    pub fn new(dir: &Path, service_name: Option<String>) -> Self {
         let session_manager = SessionManager::new(dir);
         let mut gui = Self {
-            service_config,
+            service_name,
             collection: None,
             plots: vec![],
             scroll_position: 0,
@@ -129,9 +130,11 @@ impl StriputaryGui {
     }
 
     fn get_run_args(&self) -> Option<RunArgs> {
+        let service_config =
+            ServiceConfig::from_service_name(&get_service_name(&self.service_name)).unwrap();
         Some(RunArgs {
             session_dir: self.session_manager.get_currently_selected()?,
-            service_config: self.service_config.clone(),
+            service_config: service_config.clone(),
         })
     }
 
