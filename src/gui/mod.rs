@@ -33,6 +33,7 @@ use crate::gui::session_manager::SessionManager;
 use crate::recording::recording_thread_handle_status::RecordingThreadHandleStatus;
 use crate::run_args::RunArgs;
 use crate::service_config::ServiceConfig;
+use crate::song::format_title;
 use crate::song::Song;
 
 #[derive(PartialEq, Eq, Copy, Clone)]
@@ -84,13 +85,15 @@ impl StriputaryGui {
 
     fn get_cut_info(&self, collection: &ExcerptCollection) -> Vec<CutInfo> {
         let mut cut_info: Vec<CutInfo> = vec![];
-        for (plot_start, plot_end) in self.plots.iter().zip(self.plots[1..].iter()) {
+        for (i, (plot_start, plot_end)) in self.plots.iter().zip(self.plots[1..].iter()).enumerate()
+        {
             let song = plot_start.excerpt.song_after.as_ref().unwrap();
             cut_info.push(CutInfo::new(
                 &collection.session,
                 song.clone(),
                 plot_start.cut_time,
                 plot_end.cut_time,
+                i,
             ));
         }
         cut_info
@@ -380,7 +383,7 @@ fn add_plot_label(ui: &mut Ui, song: Option<&Song>, finished_cutting: bool) {
     let color = get_label_color(finished_cutting);
     if let Some(ref song) = song {
         ui.add(Label::new(
-            RichText::new(format!("{}", song.title)).color(color),
+            RichText::new(format_title(&song.title)).color(color),
         ));
     }
 }

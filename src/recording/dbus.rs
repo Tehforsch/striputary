@@ -89,18 +89,10 @@ fn get_song_length(metadata: &MetadataDict) -> f64 {
     (length_microseconds as f64) * 1e-6
 }
 
-fn get_song_from_dbus_properties(properties: PC) -> Option<Song> {
-    let metadata = &properties.changed_properties.get("Metadata")?.0;
-
-    let mut iter = metadata.as_iter().unwrap();
-    let mut dict = HashMap::<&str, Box<dyn RefArg>>::new();
-    while let Some(key) = iter.next() {
-        let value = iter.next().unwrap();
-        dict.insert(key.as_str().unwrap(), Box::new(value));
-    }
-    return Some(Song {
-        // I want to thank what is probably a combination of spotify and the MediaPlayer2 specification for this wonderful piece of art. Note that spotify doesn't actually send a list of artists, but just the first artist in a nested list which is just great.
-        artist: dict["xesam:artist"]
+fn get_song_artist(metadata: &MetadataDict) -> Option<String> {
+    // I want to thank what is probably a combination of spotify and the MediaPlayer2 specification for this wonderful piece of art. Note that spotify doesn't actually send a list of artists, but just the first artist in a nested list which is just great.
+    Some(
+        metadata["xesam:artist"]
             .as_iter()
             .unwrap()
             .next()
@@ -112,11 +104,37 @@ fn get_song_from_dbus_properties(properties: PC) -> Option<Song> {
             .as_str()
             .unwrap()
             .to_string(),
-        album: dict["xesam:album"].as_str().unwrap().to_string(),
-        title: dict["xesam:title"].as_str().unwrap().to_string(),
-        track_number: dict
-            .get("xesam:trackNumber")
-            .map(|track_number| track_number.as_i64().unwrap()),
+    )
+}
+
+fn get_song_album(metadata: &MetadataDict) -> Option<String> {
+    Some(metadata["xesam:album"].as_str().unwrap().to_string())
+}
+
+fn get_song_title(metadata: &MetadataDict) -> Option<String> {
+    Some(metadata["xesam:title"].as_str().unwrap().to_string())
+}
+
+fn get_song_track_number(metadata: &MetadataDict) -> Option<i64> {
+    metadata
+        .get("xesam:trackNumber")
+        .map(|track_number| track_number.as_i64().unwrap())
+}
+
+fn get_song_from_dbus_properties(properties: PC) -> Option<Song> {
+    let metadata = &properties.changed_properties.get("Metadata")?.0;
+
+    let mut iter = metadata.as_iter().unwrap();
+    let mut dict = HashMap::<&str, Box<dyn RefArg>>::new();
+    while let Some(key) = iter.next() {
+        let value = iter.next().unwrap();
+        dict.insert(key.as_str().unwrap(), Box::new(value));
+    }
+    return Some(Song {
+        artist: get_song_artist(&dict),
+        album: get_song_album(&dict),
+        title: get_song_title(&dict),
+        track_number: get_song_track_number(&dict),
         length: get_song_length(&dict),
     });
 }
