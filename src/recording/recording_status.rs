@@ -2,6 +2,7 @@
 pub enum RecordingExitStatus {
     FinishedOrInterrupted,
     AlbumFinished,
+    NoNewSongForTooLong,
 }
 
 #[derive(PartialEq)]
