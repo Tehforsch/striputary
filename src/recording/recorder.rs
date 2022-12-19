@@ -101,11 +101,6 @@ fn get_sink_input_index(service_config: &ServiceConfig) -> Result<Option<i32>> {
     temp.next()
         .map(|capture| get_sink_index_from_pacmd_output_capture(&capture))
         .transpose()
-    // for capture in captures {
-    //     if sink_source_name == SINK_SOURCE_NAME {
-    //         ;
-    //     }
-    // }
 }
 
 fn get_sink_index_from_pacmd_output_capture(capture: &Captures) -> Result<i32> {

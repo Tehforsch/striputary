@@ -51,7 +51,7 @@ pub fn handle_dbus_properties_changed_signal(
         let last_song = session.songs.last();
         if let Some(song) = song {
             if session.songs.is_empty() || last_song.unwrap() != &song {
-                println!("Now recording song: {:?}", song);
+                println!("Now recording song: {}", song);
                 session.songs.push(song);
                 session.save()?;
             }
@@ -108,7 +108,9 @@ fn get_song_artist(metadata: &MetadataDict) -> Option<String> {
 }
 
 fn get_song_album(metadata: &MetadataDict) -> Option<String> {
-    Some(metadata["xesam:album"].as_str().unwrap().to_string())
+    metadata
+        .get("xesam:album")
+        .map(|album| album.as_str().unwrap().to_string())
 }
 
 fn get_song_title(metadata: &MetadataDict) -> Option<String> {
@@ -119,6 +121,14 @@ fn get_song_track_number(metadata: &MetadataDict) -> Option<i64> {
     metadata
         .get("xesam:trackNumber")
         .map(|track_number| track_number.as_i64().unwrap())
+}
+
+/// This filters certain malformed entries that
+/// some mpris services will send, which contain
+/// a track length of zero, and should
+/// not be considered actual songs.
+fn is_valid_song(song: &Song) -> bool {
+    song.length != 0.0
 }
 
 fn get_song_from_dbus_properties(properties: PC) -> Option<Song> {
@@ -136,7 +146,8 @@ fn get_song_from_dbus_properties(properties: PC) -> Option<Song> {
         title: get_song_title(&dict),
         track_number: get_song_track_number(&dict),
         length: get_song_length(&dict),
-    });
+    })
+    .filter(|song| is_valid_song(&song));
 }
 
 pub fn dbus_set_playback_status_command(

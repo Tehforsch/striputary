@@ -57,6 +57,7 @@ fn sanitize_string(s: &str) -> String {
 fn sanitize_or_default(s: &Option<String>, default: &str) -> String {
     s.as_ref()
         .map(|s| sanitize_string(s))
+        .filter(|s| s != "")
         .unwrap_or(default.into())
 }
 
