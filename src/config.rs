@@ -15,6 +15,7 @@ pub static WAIT_TIME_BEFORE_FIRST_SONG: f64 = 1.0;
 pub static TIME_AFTER_SESSION_END: f64 = 10.0;
 
 pub static TIME_WITHOUT_DBUS_SIGNAL_BEFORE_STOPPING: Duration = Duration::from_secs(10);
+pub static TIME_BETWEEN_SUBSEQUENT_DBUS_COMMANDS: Duration = Duration::from_secs(1);
 
 pub static BITRATE: i64 = 192000;
 pub static MIN_OFFSET: f64 = -3.;

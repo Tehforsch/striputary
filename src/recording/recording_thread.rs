@@ -20,7 +20,9 @@ use super::recording_status::RecordingExitStatus;
 use crate::config;
 use crate::config::TIME_AFTER_SESSION_END;
 use crate::config::TIME_BEFORE_SESSION_START;
+use crate::config::TIME_BETWEEN_SUBSEQUENT_DBUS_COMMANDS;
 use crate::config::WAIT_TIME_BEFORE_FIRST_SONG;
+use crate::recording::dbus::next_song;
 use crate::recording::recorder;
 use crate::recording::recording_status::RecordingStatus;
 use crate::recording_session::RecordingSession;
@@ -79,6 +81,11 @@ impl RecordingThread {
     }
 
     fn initial_buffer_phase(&self) -> Result<()> {
+        // Go to next song and back. This helps with missing metadata
+        // for the first track in some configurations.
+        next_song(&self.run_args.service_config)?;
+        thread::sleep(TIME_BETWEEN_SUBSEQUENT_DBUS_COMMANDS);
+        previous_song(&self.run_args.service_config)?;
         // Add a small time buffer before starting the playback properly.
         // This ensures that something starts playing, thus registering the
         // pulse audio sink. Also it avoids overflows when calculating the offset

@@ -168,6 +168,10 @@ pub fn previous_song(service_config: &ServiceConfig) -> Result<()> {
     dbus_set_playback_status_command(service_config, "Previous")
 }
 
+pub fn next_song(service_config: &ServiceConfig) -> Result<()> {
+    dbus_set_playback_status_command(service_config, "Next")
+}
+
 pub fn start_playback(service_config: &ServiceConfig) -> Result<()> {
     dbus_set_playback_status_command(service_config, "Play")
 }
