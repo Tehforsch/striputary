@@ -21,29 +21,39 @@ use anyhow::Result;
 use args::Opts;
 use clap::Parser;
 use config_file::ConfigFile;
+use service_config::Service;
 
 use crate::gui::StriputaryGui;
 
 fn main() -> Result<(), anyhow::Error> {
     let args = Opts::parse();
     let config_file = ConfigFile::read();
+    if let Err(ref e) = config_file {
+        println!("{}", e);
+    }
+    let config_file = config_file.ok();
     let output_dir = args
         .output_dir
-        .or(config_file.ok().map(|file| file.output_dir));
+        .or(config_file.as_ref().map(|file| file.output_dir.clone()));
+    let service = args
+        .service
+        .or(config_file.and_then(|file: ConfigFile| file.service))
+        .unwrap_or_else(|| {
+            let service = Service::default();
+            println!("No service specified in command line args or config file. Using default.");
+            service
+        });
+    println!("Using service: {}", service);
     match output_dir {
         Some(dir) => {
-            Ok(run_gui(&dir, args.service_name))
+            Ok(run_gui(&dir, service))
         }
         None => panic!("Need an output folder - either pass it as a command line argument or specify it in the config file (probably ~/.config/striputary/config.yaml")
     }
 }
 
-fn get_service_name(service_name: &Option<String>) -> &str {
-    service_name.as_deref().unwrap_or(config::DEFAULT_SERVICE)
-}
-
-fn run_gui(dir: &Path, service_name: Option<String>) {
-    let app = StriputaryGui::new(dir, service_name);
+fn run_gui(dir: &Path, service: Service) {
+    let app = StriputaryGui::new(dir, service);
     let native_options = eframe::NativeOptions::default();
     eframe::run_native("striputary", native_options, Box::new(|_| Box::new(app)));
 }

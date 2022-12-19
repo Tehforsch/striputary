@@ -27,11 +27,11 @@ use self::plot::ExcerptPlot;
 use crate::audio_time::AudioTime;
 use crate::cut::CutInfo;
 use crate::excerpt_collection::ExcerptCollection;
-use crate::get_service_name;
 use crate::gui::session_manager::SessionIdentifier;
 use crate::gui::session_manager::SessionManager;
 use crate::recording::recording_thread_handle_status::RecordingThreadHandleStatus;
 use crate::run_args::RunArgs;
+use crate::service_config::Service;
 use crate::service_config::ServiceConfig;
 use crate::song::format_title;
 use crate::song::Song;
@@ -42,7 +42,7 @@ struct SongIdentifier {
 }
 
 pub struct StriputaryGui {
-    service_name: Option<String>,
+    service: Service,
     collection: Option<ExcerptCollection>,
     plots: Vec<ExcerptPlot>,
     scroll_position: usize,
@@ -55,10 +55,10 @@ pub struct StriputaryGui {
 }
 
 impl StriputaryGui {
-    pub fn new(dir: &Path, service_name: Option<String>) -> Self {
+    pub fn new(dir: &Path, service: Service) -> Self {
         let session_manager = SessionManager::new(dir);
         let mut gui = Self {
-            service_name,
+            service,
             collection: None,
             plots: vec![],
             scroll_position: 0,
@@ -133,8 +133,7 @@ impl StriputaryGui {
     }
 
     fn get_run_args(&self) -> Option<RunArgs> {
-        let service_config =
-            ServiceConfig::from_service_name(&get_service_name(&self.service_name)).unwrap();
+        let service_config = ServiceConfig::from_service(self.service).unwrap();
         Some(RunArgs {
             session_dir: self.session_manager.get_currently_selected()?,
             service_config: service_config.clone(),
