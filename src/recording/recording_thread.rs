@@ -5,7 +5,6 @@ use std::sync::atomic::Ordering;
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::thread::{self};
-use std::time::Duration;
 use std::time::Instant;
 
 use anyhow::anyhow;
@@ -91,11 +90,11 @@ impl RecordingThread {
         // pulse audio sink. Also it avoids overflows when calculating the offset
         println!("Begin pre-session phase");
         start_playback(&self.run_args.service_config)?;
-        thread::sleep(Duration::from_secs_f64(TIME_BEFORE_SESSION_START));
+        thread::sleep(TIME_BEFORE_SESSION_START);
         stop_playback(&self.run_args.service_config)?;
         println!("Go to beginning of song");
         previous_song(&self.run_args.service_config)?;
-        thread::sleep(Duration::from_secs_f64(WAIT_TIME_BEFORE_FIRST_SONG));
+        thread::sleep(WAIT_TIME_BEFORE_FIRST_SONG);
         Ok(())
     }
 
@@ -143,6 +142,6 @@ impl RecordingThread {
 
     fn final_buffer_phase(&self) {
         println!("Recording finished. Record final buffer for a few seconds");
-        thread::sleep(Duration::from_secs_f64(TIME_AFTER_SESSION_END));
+        thread::sleep(TIME_AFTER_SESSION_END);
     }
 }
