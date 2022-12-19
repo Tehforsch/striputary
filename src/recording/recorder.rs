@@ -46,7 +46,10 @@ fn setup_recording(service_config: &ServiceConfig) -> Result<()> {
     let mb_index = get_sink_input_index(service_config)?;
     match mb_index {
         Some(index) => redirect_sink(index).map(|_| ()),
-        None => Err(anyhow!("Failed to find sink index")),
+        None => Err(anyhow!(
+            "Failed to find sink index for service: {}",
+            service_config.sink_name
+        )),
     }
 }
 

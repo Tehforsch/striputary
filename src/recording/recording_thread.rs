@@ -42,6 +42,12 @@ impl RecordingThread {
     }
 
     pub fn record_new_session(&self) -> Result<(RecordingExitStatus, RecordingSession)> {
+        let result = self.internal_record_new_session();
+        self.is_running.store(false, Ordering::SeqCst);
+        result
+    }
+
+    fn internal_record_new_session(&self) -> Result<(RecordingExitStatus, RecordingSession)> {
         create_dir_all(&self.run_args.session_dir).context("Failed to create session directory")?;
         if self.run_args.get_buffer_file().exists() {
             return Err(anyhow!(
@@ -57,7 +63,6 @@ impl RecordingThread {
             self.polling_loop(&self.run_args.get_yaml_file(), &record_start_time)?;
         recorder::stop_recording(recording_handles)?;
         session.save()?;
-        self.is_running.store(false, Ordering::SeqCst);
         Ok((status, session))
     }
 
