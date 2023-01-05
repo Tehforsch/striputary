@@ -10,9 +10,12 @@ pub static DEFAULT_MUSIC_DIR: &str = "music";
 
 pub static DEFAULT_SERVICE: &str = "spotify";
 // This should be more than 3-4 seconds at least
-pub static TIME_BEFORE_SESSION_START: f64 = 5.0;
-pub static WAIT_TIME_BEFORE_FIRST_SONG: f64 = 1.0;
-pub static TIME_AFTER_SESSION_END: f64 = 10.0;
+pub static TIME_BEFORE_SESSION_START: Duration = Duration::from_secs(5);
+pub static WAIT_TIME_BEFORE_FIRST_SONG: Duration = Duration::from_secs(1);
+pub static TIME_AFTER_SESSION_END: Duration = Duration::from_secs(10);
+
+pub static TIME_WITHOUT_DBUS_SIGNAL_BEFORE_STOPPING: Duration = Duration::from_secs(10);
+pub static TIME_BETWEEN_SUBSEQUENT_DBUS_COMMANDS: Duration = Duration::from_secs(1);
 
 pub static BITRATE: i64 = 192000;
 pub static MIN_OFFSET: f64 = -3.;

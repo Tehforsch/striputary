@@ -6,13 +6,14 @@ use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Result;
 use serde::Deserialize;
-use serde::Serialize;
 
 use crate::config;
+use crate::service_config::Service;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct ConfigFile {
     pub output_dir: PathBuf,
+    pub service: Option<Service>,
 }
 
 impl ConfigFile {

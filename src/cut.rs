@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::fs::create_dir_all;
 use std::path::Path;
 use std::path::PathBuf;
@@ -25,6 +26,7 @@ pub struct CutInfo {
     music_dir: PathBuf,
     start_time: AudioTime,
     end_time: AudioTime,
+    num_in_recording: usize,
 }
 
 impl CutInfo {
@@ -33,6 +35,7 @@ impl CutInfo {
         song: Song,
         start_time: AudioTime,
         end_time: AudioTime,
+        num_in_recording: usize,
     ) -> Self {
         let buffer_file = session.get_buffer_file();
         let music_dir = session.get_music_dir();
@@ -42,6 +45,7 @@ impl CutInfo {
             music_dir,
             start_time,
             end_time,
+            num_in_recording,
         }
     }
 }
@@ -139,9 +143,21 @@ fn get_all_valid_excerpts_and_songs(session: &RecordingSession) -> (Vec<AudioExc
     (audio_excerpts, valid_songs)
 }
 
+fn add_metadata_arg_if_present<T: Display>(
+    command: &mut Command,
+    get_str: fn(&T) -> String,
+    val: Option<&T>,
+) {
+    if let Some(val) = val {
+        command.arg("-metadata").arg(get_str(&val));
+    }
+}
+
 pub fn cut_song(info: &CutInfo) -> Result<()> {
     let difference = info.end_time.time - info.start_time.time;
-    let target_file = info.song.get_target_file(&info.music_dir);
+    let target_file = info
+        .song
+        .get_target_file(&info.music_dir, info.num_in_recording);
     create_dir_all(target_file.parent().unwrap())
         .context("Failed to create subfolders of target file")?;
     println!(
@@ -151,7 +167,8 @@ pub fn cut_song(info: &CutInfo) -> Result<()> {
         info.song,
         target_file.to_str().unwrap()
     );
-    let out = Command::new("ffmpeg")
+    let mut command = Command::new("ffmpeg");
+    command
         .arg("-ss")
         .arg(format!("{}", info.start_time.time))
         .arg("-t")
@@ -161,22 +178,38 @@ pub fn cut_song(info: &CutInfo) -> Result<()> {
         .arg("-c:a")
         .arg("libopus")
         .arg("-b:a")
-        .arg(format!("{}", config::BITRATE))
-        .arg("-metadata")
-        .arg(format!("title={}", &info.song.title))
-        .arg("-metadata")
-        .arg(format!("album={}", &info.song.album))
-        .arg("-metadata")
-        .arg(format!("artist={}", &info.song.artist))
-        .arg("-metadata")
-        .arg(format!("albumartist={}", &info.song.artist))
-        .arg("-metadata")
-        .arg(format!("track={}", &info.song.track_number))
+        .arg(format!("{}", config::BITRATE));
+    add_metadata_arg_if_present(
+        &mut command,
+        |title| format!("title={}", title),
+        info.song.title.as_ref(),
+    );
+    add_metadata_arg_if_present(
+        &mut command,
+        |album| format!("album={}", album),
+        info.song.album.as_ref(),
+    );
+    add_metadata_arg_if_present(
+        &mut command,
+        |artist| format!("artist={}", artist),
+        info.song.artist.as_ref(),
+    );
+    add_metadata_arg_if_present(
+        &mut command,
+        |artist| format!("albumartist={}", artist),
+        info.song.artist.as_ref(),
+    );
+    add_metadata_arg_if_present(
+        &mut command,
+        |track_number| format!("track={}", track_number),
+        info.song.track_number.as_ref(),
+    );
+    let out = command
         .arg("-y")
         .arg(target_file.to_str().unwrap())
         .output();
     out.map(|_| ()).context(format!(
-        "Failed to cut song: {} {} {} ({}+{}) (is ffmpeg installed?)",
+        "Failed to cut song: {:?} {:?} {:?} ({:?}+{:?}) (is ffmpeg installed?)",
         &info.song.title, &info.song.album, &info.song.artist, info.start_time.time, difference,
     ))
 }

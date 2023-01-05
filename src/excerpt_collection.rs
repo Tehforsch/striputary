@@ -29,7 +29,7 @@ impl ExcerptCollection {
     pub fn name(&self) -> String {
         let first_song = self.session.songs.first();
         match first_song {
-            Some(first_song) => format!("{} - {}", first_song.artist, first_song.album),
+            Some(first_song) => format!("{:?} - {:?}", first_song.artist, first_song.album),
             None => "".into(),
         }
     }

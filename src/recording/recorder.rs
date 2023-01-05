@@ -46,7 +46,10 @@ fn setup_recording(service_config: &ServiceConfig) -> Result<()> {
     let mb_index = get_sink_input_index(service_config)?;
     match mb_index {
         Some(index) => redirect_sink(index).map(|_| ()),
-        None => Err(anyhow!("Failed to find sink index")),
+        None => Err(anyhow!(
+            "Failed to find sink index for service: {}",
+            service_config.sink_name
+        )),
     }
 }
 
@@ -101,11 +104,6 @@ fn get_sink_input_index(service_config: &ServiceConfig) -> Result<Option<i32>> {
     temp.next()
         .map(|capture| get_sink_index_from_pacmd_output_capture(&capture))
         .transpose()
-    // for capture in captures {
-    //     if sink_source_name == SINK_SOURCE_NAME {
-    //         ;
-    //     }
-    // }
 }
 
 fn get_sink_index_from_pacmd_output_capture(capture: &Captures) -> Result<i32> {

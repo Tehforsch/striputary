@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::process::Command;
 
+use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Result;
 use dbus::arg::RefArg;
@@ -13,6 +14,8 @@ use crate::recording::recording_status::RecordingStatus;
 use crate::recording_session::RecordingSession;
 use crate::service_config::ServiceConfig;
 use crate::song::Song;
+
+type MetadataDict<'a> = HashMap<&'a str, Box<dyn RefArg + 'a>>;
 
 /// Collect dbus information on the songs.
 /// We could collect the dbus timestamps but they are basically useless
@@ -46,10 +49,12 @@ pub fn handle_dbus_properties_changed_signal(
         // We get multiple dbus messages on every song change for every property that changes.
         // Find out whether the song actually changed (or whether we havent recorded anything so far)
         let last_song = session.songs.last();
-        if session.songs.is_empty() || last_song.unwrap() != &song {
-            println!("Now recording song: {:?}", song);
-            session.songs.push(song);
-            session.save()?;
+        if let Some(song) = song {
+            if session.songs.is_empty() || last_song.unwrap() != &song {
+                println!("Now recording song: {}", song);
+                session.songs.push(song);
+                session.save()?;
+            }
         }
     }
     match playback_stopped {
@@ -70,19 +75,24 @@ fn is_playback_stopped(properties: &PC) -> bool {
     }
 }
 
-fn get_song_from_dbus_properties(properties: PC) -> Song {
-    let metadata = &properties.changed_properties["Metadata"].0;
+fn get_song_length(metadata: &MetadataDict) -> f64 {
+    let val = &metadata["mpris:length"];
+    let length_microseconds = val
+        .as_u64()
+        .or(val.as_i64().map(|x| x as u64))
+        .unwrap_or_else(|| {
+            val.as_str()
+                .expect("Failed to parse song length as string")
+                .parse()
+                .expect("Failed to parse song length string as integer")
+        });
+    (length_microseconds as f64) * 1e-6
+}
 
-    let mut iter = metadata.as_iter().unwrap();
-    let mut dict = HashMap::<&str, Box<dyn RefArg>>::new();
-    while let Some(key) = iter.next() {
-        let value = iter.next().unwrap();
-        dict.insert(key.as_str().unwrap(), Box::new(value));
-    }
-
-    return Song {
-        // I want to thank what is probably a combination of spotify and the MediaPlayer2 specification for this wonderful piece of art. Note that spotify doesn't actually send a list of artists, but just the first artist in a nested list which is just great.
-        artist: dict["xesam:artist"]
+fn get_song_artist(metadata: &MetadataDict) -> Option<String> {
+    // I want to thank what is probably a combination of spotify and the MediaPlayer2 specification for this wonderful piece of art. Note that spotify doesn't actually send a list of artists, but just the first artist in a nested list which is just great.
+    Some(
+        metadata["xesam:artist"]
             .as_iter()
             .unwrap()
             .next()
@@ -94,11 +104,50 @@ fn get_song_from_dbus_properties(properties: PC) -> Song {
             .as_str()
             .unwrap()
             .to_string(),
-        album: dict["xesam:album"].as_str().unwrap().to_string(),
-        title: dict["xesam:title"].as_str().unwrap().to_string(),
-        track_number: dict["xesam:trackNumber"].as_i64().unwrap(),
-        length: (dict["mpris:length"].as_u64().unwrap() as f64) * 1e-6, // convert s -> µs
-    };
+    )
+}
+
+fn get_song_album(metadata: &MetadataDict) -> Option<String> {
+    metadata
+        .get("xesam:album")
+        .map(|album| album.as_str().unwrap().to_string())
+}
+
+fn get_song_title(metadata: &MetadataDict) -> Option<String> {
+    Some(metadata["xesam:title"].as_str().unwrap().to_string())
+}
+
+fn get_song_track_number(metadata: &MetadataDict) -> Option<i64> {
+    metadata
+        .get("xesam:trackNumber")
+        .map(|track_number| track_number.as_i64().unwrap())
+}
+
+/// This filters certain malformed entries that
+/// some mpris services will send, which contain
+/// a track length of zero, and should
+/// not be considered actual songs.
+fn is_valid_song(song: &Song) -> bool {
+    song.length != 0.0
+}
+
+fn get_song_from_dbus_properties(properties: PC) -> Option<Song> {
+    let metadata = &properties.changed_properties.get("Metadata")?.0;
+
+    let mut iter = metadata.as_iter().unwrap();
+    let mut dict = HashMap::<&str, Box<dyn RefArg>>::new();
+    while let Some(key) = iter.next() {
+        let value = iter.next().unwrap();
+        dict.insert(key.as_str().unwrap(), Box::new(value));
+    }
+    return Some(Song {
+        artist: get_song_artist(&dict),
+        album: get_song_album(&dict),
+        title: get_song_title(&dict),
+        track_number: get_song_track_number(&dict),
+        length: get_song_length(&dict),
+    })
+    .filter(|song| is_valid_song(&song));
 }
 
 pub fn dbus_set_playback_status_command(
@@ -119,10 +168,45 @@ pub fn previous_song(service_config: &ServiceConfig) -> Result<()> {
     dbus_set_playback_status_command(service_config, "Previous")
 }
 
+pub fn next_song(service_config: &ServiceConfig) -> Result<()> {
+    dbus_set_playback_status_command(service_config, "Next")
+}
+
 pub fn start_playback(service_config: &ServiceConfig) -> Result<()> {
     dbus_set_playback_status_command(service_config, "Play")
 }
 
 pub fn stop_playback(service_config: &ServiceConfig) -> Result<()> {
     dbus_set_playback_status_command(service_config, "Pause")
+}
+
+/// For some mpris services, the name is not constant
+/// but changes depending on the instance id running.
+/// Here, we get a list of all available services
+/// and find the matching one. Returns an error
+/// if there are multiple matches.
+pub fn get_instance_of_service(service_base_name: &str) -> Result<String> {
+    let out = Command::new("qdbus")
+        .arg("--session")
+        .output()
+        .context("Failed to get list of services with qdbus")?;
+    let out = String::from_utf8(out.stdout)?;
+    let matching_lines: Vec<_> = out
+        .lines()
+        .map(|line| line.trim())
+        .filter(|line| line.starts_with(service_base_name))
+        .collect();
+    if matching_lines.len() > 1 {
+        Err(anyhow!(
+            "Found multiple dbus services that match the service configuration: {}",
+            matching_lines.join(", ")
+        ))
+    } else if matching_lines.is_empty() {
+        Err(anyhow!(
+            "Found no matching dbus service for base name: {}",
+            service_base_name
+        ))
+    } else {
+        Ok(matching_lines[0].into())
+    }
 }
