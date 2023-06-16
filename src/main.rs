@@ -12,6 +12,7 @@ pub mod recording;
 pub mod recording_session;
 pub mod run_args;
 pub mod service_config;
+mod sink_type;
 pub mod song;
 pub mod wav;
 
@@ -22,6 +23,7 @@ use args::Opts;
 use clap::Parser;
 use config_file::ConfigFile;
 use service_config::Service;
+use sink_type::SinkType;
 
 use crate::gui::StriputaryGui;
 
@@ -37,23 +39,35 @@ fn main() -> Result<(), anyhow::Error> {
         .or(config_file.as_ref().map(|file| file.output_dir.clone()));
     let service = args
         .service
-        .or(config_file.and_then(|file: ConfigFile| file.service))
+        .or(config_file
+            .as_ref()
+            .and_then(|file: &ConfigFile| file.service))
         .unwrap_or_else(|| {
             let service = Service::default();
             println!("No service specified in command line args or config file. Using default.");
             service
         });
+    let monitor = args.monitor
+        | config_file
+            .as_ref()
+            .and_then(|file: &ConfigFile| file.monitor)
+            .unwrap_or(false);
+    let sink_type = if monitor {
+        SinkType::Monitor
+    } else {
+        SinkType::Normal
+    };
     println!("Using service: {}", service);
     match output_dir {
         Some(dir) => {
-            Ok(run_gui(&dir, service))
+            Ok(run_gui(&dir, service, sink_type))
         }
         None => panic!("Need an output folder - either pass it as a command line argument or specify it in the config file (probably ~/.config/striputary/config.yaml")
     }
 }
 
-fn run_gui(dir: &Path, service: Service) {
-    let app = StriputaryGui::new(dir, service);
+fn run_gui(dir: &Path, service: Service, sink_type: SinkType) {
+    let app = StriputaryGui::new(dir, service, sink_type);
     let native_options = eframe::NativeOptions::default();
     eframe::run_native("striputary", native_options, Box::new(|_| Box::new(app)));
 }

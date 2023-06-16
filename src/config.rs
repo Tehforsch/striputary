@@ -2,7 +2,11 @@ use std::time::Duration;
 
 pub static CONFIG_FILE_NAME: &str = "config.yaml";
 
-pub static STRIPUTARY_SINK_NAME: &str = "striputary";
+pub static STRIPUTARY_SINK_NAME: &str = "Striputary";
+pub static STRIPUTARY_SINK_DESCRIPTION: &str = "Striputary";
+
+pub static STRIPUTARY_MONITOR_SINK_NAME: &str = "StriputaryMonitor";
+pub static STRIPUTARY_MONITOR_SINK_DESCRIPTION: &str = "StriputaryMonitor";
 
 pub static DEFAULT_BUFFER_FILE: &str = "buffer.wav";
 pub static DEFAULT_SESSION_FILE: &str = "session.yaml";

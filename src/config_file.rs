@@ -14,6 +14,7 @@ use crate::service_config::Service;
 pub struct ConfigFile {
     pub output_dir: PathBuf,
     pub service: Option<Service>,
+    pub monitor: Option<bool>,
 }
 
 impl ConfigFile {

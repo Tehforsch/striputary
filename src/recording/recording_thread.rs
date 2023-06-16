@@ -59,6 +59,7 @@ impl RecordingThread {
         let recording_handles = recorder::start_recording(
             &self.run_args.get_buffer_file(),
             &self.run_args.service_config,
+            self.run_args.sink_type.clone(),
         )?;
         let record_start_time = Instant::now();
         let (status, session) =

@@ -1,5 +1,6 @@
 use std::path::Path;
 use std::process::Command;
+use std::process::Output;
 
 use anyhow::anyhow;
 use anyhow::Context;
@@ -9,11 +10,25 @@ use regex::Regex;
 use subprocess::Exec;
 use subprocess::Popen;
 
+use crate::config::STRIPUTARY_MONITOR_SINK_DESCRIPTION;
+use crate::config::STRIPUTARY_MONITOR_SINK_NAME;
+use crate::config::STRIPUTARY_SINK_DESCRIPTION;
 use crate::config::STRIPUTARY_SINK_NAME;
 use crate::service_config::ServiceConfig;
+use crate::sink_type::SinkType;
 
-pub fn start_recording(output_file: &Path, service_config: &ServiceConfig) -> Result<Popen> {
-    setup_recording(service_config)?;
+fn run_command_and_assert_success(command: &mut Command) -> Result<Output> {
+    let output = command.output()?;
+    assert!(output.status.success());
+    Ok(output)
+}
+
+pub fn start_recording(
+    output_file: &Path,
+    service_config: &ServiceConfig,
+    sink_type: SinkType,
+) -> Result<Popen> {
+    setup_recording(service_config, sink_type)?;
     start_recording_command(output_file)
 }
 
@@ -36,16 +51,14 @@ fn start_recording_command(output_file: &Path) -> Result<Popen> {
         .context("Failed to execute record command - is parec installed?")
 }
 
-fn setup_recording(service_config: &ServiceConfig) -> Result<()> {
-    if !check_sink_exists()? {
-        println!("Creating sink");
-        create_sink()?;
-    } else {
-        println!("Sink already exists. Not creating sink");
+fn setup_recording(service_config: &ServiceConfig, sink_type: SinkType) -> Result<()> {
+    if check_sink_exists()? {
+        remove_sink()?;
     }
+    let output_sink_name = create_sink(sink_type)?;
     let mb_index = get_sink_input_index(service_config)?;
     match mb_index {
-        Some(index) => redirect_sink(index).map(|_| ()),
+        Some(index) => redirect_sink(index, output_sink_name).map(|_| ()),
         None => Err(anyhow!(
             "Failed to find sink index for service: {}",
             service_config.sink_name
@@ -53,33 +66,76 @@ fn setup_recording(service_config: &ServiceConfig) -> Result<()> {
     }
 }
 
-fn redirect_sink(index: i32) -> Result<()> {
-    Command::new("pactl")
-        .arg("move-sink-input")
-        .arg(format!("{}", index))
-        .arg(STRIPUTARY_SINK_NAME)
-        .output()
-        .context(
-            "Failed to execute sink redirection via pactl move-sink-input - is pactl installed?",
-        )?;
-    Ok(())
+fn redirect_sink(index: i32, output_sink_name: &str) -> Result<()> {
+    run_command_and_assert_success(
+        Command::new("pactl")
+            .arg("move-sink-input")
+            .arg(format!("{}", index))
+            .arg(output_sink_name),
+    )
+    .map(|_| ())
+    .context("Failed to execute sink redirection via pactl move-sink-input - is pactl installed?")
 }
 
 fn check_sink_exists() -> Result<bool> {
-    let output = Command::new("pacmd")
-        .arg("list-sinks")
-        .output()
+    let output = run_command_and_assert_success(Command::new("pacmd").arg("list-sinks"))
         .context("Failed to execute sink list command (pacmd list-sinks) - is pacmd installed?.")?;
-    assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
     Ok(stdout.contains(STRIPUTARY_SINK_NAME))
 }
 
-fn create_sink() -> Result<()> {
-    let output = Command::new("pactl")
+fn get_default_sink_for_monitor() -> String {
+    String::from_utf8(
+        run_command_and_assert_success(Command::new("pactl").arg("get-default-sink"))
+            .expect("Failed to get name of default sink for monitor.")
+            .stdout,
+    )
+    .expect("Failed to decode output of pactl get-default-sink")
+}
+
+fn remove_sink() -> Result<()> {
+    run_command_and_assert_success(
+        Command::new("pacmd")
+            .arg("unload-module")
+            .arg("module-null-sink"),
+    )
+    .map(|_| ())
+}
+
+fn create_sink(sink_type: SinkType) -> Result<&'static str> {
+    let output = Command::new("pacmd")
         .arg("load-module")
         .arg("module-null-sink")
         .arg(format!("sink_name={}", STRIPUTARY_SINK_NAME))
+        .arg(format!(
+            "sink_properties=device.description={}",
+            STRIPUTARY_SINK_DESCRIPTION
+        ))
+        .output()
+        .context("Failed to execute sink creation command.")?;
+    assert!(output.status.success());
+    if let SinkType::Monitor = sink_type {
+        create_monitor_sink()?;
+        Ok(STRIPUTARY_MONITOR_SINK_NAME)
+    } else {
+        Ok(STRIPUTARY_SINK_NAME)
+    }
+}
+
+fn create_monitor_sink() -> Result<()> {
+    let output = Command::new("pacmd")
+        .arg("load-module")
+        .arg("module-combine-sink")
+        .arg(format!("sink_name={}", STRIPUTARY_MONITOR_SINK_NAME))
+        .arg(format!(
+            "sink_properties=device.description={}",
+            STRIPUTARY_MONITOR_SINK_DESCRIPTION
+        ))
+        .arg(format!(
+            "slaves={},{}",
+            STRIPUTARY_SINK_NAME,
+            get_default_sink_for_monitor()
+        ))
         .output()
         .context("Failed to execute sink creation command.")?;
     assert!(output.status.success());

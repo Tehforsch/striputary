@@ -33,6 +33,7 @@ use crate::recording::recording_thread_handle_status::RecordingThreadHandleStatu
 use crate::run_args::RunArgs;
 use crate::service_config::Service;
 use crate::service_config::ServiceConfig;
+use crate::sink_type::SinkType;
 use crate::song::format_title;
 use crate::song::Song;
 
@@ -43,6 +44,7 @@ struct SongIdentifier {
 
 pub struct StriputaryGui {
     service: Service,
+    sink_type: SinkType,
     collection: Option<ExcerptCollection>,
     plots: Vec<ExcerptPlot>,
     scroll_position: usize,
@@ -55,7 +57,7 @@ pub struct StriputaryGui {
 }
 
 impl StriputaryGui {
-    pub fn new(dir: &Path, service: Service) -> Self {
+    pub fn new(dir: &Path, service: Service, sink_type: SinkType) -> Self {
         let session_manager = SessionManager::new(dir);
         let mut gui = Self {
             service,
@@ -68,6 +70,7 @@ impl StriputaryGui {
             last_touched_song: None,
             should_repaint: false,
             session_manager,
+            sink_type,
         };
         gui.load_selected_session();
         gui
@@ -137,6 +140,7 @@ impl StriputaryGui {
         Some(RunArgs {
             session_dir: self.session_manager.get_currently_selected()?,
             service_config: service_config.clone(),
+            sink_type: self.sink_type.clone(),
         })
     }
 
