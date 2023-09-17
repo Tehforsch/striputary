@@ -16,14 +16,14 @@ pub struct RecordingSession {
     #[serde(skip_serializing, skip_deserializing)]
     pub filename: PathBuf,
     pub songs: Vec<Song>,
-    pub estimated_time_first_song: f64,
+    pub estimated_time_first_song: Option<f64>,
 }
 
 impl RecordingSession {
-    pub fn new(path: &Path, estimated_time_first_song: f64) -> RecordingSession {
+    pub fn new(path: &Path) -> RecordingSession {
         RecordingSession {
             filename: path.to_owned(),
-            estimated_time_first_song,
+            estimated_time_first_song: Some(0.0),
             songs: vec![],
         }
     }

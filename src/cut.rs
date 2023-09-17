@@ -100,7 +100,7 @@ fn determine_cut_offset(audio_excerpts: &[AudioExcerpt], cut_timestamps: &[f64])
 pub fn get_excerpt_collection(session: RecordingSession) -> ExcerptCollection {
     let (excerpts, songs) = get_all_valid_excerpts_and_songs(&session);
     let timestamps =
-        get_cut_timestamps_from_song_lengths(&songs, session.estimated_time_first_song);
+        get_cut_timestamps_from_song_lengths(&songs, session.estimated_time_first_song.unwrap());
     let offset_guess = determine_cut_offset(&excerpts, &timestamps);
     let excerpts: Vec<NamedExcerpt> = excerpts
         .into_iter()
@@ -125,7 +125,7 @@ pub fn get_excerpt_collection(session: RecordingSession) -> ExcerptCollection {
 fn get_all_valid_excerpts_and_songs(session: &RecordingSession) -> (Vec<AudioExcerpt>, Vec<Song>) {
     let mut audio_excerpts = Vec::new();
     let mut valid_songs = Vec::new();
-    let mut cut_time = session.estimated_time_first_song;
+    let mut cut_time = session.estimated_time_first_song.unwrap();
     for song in session.songs.iter() {
         let audio_excerpt = get_excerpt(&session.get_buffer_file(), cut_time);
         if let Some(excerpt) = audio_excerpt {

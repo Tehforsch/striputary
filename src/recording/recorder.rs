@@ -1,6 +1,7 @@
 use std::fs::create_dir_all;
 use std::path::Path;
 use std::process::Command;
+use std::time::Instant;
 
 use anyhow::anyhow;
 use anyhow::Context;
@@ -16,6 +17,7 @@ use crate::service_config::ServiceConfig;
 
 pub struct Recorder {
     process: Popen,
+    start_time: Instant,
 }
 
 impl Recorder {
@@ -23,6 +25,7 @@ impl Recorder {
         setup_recording(&opts)?;
         Ok(Self {
             process: start_recording_process(&opts.get_buffer_file())?,
+            start_time: Instant::now(),
         })
     }
 
@@ -32,6 +35,10 @@ impl Recorder {
             .context("Failed to terminate parec while recording")?;
         println!("Stopped recording.");
         Ok(())
+    }
+
+    pub fn time_since_start_secs(&self) -> f64 {
+        Instant::now().duration_since(self.start_time).as_millis() as f64 / 1000.0
     }
 }
 

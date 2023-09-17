@@ -173,6 +173,7 @@ pub fn next_song(service_config: &ServiceConfig) -> Result<()> {
 }
 
 pub fn start_playback(service_config: &ServiceConfig) -> Result<()> {
+    println!("Start playback.");
     dbus_set_playback_status_command(service_config, "Play")
 }
 

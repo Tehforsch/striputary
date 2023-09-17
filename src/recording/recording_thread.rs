@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
 use std::sync::mpsc::Sender;
@@ -29,46 +28,41 @@ pub struct RecordingThread {
     run_args: RunArgs,
     is_running: Arc<AtomicBool>,
     song_sender: Sender<Song>,
-    record_start_time: Instant,
-    session_file: PathBuf,
-}
-
-impl Drop for RecordingThread {
-    fn drop(&mut self) {
-        self.is_running.store(false, Ordering::SeqCst);
-    }
+    session: RecordingSession,
+    recorder: Recorder,
 }
 
 impl RecordingThread {
     pub fn new(is_running: Arc<AtomicBool>, song_sender: Sender<Song>, run_args: &RunArgs) -> Self {
-        let session_file = run_args.get_yaml_file();
-        let record_start_time = Instant::now();
+        let session = RecordingSession::new(&run_args.get_yaml_file());
+        let recorder = Recorder::start(&run_args).unwrap();
         let recorder = Self {
             run_args: run_args.clone(),
             is_running,
             song_sender,
-            session_file,
-            record_start_time,
+            session,
+            recorder,
         };
         recorder
-            .record_new_session()
-            .expect("Failed to record new session");
-        recorder
     }
 
-    pub fn record_new_session(&self) -> Result<(RecordingExitStatus, RecordingSession)> {
-        let mut recorder = Recorder::start(&self.run_args)?;
-        let (status, session) = self.polling_loop()?;
-        recorder.stop()?;
-        session.save()?;
-        Ok((status, session))
+    pub fn record_new_session(mut self) -> Result<(RecordingExitStatus, RecordingSession)> {
+        let status = self.polling_loop()?;
+        self.stop()?;
+        Ok((status, self.session))
     }
 
-    fn polling_loop(&self) -> Result<(RecordingExitStatus, RecordingSession)> {
+    fn stop(&mut self) -> Result<()> {
+        self.is_running.store(false, Ordering::SeqCst);
+        self.recorder.stop()?;
+        self.session.save()
+    }
+
+    fn polling_loop(&mut self) -> Result<RecordingExitStatus> {
         self.initial_buffer_phase()?;
-        let (status, session) = self.recording_phase()?;
+        let status = self.recording_phase()?;
         self.final_buffer_phase();
-        Ok((status, session))
+        Ok(status)
     }
 
     fn initial_buffer_phase(&self) -> Result<()> {
@@ -90,27 +84,24 @@ impl RecordingThread {
         Ok(())
     }
 
-    fn recording_phase(&self) -> Result<(RecordingExitStatus, RecordingSession)> {
-        let recording_start_time = Instant::now()
-            .duration_since(self.record_start_time)
-            .as_secs_f64();
-        let mut session = RecordingSession::new(&self.session_file, recording_start_time);
-        println!("Start playback.");
+    fn recording_phase(&mut self) -> Result<RecordingExitStatus> {
         start_playback(&self.run_args.service_config)?;
+        self.session.estimated_time_first_song = Some(self.recorder.time_since_start_secs());
         let mut time_last_dbus_signal = Instant::now();
         loop {
-            let num_songs_before = session.songs.len();
-            let playback_status = collect_dbus_info(&mut session, &self.run_args.service_config)?;
-            let num_songs_after = session.songs.len();
+            let num_songs_before = self.session.songs.len();
+            let playback_status =
+                collect_dbus_info(&mut self.session, &self.run_args.service_config)?;
+            let num_songs_after = self.session.songs.len();
             if let RecordingStatus::Finished(exit_status) = playback_status {
-                return Ok((exit_status, session));
+                return Ok(exit_status);
             }
             // There should only be one new song if the delay between dbus signals is not too large, but you never know
             for song_index in num_songs_before..num_songs_after {
-                self.add_new_song(session.songs[song_index].clone());
+                self.add_new_song(self.session.songs[song_index].clone());
                 time_last_dbus_signal = Instant::now();
             }
-            if let Some(song) = session.songs.last() {
+            if let Some(song) = self.session.songs.last() {
                 let time_elapsed_after_estimated_song_ending = Instant::now()
                     .duration_since(time_last_dbus_signal)
                     .as_secs_f64()
@@ -118,7 +109,7 @@ impl RecordingThread {
                 if time_elapsed_after_estimated_song_ending
                     > config::TIME_WITHOUT_DBUS_SIGNAL_BEFORE_STOPPING.as_secs_f64()
                 {
-                    return Ok((RecordingExitStatus::NoNewSongForTooLong, session));
+                    return Ok(RecordingExitStatus::NoNewSongForTooLong);
                 }
             }
         }
