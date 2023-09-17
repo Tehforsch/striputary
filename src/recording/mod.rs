@@ -49,14 +49,8 @@ fn setup_recording(service_config: &ServiceConfig) -> Result<()> {
     } else {
         println!("Sink already exists. Not creating sink");
     }
-    let mb_index = get_sink_input_index(service_config)?;
-    match mb_index {
-        Some(index) => redirect_sink(index).map(|_| ()),
-        None => Err(anyhow!(
-            "Failed to find sink index for service: {}",
-            service_config.sink_name
-        )),
-    }
+    let index = get_sink_input_index(service_config)?;
+    redirect_sink(index)
 }
 
 fn redirect_sink(index: i32) -> Result<()> {
@@ -92,33 +86,32 @@ fn create_sink() -> Result<()> {
     Ok(())
 }
 
-fn get_sink_input_index(service_config: &ServiceConfig) -> Result<Option<i32>> {
+fn get_sink_input_index(service_config: &ServiceConfig) -> Result<i32> {
     let output = Command::new("pacmd")
         .arg("list-sink-inputs")
         .output()
         .context("Failed to execute list sink inputs command.")?;
     assert!(output.status.success());
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let stdout_without_newlines = stdout.replace('\n', "");
+    let stdout = String::from_utf8_lossy(&output.stdout).replace('\n', "");
     let re = Regex::new("index: ([0-9]*).*?media.name = \"(.*?)\"").unwrap();
-    let captures = re.captures_iter(&stdout_without_newlines);
-    let mut temp = captures.filter(|capture| {
-        get_sink_source_name_from_pacmd_output_capture(capture)
-            .map(|name| name == service_config.sink_name)
-            .unwrap_or(false)
-    });
-    temp.next()
-        .map(|capture| get_sink_index_from_pacmd_output_capture(&capture))
-        .transpose()
+    for capture in re.captures_iter(&stdout) {
+        let name = get_sink_source_name_from_capture(&capture);
+        if let Ok(name) = name {
+            if name == service_config.sink_name {
+                return get_sink_index_from_capture(&capture);
+            }
+        }
+    }
+    Err(anyhow!("Failed to get sink input index"))
 }
 
-fn get_sink_index_from_pacmd_output_capture(capture: &Captures) -> Result<i32> {
+fn get_sink_index_from_capture(capture: &Captures) -> Result<i32> {
     let sink_source_index = capture.get(1).context("Invalid line")?.as_str();
     sink_source_index
         .parse::<i32>()
         .context("Integer conversion failed for sink index")
 }
 
-fn get_sink_source_name_from_pacmd_output_capture<'a>(capture: &'a Captures) -> Result<&'a str> {
+fn get_sink_source_name_from_capture<'a>(capture: &'a Captures) -> Result<&'a str> {
     Ok(capture.get(2).context("Invalid line")?.as_str())
 }
