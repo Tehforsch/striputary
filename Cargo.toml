@@ -1,28 +1,26 @@
 [package]
 name = "striputary"
 version = "0.1.1"
-authors = ["Tehforsch <Tonipeter92@googlemail.com>"]
-edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+authors = [
+    "Toni Peter <mail@tonipeter.de>",
+]
+edition = "2021"
+resolver="2"
 
 [dependencies]
+anyhow = "1.0.66"
+chrono = "0.4.22"
+clap = { version = "3.2", default-features = false, features = ["std", "derive", "cargo"] }
+dbus = "0.9.6"
+eframe = "0.19.0"
+hound = "3.5.0"
 log = "0.4.17"
 regex = "1"
-subprocess = "0.2.9"
-ctrlc = "3.2.3"
-dbus = "0.9.6"
-clap = { version = "3.2", default-features = false, features = ["std", "derive", "cargo"] }
+rodio = "0.16"
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.9"
-hound = "3.5.0"
-text_io = "0.1.12"
-itertools = "0.10.0"
-anyhow = "1.0.66"
-rodio = "0.16"
-eframe = "0.19.0" # Gives us egui, epi and web+native backends
-take_mut = "0.2.2"
-chrono = "0.4.22"
-xdg = "2.4.1"
 shellexpand = "2.1.2"
 simplelog = "0.12.1"
+subprocess = "0.2.9"
+take_mut = "0.2.2"
+xdg = "2.4.1"
