@@ -1,4 +1,3 @@
-use std::fs::create_dir_all;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
@@ -7,8 +6,6 @@ use std::sync::Arc;
 use std::thread::{self};
 use std::time::Instant;
 
-use anyhow::anyhow;
-use anyhow::Context;
 use anyhow::Result;
 
 use super::dbus::collect_dbus_info;
@@ -60,16 +57,7 @@ impl RecordingThread {
     }
 
     pub fn record_new_session(&self) -> Result<(RecordingExitStatus, RecordingSession)> {
-        create_dir_all(&self.run_args.session_dir).context("Failed to create session directory")?;
-        if self.run_args.get_buffer_file().exists() {
-            return Err(anyhow!(
-                "Buffer file already exists, not recording a new session."
-            ));
-        }
-        let mut recorder = Recorder::start(
-            &self.run_args.get_buffer_file(),
-            &self.run_args.service_config,
-        )?;
+        let mut recorder = Recorder::start(&self.run_args)?;
         let (status, session) = self.polling_loop()?;
         recorder.stop()?;
         session.save()?;

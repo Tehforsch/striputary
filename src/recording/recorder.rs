@@ -1,3 +1,4 @@
+use std::fs::create_dir_all;
 use std::path::Path;
 use std::process::Command;
 
@@ -10,6 +11,7 @@ use subprocess::Exec;
 use subprocess::Popen;
 
 use crate::config::STRIPUTARY_SINK_NAME;
+use crate::run_args::RunArgs;
 use crate::service_config::ServiceConfig;
 
 pub struct Recorder {
@@ -17,10 +19,10 @@ pub struct Recorder {
 }
 
 impl Recorder {
-    pub fn start(output_file: &Path, service_config: &ServiceConfig) -> Result<Self> {
-        setup_recording(&service_config)?;
+    pub fn start(opts: &RunArgs) -> Result<Self> {
+        setup_recording(&opts)?;
         Ok(Self {
-            process: start_recording_command(&output_file)?,
+            process: start_recording_process(&opts.get_buffer_file())?,
         })
     }
 
@@ -33,25 +35,31 @@ impl Recorder {
     }
 }
 
-fn start_recording_command(output_file: &Path) -> Result<Popen> {
+fn start_recording_process(buffer_file: &Path) -> Result<Popen> {
     let parec_cmd = Exec::cmd("parec")
         .arg("-d")
         .arg(format!("{}.monitor", STRIPUTARY_SINK_NAME))
         .arg("--file-format=wav")
-        .arg(output_file.to_str().unwrap());
+        .arg(buffer_file.to_str().unwrap());
     parec_cmd
         .popen()
         .context("Failed to execute record command - is parec installed?")
 }
 
-fn setup_recording(service_config: &ServiceConfig) -> Result<()> {
+fn setup_recording(opts: &RunArgs) -> Result<()> {
+    create_dir_all(&opts.session_dir).context("Failed to create session directory")?;
+    if opts.get_buffer_file().exists() {
+        return Err(anyhow!(
+            "Buffer file already exists, not recording a new session."
+        ));
+    }
     if !check_sink_exists()? {
         println!("Creating sink");
         create_sink()?;
     } else {
         println!("Sink already exists. Not creating sink");
     }
-    let index = get_sink_input_index(service_config)?;
+    let index = get_sink_input_index(&opts.service_config)?;
     redirect_sink(index)
 }
 
