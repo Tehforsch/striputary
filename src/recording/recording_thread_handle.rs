@@ -26,10 +26,7 @@ impl RecordingThreadHandle {
         let is_running = Arc::new(AtomicBool::new(true));
         let (song_sender, song_receiver) = channel();
         let thread = RecordingThread::new(is_running.clone(), song_sender, run_args);
-        let handle = thread::spawn(move || {
-            let result = thread.record_new_session();
-            result
-        });
+        let handle = thread::spawn(move || thread.record_new_session());
         Self {
             handle,
             is_running,

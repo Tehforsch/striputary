@@ -107,7 +107,7 @@ impl RecordingThread {
         let recording_start_time = Instant::now()
             .duration_since(*record_start_time)
             .as_secs_f64();
-        let mut session = RecordingSession::new(&session_file, recording_start_time);
+        let mut session = RecordingSession::new(session_file, recording_start_time);
         println!("Start playback.");
         start_playback(&self.run_args.service_config)?;
         let mut time_last_dbus_signal = Instant::now();

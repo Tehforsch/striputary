@@ -72,7 +72,7 @@ impl SessionManager {
         let session_dir = self.get_currently_selected()?;
         if session_dir.is_dir() {
             RecordingSession::from_parent_dir(&session_dir)
-                .map(|session| get_excerpt_collection(session))
+                .map(get_excerpt_collection)
                 .map_err(|x| {
                     println!("{}", x);
                     x
@@ -109,8 +109,7 @@ where
     Ok(dir_entries?
         .into_iter()
         .map(|entry| entry.path())
-        .filter(move |path| predicate(path))
-        .map(|path| path.to_owned()))
+        .filter(move |path| predicate(path)))
 }
 
 fn iter_dirs(dir: &Path) -> Result<impl Iterator<Item = PathBuf>> {
@@ -123,5 +122,5 @@ pub fn get_dirs(dir: &Path) -> Result<Vec<PathBuf>> {
 
 fn get_new_name(output_dir: &Path) -> PathBuf {
     let date_string = Local::now().format("%Y-%m-%d-%H-%M-%S").to_string();
-    output_dir.join(&date_string)
+    output_dir.join(date_string)
 }

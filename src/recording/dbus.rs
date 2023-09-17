@@ -140,14 +140,14 @@ fn get_song_from_dbus_properties(properties: PC) -> Option<Song> {
         let value = iter.next().unwrap();
         dict.insert(key.as_str().unwrap(), Box::new(value));
     }
-    return Some(Song {
+    Some(Song {
         artist: get_song_artist(&dict),
         album: get_song_album(&dict),
         title: get_song_title(&dict),
         track_number: get_song_track_number(&dict),
         length: get_song_length(&dict),
     })
-    .filter(|song| is_valid_song(&song));
+    .filter(is_valid_song)
 }
 
 pub fn dbus_set_playback_status_command(

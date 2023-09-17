@@ -42,7 +42,8 @@ pub struct ServiceConfig {
 impl ServiceConfig {
     pub fn from_service(service: Service) -> Result<ServiceConfig> {
         use Service::*;
-        let config = match service {
+
+        match service {
             SpotifyNative => Ok(ServiceConfig {
                 sink_name: "Spotify".to_string(),
                 dbus_bus_name: "org.mpris.MediaPlayer2.spotify".to_string(),
@@ -51,7 +52,6 @@ impl ServiceConfig {
                 sink_name: "Playback".to_string(),
                 dbus_bus_name: get_instance_of_service("org.mpris.MediaPlayer2.chromium")?,
             }),
-        };
-        config
+        }
     }
 }

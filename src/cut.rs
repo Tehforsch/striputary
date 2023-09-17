@@ -149,7 +149,7 @@ fn add_metadata_arg_if_present<T: Display>(
     val: Option<&T>,
 ) {
     if let Some(val) = val {
-        command.arg("-metadata").arg(get_str(&val));
+        command.arg("-metadata").arg(get_str(val));
     }
 }
 
@@ -174,7 +174,7 @@ pub fn cut_song(info: &CutInfo) -> Result<()> {
         .arg("-t")
         .arg(format!("{}", difference))
         .arg("-i")
-        .arg(&info.buffer_file.to_str().unwrap())
+        .arg(info.buffer_file.to_str().unwrap())
         .arg("-c:a")
         .arg("libopus")
         .arg("-b:a")

@@ -74,12 +74,9 @@ impl StriputaryGui {
     }
 
     fn cut_songs(&self) {
-        match self.collection {
-            Some(ref collection) => {
-                let cut_info = self.get_cut_info(collection);
-                self.cut_thread.send_cut_infos(cut_info);
-            }
-            None => {}
+        if let Some(ref collection) = self.collection {
+            let cut_info = self.get_cut_info(collection);
+            self.cut_thread.send_cut_infos(cut_info);
         }
     }
 
@@ -136,7 +133,7 @@ impl StriputaryGui {
         let service_config = ServiceConfig::from_service(self.service).unwrap();
         Some(RunArgs {
             session_dir: self.session_manager.get_currently_selected()?,
-            service_config: service_config.clone(),
+            service_config,
         })
     }
 
@@ -281,9 +278,9 @@ impl StriputaryGui {
         let playback_time_absolute = plot.excerpt.excerpt.start + playback_time_relative;
         if playback_time_absolute < plot.excerpt.excerpt.end {
             plot.show_playback_marker_at(playback_time_absolute);
-            return false;
+            false
         } else {
-            return true;
+            true
         }
     }
 
@@ -327,12 +324,12 @@ impl StriputaryGui {
     }
 
     fn handle_playback_markers(&mut self) {
-        for mut plot in self.plots.iter_mut() {
+        for plot in self.plots.iter_mut() {
             plot.hide_playback_marker();
             if let Some((playback_song, ref current_playback_handle)) = self.current_playback {
                 if playback_song.song_index == plot.excerpt.num {
                     self.should_repaint = !Self::set_playback_marker_and_return_finished_state(
-                        &mut plot,
+                        plot,
                         current_playback_handle,
                     );
                 }
@@ -380,7 +377,7 @@ pub fn get_label_color(finished_cutting: bool) -> Color32 {
 
 fn add_plot_label(ui: &mut Ui, song: Option<&Song>, finished_cutting: bool) {
     let color = get_label_color(finished_cutting);
-    if let Some(ref song) = song {
+    if let Some(song) = song {
         ui.add(Label::new(
             RichText::new(format_title(&song.title)).color(color),
         ));

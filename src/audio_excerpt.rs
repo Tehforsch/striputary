@@ -42,7 +42,7 @@ impl AudioExcerpt {
         let width = self.end.time - self.start.time;
         let step_size = width as f32 / NUM_PLOT_DATA_POINTS as f32;
         (1..NUM_PLOT_DATA_POINTS)
-            .map(|x| self.start.time as f32 + (x as f32) * step_size as f32)
+            .map(|x| self.start.time as f32 + (x as f32) * step_size)
             .collect()
     }
 

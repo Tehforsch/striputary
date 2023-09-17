@@ -46,7 +46,8 @@ fn main() -> Result<(), anyhow::Error> {
     println!("Using service: {}", service);
     match output_dir {
         Some(dir) => {
-            Ok(run_gui(&dir, service))
+            run_gui(&dir, service);
+            Ok(())
         }
         None => panic!("Need an output folder - either pass it as a command line argument or specify it in the config file (probably ~/.config/striputary/config.yaml")
     }

@@ -64,6 +64,6 @@ impl CuttingThreadHandle {
 
     pub fn get_cut_songs(&mut self) -> &[Song] {
         self.cut_songs.update(config::RECV_CUT_SONG_TIMEOUT);
-        &self.cut_songs.get_data()
+        self.cut_songs.get_data()
     }
 }

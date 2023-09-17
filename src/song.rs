@@ -46,18 +46,18 @@ impl fmt::Display for Song {
 }
 
 fn sanitize_string(s: &str) -> String {
-    let first_item = if s.contains(",") {
-        s.split(",").next().unwrap()
+    let first_item = if s.contains(',') {
+        s.split(',').next().unwrap()
     } else {
         s
     };
-    first_item.replace("/", "").replace(" ", "")
+    first_item.replace(['/', ' '], "")
 }
 
 fn sanitize_or_default(s: &Option<String>, default: &str) -> String {
     s.as_ref()
         .map(|s| sanitize_string(s))
-        .filter(|s| s != "")
+        .filter(|s| !s.is_empty())
         .unwrap_or(default.into())
 }
 

@@ -99,7 +99,7 @@ fn get_sink_input_index(service_config: &ServiceConfig) -> Result<Option<i32>> {
         .context("Failed to execute list sink inputs command.")?;
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let stdout_without_newlines = stdout.replace("\n", "");
+    let stdout_without_newlines = stdout.replace('\n', "");
     let re = Regex::new("index: ([0-9]*).*?media.name = \"(.*?)\"").unwrap();
     let captures = re.captures_iter(&stdout_without_newlines);
     let mut temp = captures.filter(|capture| {

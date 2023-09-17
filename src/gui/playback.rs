@@ -45,7 +45,7 @@ pub fn play_excerpt(excerpt: &AudioExcerpt, start_time: AudioTime) -> PlaybackTh
         let sink = Sink::try_new(&stream_handle).unwrap();
         sink.append(source);
         sink.play();
-        if let Ok(_) = shutdown_receiver.recv() {}
+        if shutdown_receiver.recv().is_ok() {}
     });
     PlaybackThreadHandle {
         shutdown_sender,

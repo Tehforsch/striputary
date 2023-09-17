@@ -43,10 +43,7 @@ impl RecordingThreadHandleStatus {
     }
 
     pub fn is_running(&self) -> bool {
-        match self {
-            RecordingThreadHandleStatus::Running(_) => true,
-            _ => false,
-        }
+        matches!(self, RecordingThreadHandleStatus::Running(_))
     }
 
     pub fn get_songs(&self) -> &[Song] {
