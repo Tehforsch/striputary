@@ -8,6 +8,7 @@ use dbus::arg::RefArg;
 use dbus::ffidisp::stdintf::org_freedesktop_dbus::PropertiesPropertiesChanged as PC;
 use dbus::ffidisp::Connection;
 use dbus::message::SignalArgs;
+use log::info;
 
 use crate::recording::recording_status::RecordingExitStatus;
 use crate::recording::recording_status::RecordingStatus;
@@ -51,7 +52,7 @@ pub fn handle_dbus_properties_changed_signal(
         let last_song = session.songs.last();
         if let Some(song) = song {
             if session.songs.is_empty() || last_song.unwrap() != &song {
-                println!("Now recording song: {}", song);
+                info!("Now recording song: {}", song);
                 session.songs.push(song);
                 session.save()?;
             }
@@ -173,7 +174,6 @@ pub fn next_song(service_config: &ServiceConfig) -> Result<()> {
 }
 
 pub fn start_playback(service_config: &ServiceConfig) -> Result<()> {
-    println!("Start playback.");
     dbus_set_playback_status_command(service_config, "Play")
 }
 

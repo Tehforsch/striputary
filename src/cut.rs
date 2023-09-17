@@ -6,6 +6,7 @@ use std::process::Command;
 
 use anyhow::Context;
 use anyhow::Result;
+use log::debug;
 
 use crate::audio_excerpt::AudioExcerpt;
 use crate::audio_time::AudioTime;
@@ -93,7 +94,7 @@ fn determine_cut_offset(audio_excerpts: &[AudioExcerpt], cut_timestamps: &[f64])
         };
     }
     let cut_quality_estimate = min.unwrap().0 / (audio_excerpts.len() as f64);
-    println!("Av. volume at cuts: {:.3}", cut_quality_estimate);
+    debug!("Av. volume at cuts: {:.3}", cut_quality_estimate);
     min.unwrap().1
 }
 
@@ -160,7 +161,7 @@ pub fn cut_song(info: &CutInfo) -> Result<()> {
         .get_target_file(&info.music_dir, info.num_in_recording);
     create_dir_all(target_file.parent().unwrap())
         .context("Failed to create subfolders of target file")?;
-    println!(
+    debug!(
         "Cutting song: {:.2}+{:.2}: {} to {}",
         info.start_time.time,
         difference,

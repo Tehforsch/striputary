@@ -6,6 +6,8 @@ use std::thread::{self};
 use std::time::Instant;
 
 use anyhow::Result;
+use log::debug;
+use log::info;
 
 use super::dbus::collect_dbus_info;
 use super::dbus::previous_song;
@@ -74,17 +76,18 @@ impl RecordingThread {
         // Add a small time buffer before starting the playback properly.
         // This ensures that something starts playing, thus registering the
         // pulse audio sink. Also it avoids overflows when calculating the offset
-        println!("Begin pre-session phase");
+        debug!("Begin pre-session phase");
         start_playback(&self.run_args.service_config)?;
         thread::sleep(TIME_BEFORE_SESSION_START);
         stop_playback(&self.run_args.service_config)?;
-        println!("Go to beginning of song");
+        debug!("Go to beginning of song");
         previous_song(&self.run_args.service_config)?;
         thread::sleep(WAIT_TIME_BEFORE_FIRST_SONG);
         Ok(())
     }
 
     fn recording_phase(&mut self) -> Result<RecordingExitStatus> {
+        info!("Starting playback.");
         start_playback(&self.run_args.service_config)?;
         self.session.estimated_time_first_song = Some(self.recorder.time_since_start_secs());
         let mut time_last_dbus_signal = Instant::now();
@@ -120,7 +123,8 @@ impl RecordingThread {
     }
 
     fn final_buffer_phase(&self) {
-        println!("Recording finished. Record final buffer for a few seconds");
+        debug!("Record final buffer for a few seconds");
         thread::sleep(TIME_AFTER_SESSION_END);
+        info!("Recording finished.");
     }
 }

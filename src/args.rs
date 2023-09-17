@@ -7,4 +7,6 @@ use crate::service_config::Service;
 pub struct Opts {
     pub output_dir: Option<PathBuf>,
     pub service: Option<Service>,
+    #[clap(short, parse(from_occurrences))]
+    pub verbosity: usize,
 }

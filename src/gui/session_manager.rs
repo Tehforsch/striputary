@@ -5,6 +5,7 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use chrono::Local;
+use log::error;
 
 use crate::cut::get_excerpt_collection;
 use crate::excerpt_collection::ExcerptCollection;
@@ -74,7 +75,7 @@ impl SessionManager {
             RecordingSession::from_parent_dir(&session_dir)
                 .map(get_excerpt_collection)
                 .map_err(|x| {
-                    println!("{}", x);
+                    error!("{}", x);
                     x
                 })
                 .ok()

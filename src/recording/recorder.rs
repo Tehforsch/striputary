@@ -6,6 +6,7 @@ use std::time::Instant;
 use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Result;
+use log::debug;
 use regex::Captures;
 use regex::Regex;
 use subprocess::Exec;
@@ -33,7 +34,6 @@ impl Recorder {
         self.process
             .terminate()
             .context("Failed to terminate parec while recording")?;
-        println!("Stopped recording.");
         Ok(())
     }
 
@@ -61,10 +61,10 @@ fn setup_recording(opts: &RunArgs) -> Result<()> {
         ));
     }
     if !check_sink_exists()? {
-        println!("Creating sink");
+        debug!("Creating sink");
         create_sink()?;
     } else {
-        println!("Sink already exists. Not creating sink");
+        debug!("Sink already exists. Not creating sink");
     }
     let index = get_sink_input_index(&opts.service_config)?;
     redirect_sink(index)

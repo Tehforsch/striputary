@@ -21,15 +21,23 @@ use anyhow::Result;
 use args::Opts;
 use clap::Parser;
 use config_file::ConfigFile;
+use log::error;
+use log::info;
+use log::LevelFilter;
 use service_config::Service;
+use simplelog::ColorChoice;
+use simplelog::ConfigBuilder;
+use simplelog::TermLogger;
+use simplelog::TerminalMode;
 
 use crate::gui::StriputaryGui;
 
 fn main() -> Result<(), anyhow::Error> {
     let args = Opts::parse();
+    init_logging(&args);
     let config_file = ConfigFile::read();
     if let Err(ref e) = config_file {
-        println!("{}", e);
+        error!("{}", e);
     }
     let config_file = config_file.ok();
     let output_dir = args
@@ -40,16 +48,35 @@ fn main() -> Result<(), anyhow::Error> {
         .or(config_file.and_then(|file: ConfigFile| file.service))
         .unwrap_or_else(|| {
             let service = Service::default();
-            println!("No service specified in command line args or config file. Using default.");
+            info!("No service specified in command line args or config file. Using default.");
             service
         });
-    println!("Using service: {}", service);
+    info!("Using service: {}", service);
     match output_dir {
         Some(dir) => {
             run_gui(&dir, service);
             Ok(())
         }
         None => panic!("Need an output folder - either pass it as a command line argument or specify it in the config file (probably ~/.config/striputary/config.yaml")
+    }
+}
+
+fn init_logging(args: &Opts) {
+    let level = get_log_level(&args);
+    TermLogger::init(
+        level,
+        ConfigBuilder::default().build(),
+        TerminalMode::Mixed,
+        ColorChoice::Auto,
+    )
+    .unwrap();
+}
+
+fn get_log_level(args: &Opts) -> LevelFilter {
+    match args.verbosity {
+        0 => LevelFilter::Info,
+        1 => LevelFilter::Debug,
+        v => unimplemented!("Unsupported verbosity level: {}", v),
     }
 }
 
