@@ -1,5 +1,5 @@
 use std::fs::create_dir_all;
-use std::path::Path;
+use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
 use std::sync::mpsc::Sender;
@@ -32,24 +32,34 @@ pub struct RecordingThread {
     run_args: RunArgs,
     is_running: Arc<AtomicBool>,
     song_sender: Sender<Song>,
+    record_start_time: Instant,
+    session_file: PathBuf,
+}
+
+impl Drop for RecordingThread {
+    fn drop(&mut self) {
+        self.is_running.store(false, Ordering::SeqCst);
+    }
 }
 
 impl RecordingThread {
     pub fn new(is_running: Arc<AtomicBool>, song_sender: Sender<Song>, run_args: &RunArgs) -> Self {
-        Self {
+        let session_file = run_args.get_yaml_file();
+        let record_start_time = Instant::now();
+        let recorder = Self {
             run_args: run_args.clone(),
             is_running,
             song_sender,
-        }
+            session_file,
+            record_start_time,
+        };
+        recorder
+            .record_new_session()
+            .expect("Failed to record new session");
+        recorder
     }
 
     pub fn record_new_session(&self) -> Result<(RecordingExitStatus, RecordingSession)> {
-        let result = self.internal_record_new_session();
-        self.is_running.store(false, Ordering::SeqCst);
-        result
-    }
-
-    fn internal_record_new_session(&self) -> Result<(RecordingExitStatus, RecordingSession)> {
         create_dir_all(&self.run_args.session_dir).context("Failed to create session directory")?;
         if self.run_args.get_buffer_file().exists() {
             return Err(anyhow!(
@@ -60,21 +70,15 @@ impl RecordingThread {
             &self.run_args.get_buffer_file(),
             &self.run_args.service_config,
         )?;
-        let record_start_time = Instant::now();
-        let (status, session) =
-            self.polling_loop(&self.run_args.get_yaml_file(), &record_start_time)?;
+        let (status, session) = self.polling_loop()?;
         recorder.stop()?;
         session.save()?;
         Ok((status, session))
     }
 
-    fn polling_loop(
-        &self,
-        session_file: &Path,
-        record_start_time: &Instant,
-    ) -> Result<(RecordingExitStatus, RecordingSession)> {
+    fn polling_loop(&self) -> Result<(RecordingExitStatus, RecordingSession)> {
         self.initial_buffer_phase()?;
-        let (status, session) = self.recording_phase(session_file, record_start_time)?;
+        let (status, session) = self.recording_phase()?;
         self.final_buffer_phase();
         Ok((status, session))
     }
@@ -98,15 +102,11 @@ impl RecordingThread {
         Ok(())
     }
 
-    fn recording_phase(
-        &self,
-        session_file: &Path,
-        record_start_time: &Instant,
-    ) -> Result<(RecordingExitStatus, RecordingSession)> {
+    fn recording_phase(&self) -> Result<(RecordingExitStatus, RecordingSession)> {
         let recording_start_time = Instant::now()
-            .duration_since(*record_start_time)
+            .duration_since(self.record_start_time)
             .as_secs_f64();
-        let mut session = RecordingSession::new(session_file, recording_start_time);
+        let mut session = RecordingSession::new(&self.session_file, recording_start_time);
         println!("Start playback.");
         start_playback(&self.run_args.service_config)?;
         let mut time_last_dbus_signal = Instant::now();

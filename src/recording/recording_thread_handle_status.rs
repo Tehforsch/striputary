@@ -1,9 +1,9 @@
-use super::recording_thread_handle::RecordingThreadHandle;
+use super::recording_thread_handle::AsyncRecorder;
 use crate::run_args::RunArgs;
 use crate::song::Song;
 
 pub enum RecordingThreadHandleStatus {
-    Running(RecordingThreadHandle),
+    Running(AsyncRecorder),
     Failed(anyhow::Error),
     Stopped,
 }
@@ -39,7 +39,7 @@ impl RecordingThreadHandleStatus {
     }
 
     pub fn new_running(run_args: &RunArgs) -> Self {
-        Self::Running(RecordingThreadHandle::new(run_args))
+        Self::Running(AsyncRecorder::new(run_args))
     }
 
     pub fn is_running(&self) -> bool {

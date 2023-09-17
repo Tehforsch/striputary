@@ -15,13 +15,13 @@ use crate::recording_session::RecordingSession;
 use crate::run_args::RunArgs;
 use crate::song::Song;
 
-pub struct RecordingThreadHandle {
+pub struct AsyncRecorder {
     handle: JoinHandle<Result<(RecordingExitStatus, RecordingSession)>>,
     is_running: Arc<AtomicBool>,
     pub songs: DataStream<Song>,
 }
 
-impl RecordingThreadHandle {
+impl AsyncRecorder {
     pub fn new(run_args: &RunArgs) -> Self {
         let is_running = Arc::new(AtomicBool::new(true));
         let (song_sender, song_receiver) = channel();
