@@ -12,7 +12,7 @@ impl RecordingThreadHandleStatus {
     pub fn update(&mut self) {
         take_mut::take(self, |tmp_self| {
             let thread_failed = match tmp_self {
-                Self::Running(ref thread) => !thread.check_still_running(),
+                Self::Running(ref thread) => !thread.is_running(),
                 _ => false,
             };
 

@@ -38,7 +38,7 @@ impl AsyncRecorder {
         self.songs.update(config::RECV_RECORDED_SONG_TIMEOUT);
     }
 
-    pub fn check_still_running(&self) -> bool {
+    pub fn is_running(&self) -> bool {
         self.is_running.load(Ordering::SeqCst)
     }
 
