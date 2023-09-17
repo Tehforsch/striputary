@@ -16,8 +16,7 @@ use super::dbus::previous_song;
 use super::dbus::start_playback;
 use super::dbus::stop_playback;
 use super::recording_status::RecordingExitStatus;
-use super::start_recording;
-use super::stop_recording;
+use super::Recorder;
 use crate::config;
 use crate::config::TIME_AFTER_SESSION_END;
 use crate::config::TIME_BEFORE_SESSION_START;
@@ -57,14 +56,14 @@ impl RecordingThread {
                 "Buffer file already exists, not recording a new session."
             ));
         }
-        let recording_handles = start_recording(
+        let mut recorder = Recorder::start(
             &self.run_args.get_buffer_file(),
             &self.run_args.service_config,
         )?;
         let record_start_time = Instant::now();
         let (status, session) =
             self.polling_loop(&self.run_args.get_yaml_file(), &record_start_time)?;
-        stop_recording(recording_handles)?;
+        recorder.stop()?;
         session.save()?;
         Ok((status, session))
     }
