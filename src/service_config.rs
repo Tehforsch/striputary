@@ -5,8 +5,6 @@ use anyhow::Result;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::recording::dbus::get_instance_of_service;
-
 #[derive(Copy, Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Service {
@@ -20,7 +18,7 @@ impl FromStr for Service {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         // This is quite ugly, but ensures that the config file string representation
-        // is the same as in the command line args (which uses the FromStr impl),
+        // is the same as in the command line options (which uses the FromStr impl),
         // without adding any additional dependencies
         serde_yaml::from_str(s)
     }
@@ -33,25 +31,18 @@ impl Display for Service {
     }
 }
 
-#[derive(Clone)]
-pub struct ServiceConfig {
-    pub sink_name: String,
-    pub dbus_bus_name: String,
-}
+impl Service {
+    pub fn sink_name(&self) -> &str {
+        match self {
+            Self::SpotifyNative => "Spotify",
+            Self::SpotifyChromium => "Playback",
+        }
+    }
 
-impl ServiceConfig {
-    pub fn from_service(service: Service) -> Result<ServiceConfig> {
-        use Service::*;
-
-        match service {
-            SpotifyNative => Ok(ServiceConfig {
-                sink_name: "Spotify".to_string(),
-                dbus_bus_name: "org.mpris.MediaPlayer2.spotify".to_string(),
-            }),
-            SpotifyChromium => Ok(ServiceConfig {
-                sink_name: "Playback".to_string(),
-                dbus_bus_name: get_instance_of_service("org.mpris.MediaPlayer2.chromium")?,
-            }),
+    pub fn dbus_bus_name(&self) -> &str {
+        match self {
+            Self::SpotifyNative => "org.mpris.MediaPlayer2.spotify",
+            Self::SpotifyChromium => "org.mpris.MediaPlayer2.chromium",
         }
     }
 }

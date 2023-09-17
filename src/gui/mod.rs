@@ -4,8 +4,6 @@ mod playback;
 mod plot;
 mod session_manager;
 
-use std::path::Path;
-
 use eframe::egui::Button;
 use eframe::egui::Color32;
 use eframe::egui::Label;
@@ -30,11 +28,9 @@ use crate::excerpt_collection::ExcerptCollection;
 use crate::gui::session_manager::SessionIdentifier;
 use crate::gui::session_manager::SessionManager;
 use crate::recording::recording_thread_handle_status::RecordingThreadHandleStatus;
-use crate::run_args::RunArgs;
-use crate::service_config::Service;
-use crate::service_config::ServiceConfig;
 use crate::song::format_title;
 use crate::song::Song;
+use crate::Opts;
 
 #[derive(PartialEq, Eq, Copy, Clone)]
 struct SongIdentifier {
@@ -42,7 +38,7 @@ struct SongIdentifier {
 }
 
 pub struct StriputaryGui {
-    service: Service,
+    opts: Opts,
     collection: Option<ExcerptCollection>,
     plots: Vec<ExcerptPlot>,
     scroll_position: usize,
@@ -55,10 +51,10 @@ pub struct StriputaryGui {
 }
 
 impl StriputaryGui {
-    pub fn new(dir: &Path, service: Service) -> Self {
-        let session_manager = SessionManager::new(dir);
+    pub fn new(opts: &Opts) -> Self {
+        let session_manager = SessionManager::new(&opts.output_dir);
         let mut gui = Self {
-            service,
+            opts: opts.clone(),
             collection: None,
             plots: vec![],
             scroll_position: 0,
@@ -123,18 +119,8 @@ impl StriputaryGui {
         self.session_manager.select_new();
         self.load_selected_session();
         if !self.record_thread.is_running() {
-            if let Some(ref run_args) = self.get_run_args() {
-                self.record_thread = RecordingThreadHandleStatus::new_running(run_args);
-            }
+            self.record_thread = RecordingThreadHandleStatus::new_running(&self.opts);
         }
-    }
-
-    fn get_run_args(&self) -> Option<RunArgs> {
-        let service_config = ServiceConfig::from_service(self.service).unwrap();
-        Some(RunArgs {
-            session_dir: self.session_manager.get_currently_selected()?,
-            service_config,
-        })
     }
 
     fn select_session(&mut self, identifier: SessionIdentifier) {

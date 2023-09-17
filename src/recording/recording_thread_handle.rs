@@ -12,8 +12,8 @@ use super::recording_thread::RecordingThread;
 use crate::config;
 use crate::data_stream::DataStream;
 use crate::recording_session::RecordingSession;
-use crate::run_args::RunArgs;
 use crate::song::Song;
+use crate::Opts;
 
 pub struct AsyncRecorder {
     handle: JoinHandle<Result<(RecordingExitStatus, RecordingSession)>>,
@@ -22,10 +22,10 @@ pub struct AsyncRecorder {
 }
 
 impl AsyncRecorder {
-    pub fn new(run_args: &RunArgs) -> Self {
+    pub fn new(opts: &Opts) -> Self {
         let is_running = Arc::new(AtomicBool::new(true));
         let (song_sender, song_receiver) = channel();
-        let thread = RecordingThread::new(is_running.clone(), song_sender, run_args);
+        let thread = RecordingThread::new(is_running.clone(), song_sender, opts);
         let handle = thread::spawn(move || thread.record_new_session());
         Self {
             handle,

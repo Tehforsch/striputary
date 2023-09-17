@@ -13,8 +13,8 @@ use subprocess::Exec;
 use subprocess::Popen;
 
 use crate::config::STRIPUTARY_SINK_NAME;
-use crate::run_args::RunArgs;
-use crate::service_config::ServiceConfig;
+use crate::service_config::Service;
+use crate::Opts;
 
 pub struct Recorder {
     process: Popen,
@@ -22,7 +22,7 @@ pub struct Recorder {
 }
 
 impl Recorder {
-    pub fn start(opts: &RunArgs) -> Result<Self> {
+    pub fn start(opts: &Opts) -> Result<Self> {
         setup_recording(&opts)?;
         Ok(Self {
             process: start_recording_process(&opts.get_buffer_file())?,
@@ -53,7 +53,7 @@ fn start_recording_process(buffer_file: &Path) -> Result<Popen> {
         .context("Failed to execute record command - is parec installed?")
 }
 
-fn setup_recording(opts: &RunArgs) -> Result<()> {
+fn setup_recording(opts: &Opts) -> Result<()> {
     create_dir_all(&opts.session_dir).context("Failed to create session directory")?;
     if opts.get_buffer_file().exists() {
         return Err(anyhow!(
@@ -66,7 +66,7 @@ fn setup_recording(opts: &RunArgs) -> Result<()> {
     } else {
         debug!("Sink already exists. Not creating sink");
     }
-    let index = get_sink_input_index(&opts.service_config)?;
+    let index = get_sink_input_index(&opts.service)?;
     redirect_sink(index)
 }
 
@@ -103,7 +103,7 @@ fn create_sink() -> Result<()> {
     Ok(())
 }
 
-fn get_sink_input_index(service_config: &ServiceConfig) -> Result<i32> {
+fn get_sink_input_index(service: &Service) -> Result<i32> {
     let output = Command::new("pacmd")
         .arg("list-sink-inputs")
         .output()
@@ -114,7 +114,7 @@ fn get_sink_input_index(service_config: &ServiceConfig) -> Result<i32> {
     for capture in re.captures_iter(&stdout) {
         let name = get_sink_source_name_from_capture(&capture);
         if let Ok(name) = name {
-            if name == service_config.sink_name {
+            if name == service.sink_name() {
                 return get_sink_index_from_capture(&capture);
             }
         }
