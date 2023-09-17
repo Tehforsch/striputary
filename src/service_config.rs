@@ -5,7 +5,7 @@ use anyhow::Result;
 use serde::Deserialize;
 use serde::Serialize;
 
-#[derive(Copy, Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum Service {
     #[default]

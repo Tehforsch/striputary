@@ -28,7 +28,7 @@ use simplelog::TerminalMode;
 
 use crate::gui::StriputaryGui;
 
-#[derive(clap::StructOpt)]
+#[derive(clap::StructOpt, Clone)]
 #[clap(version)]
 struct ParseOpts {
     pub output_dir: Option<PathBuf>,
@@ -111,4 +111,89 @@ fn run_gui(opts: &Opts) {
     let app = StriputaryGui::new(opts);
     let native_options = eframe::NativeOptions::default();
     eframe::run_native("striputary", native_options, Box::new(|_| Box::new(app)));
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use crate::config_file::ConfigFile;
+    use crate::service_config::Service;
+    use crate::Opts;
+    use crate::ParseOpts;
+
+    fn test_opts() -> ParseOpts {
+        ParseOpts {
+            output_dir: Some("".into()),
+            service: None,
+            session_dir: "".into(),
+            verbosity: 0,
+        }
+    }
+
+    fn test_config_file() -> ConfigFile {
+        ConfigFile {
+            output_dir: "from_config_file".into(),
+            service: None,
+        }
+    }
+
+    #[test]
+    fn service_set_properly() {
+        use Service::*;
+        let mut p_opts = ParseOpts {
+            service: Some(SpotifyChromium),
+            ..test_opts()
+        };
+        let config_file = ConfigFile {
+            service: Some(SpotifyChromium),
+            ..test_config_file()
+        };
+
+        let opts = Opts::new(p_opts.clone(), None);
+        assert_eq!(opts.service, SpotifyChromium);
+
+        p_opts.service = Some(SpotifyNative);
+        let opts = Opts::new(p_opts.clone(), None);
+        assert_eq!(opts.service, SpotifyNative);
+
+        p_opts.service = None;
+        let opts = Opts::new(p_opts.clone(), None);
+        assert_eq!(opts.service, Service::default());
+
+        p_opts.service = None;
+        let opts = Opts::new(p_opts.clone(), Some(config_file));
+        assert_eq!(opts.service, SpotifyChromium);
+    }
+
+    #[test]
+    fn output_dir_set_properly() {
+        let mut p_opts = ParseOpts {
+            output_dir: Some("from_cli".into()),
+            ..test_opts()
+        };
+        let config_file = ConfigFile {
+            output_dir: "from_config_file".into(),
+            ..test_config_file()
+        };
+        let opts = Opts::new(p_opts.clone(), None);
+        assert!(opts.output_dir == Path::new("from_cli").to_owned());
+        let opts = Opts::new(p_opts.clone(), Some(config_file.clone()));
+        assert!(opts.output_dir == Path::new("from_cli").to_owned());
+        p_opts.output_dir = None;
+        let opts = Opts::new(p_opts.clone(), Some(config_file));
+        assert!(opts.output_dir == Path::new("from_config_file").to_owned());
+    }
+
+    #[test]
+    #[should_panic(expected = "Need an output folder")]
+    fn panic_if_output_dir_not_set() {
+        let p_opts = ParseOpts {
+            output_dir: None,
+            service: None,
+            session_dir: "".into(),
+            verbosity: 0,
+        };
+        let _opts = Opts::new(p_opts.clone(), None);
+    }
 }

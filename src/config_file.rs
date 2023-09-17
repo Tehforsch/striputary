@@ -10,7 +10,7 @@ use serde::Deserialize;
 use crate::config;
 use crate::service_config::Service;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct ConfigFile {
     pub output_dir: PathBuf,
     pub service: Option<Service>,
