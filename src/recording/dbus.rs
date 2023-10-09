@@ -25,21 +25,21 @@ pub struct DbusConnection {
 
 impl DbusConnection {
     pub fn new(service: &Service) -> Self {
+        let connection = Connection::new_session().unwrap();
+        // Add a match for this signal
+        let bus_name = service.dbus_bus_name();
+        let mstr = PC::match_str(Some(&bus_name.into()), None);
+        connection.add_match(&mstr).unwrap();
         Self {
             service: service.clone(),
-            connection: Connection::new_session().unwrap(),
+            connection,
         }
     }
-    /// Collect dbus information on the songs.
-    /// We could collect the dbus timestamps but they are basically useless
-    /// for cutting the songs since they fluctuate way too much to be precise.
-    pub fn collect_dbus_info(&self, session: &mut RecordingSession) -> Result<RecordingStatus> {
-        // Add a match for this signal
-        let bus_name = self.service.dbus_bus_name();
-        let mstr = PC::match_str(Some(&bus_name.into()), None);
-        self.connection.add_match(&mstr).unwrap();
 
-        // Wait for the signal to arrive.
+    pub fn collect_dbus_info(&self, session: &mut RecordingSession) -> Result<RecordingStatus> {
+        // We could collect the dbus timestamps but they are basically useless
+        // for cutting the songs since they fluctuate way too much to be precise.
+
         for msg in self.connection.incoming(100) {
             if let Some(pc) = PC::from_message(&msg) {
                 return self.handle_dbus_properties_changed_signal(session, pc);
