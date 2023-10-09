@@ -33,9 +33,9 @@ use crate::gui::StriputaryGui;
 #[derive(clap::StructOpt, Clone)]
 #[clap(version)]
 struct ParseOpts {
+    pub session_dir: PathBuf,
     pub output_dir: Option<PathBuf>,
     service: Option<Service>,
-    pub session_dir: PathBuf,
     #[clap(short, parse(from_occurrences))]
     pub verbosity: usize,
 }
