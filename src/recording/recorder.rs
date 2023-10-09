@@ -13,7 +13,7 @@ use subprocess::Exec;
 use subprocess::Popen;
 
 use crate::config::STRIPUTARY_SINK_NAME;
-use crate::service_config::Service;
+use crate::service::Service;
 use crate::Opts;
 
 pub struct Recorder {

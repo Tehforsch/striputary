@@ -13,7 +13,7 @@ use log::info;
 use crate::recording::recording_status::RecordingExitStatus;
 use crate::recording::recording_status::RecordingStatus;
 use crate::recording_session::RecordingSession;
-use crate::service_config::Service;
+use crate::service::Service;
 use crate::song::Song;
 
 type MetadataDict<'a> = HashMap<&'a str, Box<dyn RefArg + 'a>>;
@@ -151,10 +151,10 @@ fn get_song_from_dbus_properties(properties: PC) -> Option<Song> {
     .filter(is_valid_song)
 }
 
-pub fn dbus_set_playback_status_command(service_config: &Service, command: &str) -> Result<()> {
+pub fn dbus_set_playback_status_command(service: &Service, command: &str) -> Result<()> {
     Command::new("dbus-send")
         .arg("--print-reply")
-        .arg(format!("--dest={}", &service_config.dbus_bus_name()))
+        .arg(format!("--dest={}", &service.dbus_bus_name()))
         .arg("/org/mpris/MediaPlayer2")
         .arg(format!("org.mpris.MediaPlayer2.Player.{}", command))
         .output()
@@ -162,20 +162,20 @@ pub fn dbus_set_playback_status_command(service_config: &Service, command: &str)
         .map(|_| ()) // We do not need the output, let's not suggest that it is useful for the caller
 }
 
-pub fn previous_song(service_config: &Service) -> Result<()> {
-    dbus_set_playback_status_command(service_config, "Previous")
+pub fn previous_song(service: &Service) -> Result<()> {
+    dbus_set_playback_status_command(service, "Previous")
 }
 
-pub fn next_song(service_config: &Service) -> Result<()> {
-    dbus_set_playback_status_command(service_config, "Next")
+pub fn next_song(service: &Service) -> Result<()> {
+    dbus_set_playback_status_command(service, "Next")
 }
 
-pub fn start_playback(service_config: &Service) -> Result<()> {
-    dbus_set_playback_status_command(service_config, "Play")
+pub fn start_playback(service: &Service) -> Result<()> {
+    dbus_set_playback_status_command(service, "Play")
 }
 
-pub fn stop_playback(service_config: &Service) -> Result<()> {
-    dbus_set_playback_status_command(service_config, "Pause")
+pub fn stop_playback(service: &Service) -> Result<()> {
+    dbus_set_playback_status_command(service, "Pause")
 }
 
 /// For some mpris services, the name is not constant

@@ -9,7 +9,7 @@ pub mod excerpt_collection;
 pub mod gui;
 pub mod recording;
 pub mod recording_session;
-pub mod service_config;
+pub mod service;
 pub mod song;
 pub mod wav;
 
@@ -20,7 +20,7 @@ use config_file::ConfigFile;
 use log::error;
 use log::info;
 use log::LevelFilter;
-use service_config::Service;
+use service::Service;
 use simplelog::ColorChoice;
 use simplelog::ConfigBuilder;
 use simplelog::LevelPadding;
@@ -121,7 +121,7 @@ mod tests {
     use std::path::Path;
 
     use crate::config_file::ConfigFile;
-    use crate::service_config::Service;
+    use crate::service::Service;
     use crate::Opts;
     use crate::ParseOpts;
 

@@ -8,7 +8,7 @@ use anyhow::Result;
 use serde::Deserialize;
 
 use crate::config;
-use crate::service_config::Service;
+use crate::service::Service;
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct ConfigFile {
