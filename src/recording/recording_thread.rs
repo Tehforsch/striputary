@@ -9,10 +9,7 @@ use anyhow::Result;
 use log::debug;
 use log::info;
 
-use super::dbus::collect_dbus_info;
-use super::dbus::previous_song;
-use super::dbus::start_playback;
-use super::dbus::stop_playback;
+use super::dbus::DbusConnection;
 use super::recording_status::RecordingExitStatus;
 use super::Recorder;
 use crate::config;
@@ -20,18 +17,17 @@ use crate::config::TIME_AFTER_SESSION_END;
 use crate::config::TIME_BEFORE_SESSION_START;
 use crate::config::TIME_BETWEEN_SUBSEQUENT_DBUS_COMMANDS;
 use crate::config::WAIT_TIME_BEFORE_FIRST_SONG;
-use crate::recording::dbus::next_song;
 use crate::recording::recording_status::RecordingStatus;
 use crate::recording_session::RecordingSession;
 use crate::song::Song;
 use crate::Opts;
 
 pub struct RecordingThread {
-    opts: Opts,
     is_running: Arc<AtomicBool>,
     song_sender: Sender<Song>,
     session: RecordingSession,
     recorder: Recorder,
+    dbus: DbusConnection,
 }
 
 impl RecordingThread {
@@ -39,11 +35,11 @@ impl RecordingThread {
         let session = RecordingSession::new(&opts.get_yaml_file());
         let recorder = Recorder::start(&opts).unwrap();
         let recorder = Self {
-            opts: opts.clone(),
             is_running,
             song_sender,
             session,
             recorder,
+            dbus: DbusConnection::new(&opts.service),
         };
         recorder
     }
@@ -70,30 +66,30 @@ impl RecordingThread {
     fn initial_buffer_phase(&self) -> Result<()> {
         // Go to next song and back. This helps with missing metadata
         // for the first track in some configurations.
-        next_song(&self.opts.service)?;
+        self.dbus.next_song()?;
         thread::sleep(TIME_BETWEEN_SUBSEQUENT_DBUS_COMMANDS);
-        previous_song(&self.opts.service)?;
+        self.dbus.previous_song()?;
         // Add a small time buffer before starting the playback properly.
         // This ensures that something starts playing, thus registering the
         // pulse audio sink. Also it avoids overflows when calculating the offset
         debug!("Begin pre-session phase");
-        start_playback(&self.opts.service)?;
+        self.dbus.start_playback()?;
         thread::sleep(TIME_BEFORE_SESSION_START);
-        stop_playback(&self.opts.service)?;
+        self.dbus.stop_playback()?;
         debug!("Go to beginning of song");
-        previous_song(&self.opts.service)?;
+        self.dbus.previous_song()?;
         thread::sleep(WAIT_TIME_BEFORE_FIRST_SONG);
         Ok(())
     }
 
     fn recording_phase(&mut self) -> Result<RecordingExitStatus> {
         info!("Starting playback.");
-        start_playback(&self.opts.service)?;
+        self.dbus.start_playback()?;
         self.session.estimated_time_first_song = Some(self.recorder.time_since_start_secs());
         let mut time_last_dbus_signal = Instant::now();
         loop {
             let num_songs_before = self.session.songs.len();
-            let playback_status = collect_dbus_info(&mut self.session, &self.opts.service)?;
+            let playback_status = self.dbus.collect_dbus_info(&mut self.session)?;
             let num_songs_after = self.session.songs.len();
             if let RecordingStatus::Finished(exit_status) = playback_status {
                 return Ok(exit_status);

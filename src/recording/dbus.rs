@@ -18,61 +18,76 @@ use crate::song::Song;
 
 struct Metadata<'a>(HashMap<&'a str, Box<dyn RefArg + 'a>>);
 
-/// Collect dbus information on the songs.
-/// We could collect the dbus timestamps but they are basically useless
-/// for cutting the songs since they fluctuate way too much to be precise.
-pub fn collect_dbus_info(
-    session: &mut RecordingSession,
-    service: &Service,
-) -> Result<RecordingStatus> {
-    let c = Connection::new_session().unwrap();
-    // Add a match for this signal
-    let bus_name = service.dbus_bus_name();
-    let mstr = PC::match_str(Some(&bus_name.into()), None);
-    c.add_match(&mstr).unwrap();
-
-    // Wait for the signal to arrive.
-    for msg in c.incoming(100) {
-        if let Some(pc) = PC::from_message(&msg) {
-            return handle_dbus_properties_changed_signal(session, pc);
-        }
-    }
-    Ok(RecordingStatus::Running)
+pub struct DbusConnection {
+    service: Service,
 }
 
-pub fn handle_dbus_properties_changed_signal(
-    session: &mut RecordingSession,
-    properties: PC,
-) -> Result<RecordingStatus> {
-    let playback_stopped = is_playback_stopped(&properties);
-    if !playback_stopped {
-        let song = get_song_from_dbus_properties(properties);
-        // We get multiple dbus messages on every song change for every property that changes.
-        // Find out whether the song actually changed (or whether we havent recorded anything so far)
-        let last_song = session.songs.last();
-        if let Some(song) = song {
-            if session.songs.is_empty() || last_song.unwrap() != &song {
-                info!("Now recording song: {}", song);
-                session.songs.push(song);
-                session.save()?;
+impl DbusConnection {
+    pub fn new(service: &Service) -> Self {
+        Self {
+            service: service.clone(),
+        }
+    }
+    /// Collect dbus information on the songs.
+    /// We could collect the dbus timestamps but they are basically useless
+    /// for cutting the songs since they fluctuate way too much to be precise.
+    pub fn collect_dbus_info(&self, session: &mut RecordingSession) -> Result<RecordingStatus> {
+        let c = Connection::new_session().unwrap();
+        // Add a match for this signal
+        let bus_name = self.service.dbus_bus_name();
+        let mstr = PC::match_str(Some(&bus_name.into()), None);
+        c.add_match(&mstr).unwrap();
+
+        // Wait for the signal to arrive.
+        for msg in c.incoming(100) {
+            if let Some(pc) = PC::from_message(&msg) {
+                return self.handle_dbus_properties_changed_signal(session, pc);
             }
         }
+        Ok(RecordingStatus::Running)
     }
-    match playback_stopped {
-        false => Ok(RecordingStatus::Running),
-        true => Ok(RecordingStatus::Finished(
-            RecordingExitStatus::FinishedOrInterrupted,
-        )),
-    }
-}
 
-fn is_playback_stopped(properties: &PC) -> bool {
-    let has_playback_status_entry = properties.changed_properties.contains_key("PlaybackStatus");
-    if has_playback_status_entry {
-        let variant = &properties.changed_properties["PlaybackStatus"];
-        (variant.0).as_str().unwrap() == "Paused"
-    } else {
-        false
+    pub fn handle_dbus_properties_changed_signal(
+        &self,
+        session: &mut RecordingSession,
+        properties: PC,
+    ) -> Result<RecordingStatus> {
+        let playback_stopped = is_playback_stopped(&properties);
+        if !playback_stopped {
+            let song = get_song_from_dbus_properties(properties);
+            // We get multiple dbus messages on every song change for every property that changes.
+            // Find out whether the song actually changed (or whether we havent recorded anything so far)
+            let last_song = session.songs.last();
+            if let Some(song) = song {
+                if session.songs.is_empty() || last_song.unwrap() != &song {
+                    info!("Now recording song: {}", song);
+                    session.songs.push(song);
+                    session.save()?;
+                }
+            }
+        }
+        match playback_stopped {
+            false => Ok(RecordingStatus::Running),
+            true => Ok(RecordingStatus::Finished(
+                RecordingExitStatus::FinishedOrInterrupted,
+            )),
+        }
+    }
+
+    pub fn previous_song(&self) -> Result<()> {
+        dbus_set_playback_status_command(&self.service, "Previous")
+    }
+
+    pub fn next_song(&self) -> Result<()> {
+        dbus_set_playback_status_command(&self.service, "Next")
+    }
+
+    pub fn start_playback(&self) -> Result<()> {
+        dbus_set_playback_status_command(&self.service, "Play")
+    }
+
+    pub fn stop_playback(&self) -> Result<()> {
+        dbus_set_playback_status_command(&self.service, "Pause")
     }
 }
 
@@ -147,6 +162,16 @@ fn is_valid_song(song: &Song) -> bool {
     song.length != 0.0
 }
 
+fn is_playback_stopped(properties: &PC) -> bool {
+    let has_playback_status_entry = properties.changed_properties.contains_key("PlaybackStatus");
+    if has_playback_status_entry {
+        let variant = &properties.changed_properties["PlaybackStatus"];
+        (variant.0).as_str().unwrap() == "Paused"
+    } else {
+        false
+    }
+}
+
 fn get_song_from_dbus_properties(properties: PC) -> Option<Song> {
     let metadata = &properties.changed_properties.get("Metadata")?.0;
 
@@ -168,22 +193,6 @@ pub fn dbus_set_playback_status_command(service: &Service, command: &str) -> Res
         .output()
         .context("Failed to send dbus command to control playback")
         .map(|_| ()) // We do not need the output, let's not suggest that it is useful for the caller
-}
-
-pub fn previous_song(service: &Service) -> Result<()> {
-    dbus_set_playback_status_command(service, "Previous")
-}
-
-pub fn next_song(service: &Service) -> Result<()> {
-    dbus_set_playback_status_command(service, "Next")
-}
-
-pub fn start_playback(service: &Service) -> Result<()> {
-    dbus_set_playback_status_command(service, "Play")
-}
-
-pub fn stop_playback(service: &Service) -> Result<()> {
-    dbus_set_playback_status_command(service, "Pause")
 }
 
 /// For some mpris services, the name is not constant
