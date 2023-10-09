@@ -5,6 +5,8 @@ use anyhow::Result;
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::recording::dbus::get_instance_of_service;
+
 #[derive(Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum Service {
@@ -39,10 +41,11 @@ impl Service {
         }
     }
 
-    pub fn dbus_bus_name(&self) -> &str {
+    pub fn dbus_bus_name(&self) -> String {
         match self {
-            Self::SpotifyNative => "org.mpris.MediaPlayer2.spotify",
-            Self::SpotifyChromium => "org.mpris.MediaPlayer2.chromium",
+            Self::SpotifyNative => "org.mpris.MediaPlayer2.spotify".into(),
+            Self::SpotifyChromium => get_instance_of_service("org.mpris.MediaPlayer2.chromium")
+                .expect("Failed to get dbus service instance"),
         }
     }
 }
