@@ -20,26 +20,27 @@ struct Metadata<'a>(HashMap<&'a str, Box<dyn RefArg + 'a>>);
 
 pub struct DbusConnection {
     service: Service,
+    connection: Connection,
 }
 
 impl DbusConnection {
     pub fn new(service: &Service) -> Self {
         Self {
             service: service.clone(),
+            connection: Connection::new_session().unwrap(),
         }
     }
     /// Collect dbus information on the songs.
     /// We could collect the dbus timestamps but they are basically useless
     /// for cutting the songs since they fluctuate way too much to be precise.
     pub fn collect_dbus_info(&self, session: &mut RecordingSession) -> Result<RecordingStatus> {
-        let c = Connection::new_session().unwrap();
         // Add a match for this signal
         let bus_name = self.service.dbus_bus_name();
         let mstr = PC::match_str(Some(&bus_name.into()), None);
-        c.add_match(&mstr).unwrap();
+        self.connection.add_match(&mstr).unwrap();
 
         // Wait for the signal to arrive.
-        for msg in c.incoming(100) {
+        for msg in self.connection.incoming(100) {
             if let Some(pc) = PC::from_message(&msg) {
                 return self.handle_dbus_properties_changed_signal(session, pc);
             }

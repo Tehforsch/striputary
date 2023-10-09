@@ -25,8 +25,14 @@ impl AsyncRecorder {
     pub fn new(opts: &Opts) -> Self {
         let is_running = Arc::new(AtomicBool::new(true));
         let (song_sender, song_receiver) = channel();
-        let thread = RecordingThread::new(is_running.clone(), song_sender, opts);
-        let handle = thread::spawn(move || thread.record_new_session());
+        let handle = {
+            let is_running = is_running.clone();
+            let opts = opts.clone();
+            thread::spawn(move || {
+                let thread = RecordingThread::new(is_running, song_sender, &opts);
+                thread.record_new_session()
+            })
+        };
         Self {
             handle,
             is_running,
