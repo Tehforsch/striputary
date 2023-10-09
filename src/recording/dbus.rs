@@ -16,7 +16,7 @@ use crate::recording_session::RecordingSession;
 use crate::service::Service;
 use crate::song::Song;
 
-type MetadataDict<'a> = HashMap<&'a str, Box<dyn RefArg + 'a>>;
+struct Metadata<'a>(HashMap<&'a str, Box<dyn RefArg + 'a>>);
 
 /// Collect dbus information on the songs.
 /// We could collect the dbus timestamps but they are basically useless
@@ -76,52 +76,67 @@ fn is_playback_stopped(properties: &PC) -> bool {
     }
 }
 
-fn get_song_length(metadata: &MetadataDict) -> f64 {
-    let val = &metadata["mpris:length"];
-    let length_microseconds = val
-        .as_u64()
-        .or(val.as_i64().map(|x| x as u64))
-        .unwrap_or_else(|| {
-            val.as_str()
-                .expect("Failed to parse song length as string")
-                .parse()
-                .expect("Failed to parse song length string as integer")
-        });
-    (length_microseconds as f64) * 1e-6
+impl<'a> Metadata<'a> {
+    fn get_song_length(&self) -> f64 {
+        let val = &self.0["mpris:length"];
+        let length_microseconds = val
+            .as_u64()
+            .or(val.as_i64().map(|x| x as u64))
+            .unwrap_or_else(|| {
+                val.as_str()
+                    .expect("Failed to parse song length as string")
+                    .parse()
+                    .expect("Failed to parse song length string as integer")
+            });
+        (length_microseconds as f64) * 1e-6
+    }
+
+    fn get_song_artist(&self) -> Option<String> {
+        // I want to thank what is probably a combination of spotify and the MediaPlayer2 specification for this wonderful piece of art. Note that spotify doesn't actually send a list of artists, but just the first artist in a nested list which is just great.
+        Some(
+            self.0["xesam:artist"]
+                .as_iter()
+                .unwrap()
+                .next()
+                .unwrap()
+                .as_iter()
+                .unwrap()
+                .next()
+                .unwrap()
+                .as_str()
+                .unwrap()
+                .to_string(),
+        )
+    }
+
+    fn get_song_album(&self) -> Option<String> {
+        self.0
+            .get("xesam:album")
+            .map(|album| album.as_str().unwrap().to_string())
+    }
+
+    fn get_song_title(&self) -> Option<String> {
+        Some(self.0["xesam:title"].as_str().unwrap().to_string())
+    }
+
+    fn get_song_track_number(&self) -> Option<i64> {
+        self.0
+            .get("xesam:trackNumber")
+            .map(|track_number| track_number.as_i64().unwrap())
+    }
 }
 
-fn get_song_artist(metadata: &MetadataDict) -> Option<String> {
-    // I want to thank what is probably a combination of spotify and the MediaPlayer2 specification for this wonderful piece of art. Note that spotify doesn't actually send a list of artists, but just the first artist in a nested list which is just great.
-    Some(
-        metadata["xesam:artist"]
-            .as_iter()
-            .unwrap()
-            .next()
-            .unwrap()
-            .as_iter()
-            .unwrap()
-            .next()
-            .unwrap()
-            .as_str()
-            .unwrap()
-            .to_string(),
-    )
-}
+impl From<Metadata<'_>> for Song {
+    fn from(data: Metadata) -> Self {
+        Song {
+            artist: data.get_song_artist(),
 
-fn get_song_album(metadata: &MetadataDict) -> Option<String> {
-    metadata
-        .get("xesam:album")
-        .map(|album| album.as_str().unwrap().to_string())
-}
-
-fn get_song_title(metadata: &MetadataDict) -> Option<String> {
-    Some(metadata["xesam:title"].as_str().unwrap().to_string())
-}
-
-fn get_song_track_number(metadata: &MetadataDict) -> Option<i64> {
-    metadata
-        .get("xesam:trackNumber")
-        .map(|track_number| track_number.as_i64().unwrap())
+            album: data.get_song_album(),
+            title: data.get_song_title(),
+            track_number: data.get_song_track_number(),
+            length: data.get_song_length(),
+        }
+    }
 }
 
 /// This filters certain malformed entries that
@@ -136,19 +151,12 @@ fn get_song_from_dbus_properties(properties: PC) -> Option<Song> {
     let metadata = &properties.changed_properties.get("Metadata")?.0;
 
     let mut iter = metadata.as_iter().unwrap();
-    let mut dict = HashMap::<&str, Box<dyn RefArg>>::new();
+    let mut dict = Metadata(HashMap::<&str, Box<dyn RefArg>>::new());
     while let Some(key) = iter.next() {
         let value = iter.next().unwrap();
-        dict.insert(key.as_str().unwrap(), Box::new(value));
+        dict.0.insert(key.as_str().unwrap(), Box::new(value));
     }
-    Some(Song {
-        artist: get_song_artist(&dict),
-        album: get_song_album(&dict),
-        title: get_song_title(&dict),
-        track_number: get_song_track_number(&dict),
-        length: get_song_length(&dict),
-    })
-    .filter(is_valid_song)
+    Some(dict.into()).filter(is_valid_song)
 }
 
 pub fn dbus_set_playback_status_command(service: &Service, command: &str) -> Result<()> {
