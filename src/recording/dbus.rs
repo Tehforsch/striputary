@@ -8,11 +8,7 @@ use dbus::arg::RefArg;
 use dbus::ffidisp::stdintf::org_freedesktop_dbus::PropertiesPropertiesChanged as PC;
 use dbus::ffidisp::Connection;
 use dbus::message::SignalArgs;
-use log::info;
 
-use crate::recording::recording_status::RecordingExitStatus;
-use crate::recording::recording_status::RecordingStatus;
-use crate::recording_session::RecordingSession;
 use crate::service::Service;
 use crate::song::Song;
 
@@ -21,6 +17,11 @@ struct Metadata<'a>(HashMap<&'a str, Box<dyn RefArg + 'a>>);
 pub struct DbusConnection {
     service: Service,
     connection: Connection,
+}
+
+pub enum DbusEvent {
+    NewSong(Song),
+    PlaybackStopped,
 }
 
 impl DbusConnection {
@@ -36,42 +37,42 @@ impl DbusConnection {
         }
     }
 
-    pub fn collect_dbus_info(&self, session: &mut RecordingSession) -> Result<RecordingStatus> {
+    pub fn get_new_events<'a>(
+        &'a self,
+        last_song: Option<&'a Song>,
+    ) -> impl Iterator<Item = DbusEvent> + 'a {
         // We could collect the dbus timestamps but they are basically useless
         // for cutting the songs since they fluctuate way too much to be precise.
-
-        for msg in self.connection.incoming(100) {
-            if let Some(pc) = PC::from_message(&msg) {
-                return self.handle_dbus_properties_changed_signal(session, pc);
-            }
-        }
-        Ok(RecordingStatus::Running)
+        self.connection
+            .incoming(100)
+            .filter_map(|msg| PC::from_message(&msg))
+            .filter_map(move |pc| self.handle_dbus_properties_changed_signal(last_song, pc))
     }
 
     pub fn handle_dbus_properties_changed_signal(
         &self,
-        session: &mut RecordingSession,
+        last_song: Option<&Song>,
         properties: PC,
-    ) -> Result<RecordingStatus> {
+    ) -> Option<DbusEvent> {
         let playback_stopped = is_playback_stopped(&properties);
-        if !playback_stopped {
+        if playback_stopped {
+            Some(DbusEvent::PlaybackStopped)
+        } else {
             let song = get_song_from_dbus_properties(properties);
             // We get multiple dbus messages on every song change for every property that changes.
             // Find out whether the song actually changed (or whether we havent recorded anything so far)
-            let last_song = session.songs.last();
             if let Some(song) = song {
-                if session.songs.is_empty() || last_song.unwrap() != &song {
-                    info!("Now recording song: {}", song);
-                    session.songs.push(song);
-                    session.save()?;
+                let is_different_song = last_song
+                    .map(|last_song| last_song != &song)
+                    .unwrap_or(true);
+                if is_different_song {
+                    Some(DbusEvent::NewSong(song))
+                } else {
+                    None
                 }
+            } else {
+                None
             }
-        }
-        match playback_stopped {
-            false => Ok(RecordingStatus::Running),
-            true => Ok(RecordingStatus::Finished(
-                RecordingExitStatus::FinishedOrInterrupted,
-            )),
         }
     }
 

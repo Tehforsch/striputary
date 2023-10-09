@@ -3,21 +3,19 @@ use std::sync::atomic::Ordering;
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::thread::{self};
-use std::time::Instant;
 
 use anyhow::Result;
 use log::debug;
 use log::info;
 
 use super::dbus::DbusConnection;
-use super::recording_status::RecordingExitStatus;
+use super::recording_status::RecordingStatus;
 use super::Recorder;
-use crate::config;
 use crate::config::TIME_AFTER_SESSION_END;
 use crate::config::TIME_BEFORE_SESSION_START;
 use crate::config::TIME_BETWEEN_SUBSEQUENT_DBUS_COMMANDS;
 use crate::config::WAIT_TIME_BEFORE_FIRST_SONG;
-use crate::recording::recording_status::RecordingStatus;
+use crate::recording::dbus::DbusEvent;
 use crate::recording_session::RecordingSession;
 use crate::song::Song;
 use crate::Opts;
@@ -44,7 +42,7 @@ impl RecordingThread {
         recorder
     }
 
-    pub fn record_new_session(mut self) -> Result<(RecordingExitStatus, RecordingSession)> {
+    pub fn record_new_session(mut self) -> Result<(RecordingStatus, RecordingSession)> {
         let status = self.polling_loop()?;
         self.stop()?;
         Ok((status, self.session))
@@ -56,7 +54,7 @@ impl RecordingThread {
         self.session.save()
     }
 
-    fn polling_loop(&mut self) -> Result<RecordingExitStatus> {
+    fn polling_loop(&mut self) -> Result<RecordingStatus> {
         self.initial_buffer_phase()?;
         let status = self.recording_phase()?;
         self.final_buffer_phase();
@@ -82,39 +80,35 @@ impl RecordingThread {
         Ok(())
     }
 
-    fn recording_phase(&mut self) -> Result<RecordingExitStatus> {
+    fn recording_phase(&mut self) -> Result<RecordingStatus> {
         info!("Starting playback.");
         self.dbus.start_playback()?;
         self.session.estimated_time_first_song = Some(self.recorder.time_since_start_secs());
-        let mut time_last_dbus_signal = Instant::now();
         loop {
-            let num_songs_before = self.session.songs.len();
-            let playback_status = self.dbus.collect_dbus_info(&mut self.session)?;
-            let num_songs_after = self.session.songs.len();
-            if let RecordingStatus::Finished(exit_status) = playback_status {
-                return Ok(exit_status);
-            }
-            // There should only be one new song if the delay between dbus signals is not too large, but you never know
-            for song_index in num_songs_before..num_songs_after {
-                self.add_new_song(self.session.songs[song_index].clone());
-                time_last_dbus_signal = Instant::now();
-            }
-            if let Some(song) = self.session.songs.last() {
-                let time_elapsed_after_estimated_song_ending = Instant::now()
-                    .duration_since(time_last_dbus_signal)
-                    .as_secs_f64()
-                    - song.length;
-                if time_elapsed_after_estimated_song_ending
-                    > config::TIME_WITHOUT_DBUS_SIGNAL_BEFORE_STOPPING.as_secs_f64()
-                {
-                    return Ok(RecordingExitStatus::NoNewSongForTooLong);
+            // collect here to make borrow checker happy
+            let new_events: Vec<_> = self
+                .dbus
+                .get_new_events(self.session.songs.last())
+                .collect();
+            for event in new_events {
+                match event {
+                    DbusEvent::NewSong(song) => {
+                        self.add_new_song(song)?;
+                    }
+                    DbusEvent::PlaybackStopped => {
+                        return Ok(RecordingStatus::FinishedOrInterrupted);
+                    }
                 }
             }
         }
     }
 
-    fn add_new_song(&self, song: Song) {
+    fn add_new_song(&mut self, song: Song) -> Result<()> {
+        info!("Now recording song: {}", song);
+        self.session.songs.push(song.clone());
+        self.session.save()?;
         self.song_sender.send(song).unwrap();
+        Ok(())
     }
 
     fn final_buffer_phase(&self) {

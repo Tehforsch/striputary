@@ -7,7 +7,7 @@ use std::thread::{self};
 
 use anyhow::Result;
 
-use super::recording_status::RecordingExitStatus;
+use super::recording_status::RecordingStatus;
 use super::recording_thread::RecordingThread;
 use crate::config;
 use crate::data_stream::DataStream;
@@ -16,7 +16,7 @@ use crate::song::Song;
 use crate::Opts;
 
 pub struct AsyncRecorder {
-    handle: JoinHandle<Result<(RecordingExitStatus, RecordingSession)>>,
+    handle: JoinHandle<Result<(RecordingStatus, RecordingSession)>>,
     is_running: Arc<AtomicBool>,
     pub songs: DataStream<Song>,
 }
@@ -48,7 +48,7 @@ impl AsyncRecorder {
         self.is_running.load(Ordering::SeqCst)
     }
 
-    pub fn get_result(self) -> Result<(RecordingExitStatus, RecordingSession)> {
+    pub fn get_result(self) -> Result<(RecordingStatus, RecordingSession)> {
         self.handle.join().unwrap()
     }
 }

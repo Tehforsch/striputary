@@ -1,12 +1,6 @@
 #[derive(PartialEq)]
-pub enum RecordingExitStatus {
+pub enum RecordingStatus {
     FinishedOrInterrupted,
     AlbumFinished,
     NoNewSongForTooLong,
-}
-
-#[derive(PartialEq)]
-pub enum RecordingStatus {
-    Running,
-    Finished(RecordingExitStatus),
 }
