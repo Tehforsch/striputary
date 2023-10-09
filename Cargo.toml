@@ -23,4 +23,5 @@ shellexpand = "2.1.2"
 simplelog = "0.12.1"
 subprocess = "0.2.9"
 take_mut = "0.2.2"
+time = { version = "0.3.29", default-features = false }
 xdg = "2.5.2"

@@ -23,8 +23,10 @@ use log::LevelFilter;
 use service_config::Service;
 use simplelog::ColorChoice;
 use simplelog::ConfigBuilder;
+use simplelog::LevelPadding;
 use simplelog::TermLogger;
 use simplelog::TerminalMode;
+use time::UtcOffset;
 
 use crate::gui::StriputaryGui;
 
@@ -98,13 +100,14 @@ fn init_logging(verbosity: usize) {
         1 => LevelFilter::Debug,
         v => unimplemented!("Unsupported verbosity level: {}", v),
     };
-    TermLogger::init(
-        level,
-        ConfigBuilder::default().build(),
-        TerminalMode::Mixed,
-        ColorChoice::Auto,
-    )
-    .unwrap();
+
+    let local = chrono::Local::now();
+    let offset = local.offset();
+    let config = ConfigBuilder::default()
+        .set_level_padding(LevelPadding::Right)
+        .set_time_offset(UtcOffset::from_whole_seconds(offset.local_minus_utc()).unwrap())
+        .build();
+    TermLogger::init(level, config, TerminalMode::Mixed, ColorChoice::Auto).unwrap();
 }
 
 fn run_gui(opts: &Opts) {
