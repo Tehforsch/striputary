@@ -7,6 +7,7 @@ use anyhow::Result;
 use chrono::Local;
 use log::error;
 
+use crate::config;
 use crate::cut::get_excerpt_collection;
 use crate::excerpt_collection::ExcerptCollection;
 use crate::recording_session::RecordingSession;
@@ -15,6 +16,19 @@ use crate::recording_session::RecordingSession;
 pub enum SessionIdentifier {
     Old(usize),
     New,
+}
+
+#[derive(Clone)]
+pub struct SessionPath(pub PathBuf);
+
+impl SessionPath {
+    pub fn get_yaml_file(&self) -> PathBuf {
+        self.0.join(config::DEFAULT_SESSION_FILE)
+    }
+
+    pub fn get_buffer_file(&self) -> PathBuf {
+        self.0.join(config::DEFAULT_BUFFER_FILE)
+    }
 }
 
 pub struct SessionManager {
@@ -62,15 +76,15 @@ impl SessionManager {
             .unwrap_or(false)
     }
 
-    pub fn get_currently_selected(&self) -> Option<PathBuf> {
+    pub fn get_currently_selected(&self) -> Option<SessionPath> {
         Some(match self.selected? {
-            SessionIdentifier::Old(index) => self.dirs[index].clone(),
-            SessionIdentifier::New => self.new_dir.clone(),
+            SessionIdentifier::Old(index) => SessionPath(self.dirs[index].clone()),
+            SessionIdentifier::New => SessionPath(self.new_dir.clone()),
         })
     }
 
     pub fn get_currently_selected_collection(&self) -> Option<ExcerptCollection> {
-        let session_dir = self.get_currently_selected()?;
+        let session_dir = self.get_currently_selected()?.0;
         if session_dir.is_dir() {
             RecordingSession::from_parent_dir(&session_dir)
                 .map(get_excerpt_collection)

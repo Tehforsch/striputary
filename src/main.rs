@@ -33,7 +33,6 @@ use crate::gui::StriputaryGui;
 #[derive(clap::StructOpt, Clone)]
 #[clap(version)]
 struct ParseOpts {
-    pub session_dir: PathBuf,
     pub output_dir: Option<PathBuf>,
     service: Option<Service>,
     #[clap(short, parse(from_occurrences))]
@@ -44,18 +43,9 @@ struct ParseOpts {
 pub struct Opts {
     pub output_dir: PathBuf,
     service: Service,
-    pub session_dir: PathBuf,
 }
 
 impl Opts {
-    pub fn get_yaml_file(&self) -> PathBuf {
-        self.session_dir.join(config::DEFAULT_SESSION_FILE)
-    }
-
-    pub fn get_buffer_file(&self) -> PathBuf {
-        self.session_dir.join(config::DEFAULT_BUFFER_FILE)
-    }
-
     fn new(opts: ParseOpts, config_file: Option<ConfigFile>) -> Opts {
         let service = opts
             .service
@@ -77,7 +67,6 @@ panic!("Need an output folder - either pass it as a command line argument or spe
         Opts {
             output_dir,
             service,
-            session_dir: opts.session_dir,
         }
     }
 }
@@ -129,7 +118,6 @@ mod tests {
         ParseOpts {
             output_dir: Some("".into()),
             service: None,
-            session_dir: "".into(),
             verbosity: 0,
         }
     }
@@ -194,7 +182,6 @@ mod tests {
         let p_opts = ParseOpts {
             output_dir: None,
             service: None,
-            session_dir: "".into(),
             verbosity: 0,
         };
         let _opts = Opts::new(p_opts.clone(), None);

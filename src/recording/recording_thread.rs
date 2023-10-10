@@ -15,6 +15,7 @@ use crate::config::TIME_AFTER_SESSION_END;
 use crate::config::TIME_BEFORE_SESSION_START;
 use crate::config::TIME_BETWEEN_SUBSEQUENT_DBUS_COMMANDS;
 use crate::config::WAIT_TIME_BEFORE_FIRST_SONG;
+use crate::gui::session_manager::SessionPath;
 use crate::recording::dbus::DbusEvent;
 use crate::recording_session::RecordingSession;
 use crate::song::Song;
@@ -29,9 +30,14 @@ pub struct RecordingThread {
 }
 
 impl RecordingThread {
-    pub fn new(is_running: Arc<AtomicBool>, song_sender: Sender<Song>, opts: &Opts) -> Self {
-        let session = RecordingSession::new(&opts.get_yaml_file());
-        let recorder = Recorder::start(&opts).unwrap();
+    pub fn new(
+        is_running: Arc<AtomicBool>,
+        song_sender: Sender<Song>,
+        opts: &Opts,
+        session_dir: &SessionPath,
+    ) -> Self {
+        let session = RecordingSession::new(&session_dir.get_yaml_file());
+        let recorder = Recorder::start(opts, session_dir).unwrap();
         let recorder = Self {
             is_running,
             song_sender,

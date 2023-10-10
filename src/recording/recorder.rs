@@ -13,6 +13,7 @@ use subprocess::Exec;
 use subprocess::Popen;
 
 use crate::config::STRIPUTARY_SINK_NAME;
+use crate::gui::session_manager::SessionPath;
 use crate::service::Service;
 use crate::Opts;
 
@@ -22,10 +23,10 @@ pub struct Recorder {
 }
 
 impl Recorder {
-    pub fn start(opts: &Opts) -> Result<Self> {
-        setup_recording(&opts)?;
+    pub fn start(opts: &Opts, session_path: &SessionPath) -> Result<Self> {
+        setup_recording(&opts, session_path)?;
         Ok(Self {
-            process: start_recording_process(&opts.get_buffer_file())?,
+            process: start_recording_process(&session_path.get_buffer_file())?,
             start_time: Instant::now(),
         })
     }
@@ -53,9 +54,9 @@ fn start_recording_process(buffer_file: &Path) -> Result<Popen> {
         .context("Failed to execute record command - is parec installed?")
 }
 
-fn setup_recording(opts: &Opts) -> Result<()> {
-    create_dir_all(&opts.session_dir).context("Failed to create session directory")?;
-    if opts.get_buffer_file().exists() {
+fn setup_recording(opts: &Opts, session_path: &SessionPath) -> Result<()> {
+    create_dir_all(&session_path.0).context("Failed to create session directory")?;
+    if session_path.get_buffer_file().exists() {
         return Err(anyhow!(
             "Buffer file already exists, not recording a new session."
         ));

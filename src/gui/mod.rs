@@ -2,7 +2,7 @@ mod config;
 mod cutting_thread;
 mod playback;
 mod plot;
-mod session_manager;
+pub mod session_manager;
 
 use eframe::egui::Button;
 use eframe::egui::Color32;
@@ -118,8 +118,9 @@ impl StriputaryGui {
     fn start_recording(&mut self) {
         self.session_manager.select_new();
         self.load_selected_session();
+        let path = self.session_manager.get_currently_selected().unwrap();
         if !self.record_thread.is_running() {
-            self.record_thread = RecordingThreadHandleStatus::new_running(&self.opts);
+            self.record_thread = RecordingThreadHandleStatus::new_running(&self.opts, &path);
         }
     }
 

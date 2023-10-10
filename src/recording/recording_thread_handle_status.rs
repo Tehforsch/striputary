@@ -1,4 +1,5 @@
 use super::recording_thread_handle::AsyncRecorder;
+use crate::gui::session_manager::SessionPath;
 use crate::song::Song;
 use crate::Opts;
 
@@ -38,8 +39,8 @@ impl RecordingThreadHandleStatus {
         Self::Stopped
     }
 
-    pub fn new_running(opts: &Opts) -> Self {
-        Self::Running(AsyncRecorder::new(opts))
+    pub fn new_running(opts: &Opts, path: &SessionPath) -> Self {
+        Self::Running(AsyncRecorder::new(opts, path))
     }
 
     pub fn is_running(&self) -> bool {
