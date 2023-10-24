@@ -9,7 +9,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::config;
-use crate::recording::dbus::DbusEvent;
+use crate::recording::dbus_event::DbusEvent;
 use crate::song::Song;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -66,7 +66,7 @@ pub struct RecordingSessionWithPath {
 
 impl RecordingSessionWithPath {
     pub(crate) fn estimated_time_first_song(&self) -> f64 {
-        todo!()
+        0.0
     }
 
     pub fn load_from_dir(path: &Path) -> Result<Self> {

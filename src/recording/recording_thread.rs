@@ -9,13 +9,13 @@ use log::debug;
 use log::info;
 
 use super::dbus::DbusConnection;
+use super::dbus_event::DbusEvent;
 use super::recording_status::RecordingStatus;
 use super::Recorder;
 use crate::config::TIME_AFTER_SESSION_END;
 use crate::config::TIME_BEFORE_SESSION_START;
 use crate::config::TIME_BETWEEN_SUBSEQUENT_DBUS_COMMANDS;
 use crate::config::WAIT_TIME_BEFORE_FIRST_SONG;
-use crate::recording::dbus::DbusEvent;
 use crate::recording_session::RecordingSession;
 use crate::recording_session::SessionPath;
 use crate::song::Song;
