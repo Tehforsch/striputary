@@ -6,6 +6,7 @@ use anyhow::Result;
 use dbus::ffidisp::stdintf::org_freedesktop_dbus::PropertiesPropertiesChanged as PC;
 use dbus::ffidisp::Connection;
 use dbus::message::SignalArgs;
+use log::trace;
 
 use super::dbus_event::DbusEvent;
 use crate::service::Service;
@@ -33,8 +34,15 @@ impl DbusConnection {
         // for cutting the songs since they fluctuate way too much to be precise.
         self.connection
             .incoming(100)
-            .filter_map(|msg| PC::from_message(&msg))
-            .map(move |pc| pc.into())
+            .filter_map(|msg| {
+                trace!("Received dbus msg: {:?}", msg);
+                PC::from_message(&msg)
+            })
+            .map(move |pc| {
+                let ev = pc.into();
+                trace!("Received dbus event: {:?}", ev);
+                ev
+            })
     }
 
     pub fn previous_song(&self) -> Result<()> {

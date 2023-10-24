@@ -25,7 +25,7 @@ impl RecordingThreadHandleStatus {
                         Err(error) => Self::Failed(error),
                     };
                 } else {
-                    panic!("Impossible");
+                    unreachable!()
                 }
             }
             tmp_self

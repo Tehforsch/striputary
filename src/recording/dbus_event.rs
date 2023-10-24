@@ -27,7 +27,14 @@ impl From<PC> for DbusEvent {
             DbusEvent::StatusChanged(status)
         } else {
             DbusEvent::NewSong(
-                get_song_from_dbus_properties(properties.changed_properties).unwrap(),
+                get_song_from_dbus_properties(&properties.changed_properties).unwrap_or_else(
+                    || {
+                        panic!(
+                            "Failed to get song from changed properties: {:?}",
+                            &properties.changed_properties
+                        );
+                    },
+                ),
             )
         }
     }
@@ -50,7 +57,7 @@ fn get_status_changed(properties: &PropMap) -> Option<PlaybackStatus> {
     }
 }
 
-fn get_song_from_dbus_properties(properties: PropMap) -> Option<Song> {
+fn get_song_from_dbus_properties(properties: &PropMap) -> Option<Song> {
     let metadata = &properties.get("Metadata")?.0;
 
     let mut iter = metadata.as_iter().unwrap();

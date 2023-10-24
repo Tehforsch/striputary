@@ -20,6 +20,7 @@ use config_file::ConfigFile;
 use log::error;
 use log::info;
 use log::LevelFilter;
+use recording::dbus::DbusConnection;
 use service::Service;
 use simplelog::ColorChoice;
 use simplelog::ConfigBuilder;
@@ -37,12 +38,15 @@ struct ParseOpts {
     service: Option<Service>,
     #[clap(short, parse(from_occurrences))]
     pub verbosity: usize,
+    #[clap(long)]
+    pub listen_dbus: bool,
 }
 
 #[derive(Clone)]
 pub struct Opts {
     pub output_dir: PathBuf,
     service: Service,
+    pub listen_dbus: bool,
 }
 
 impl Opts {
@@ -67,6 +71,7 @@ panic!("Need an output folder - either pass it as a command line argument or spe
         Opts {
             output_dir,
             service,
+            listen_dbus: opts.listen_dbus,
         }
     }
 }
@@ -79,8 +84,21 @@ fn main() {
     }
     init_logging(opts.verbosity);
     let opts = Opts::new(opts, config_file.ok());
-    info!("Using service: {}", opts.service);
-    run_gui(&opts);
+    if opts.listen_dbus {
+        listen_dbus(&opts);
+    } else {
+        info!("Using service: {}", opts.service);
+        run_gui(&opts);
+    }
+}
+
+fn listen_dbus(opts: &Opts) {
+    let conn = DbusConnection::new(&opts.service);
+    loop {
+        for ev in conn.get_new_events() {
+            dbg!(ev);
+        }
+    }
 }
 
 fn init_logging(verbosity: usize) {
@@ -119,6 +137,7 @@ mod tests {
             output_dir: Some("".into()),
             service: None,
             verbosity: 0,
+            listen_dbus: false,
         }
     }
 
@@ -183,6 +202,7 @@ mod tests {
             output_dir: None,
             service: None,
             verbosity: 0,
+            listen_dbus: false,
         };
         let _opts = Opts::new(p_opts.clone(), None);
     }
