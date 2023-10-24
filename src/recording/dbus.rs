@@ -33,7 +33,7 @@ impl DbusConnection {
         // for cutting the songs since they fluctuate way too much to be precise.
         self.connection
             .incoming(100)
-            .filter_map(|msg| dbg!(PC::from_message(&msg)))
+            .filter_map(|msg| PC::from_message(&msg))
             .map(move |pc| pc.into())
     }
 

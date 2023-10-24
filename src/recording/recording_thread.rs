@@ -16,6 +16,7 @@ use crate::config::TIME_AFTER_SESSION_END;
 use crate::config::TIME_BEFORE_SESSION_START;
 use crate::config::TIME_BETWEEN_SUBSEQUENT_DBUS_COMMANDS;
 use crate::config::WAIT_TIME_BEFORE_FIRST_SONG;
+use crate::recording::dbus_event::PlaybackStatus;
 use crate::recording_session::RecordingSession;
 use crate::recording_session::SessionPath;
 use crate::song::Song;
@@ -87,7 +88,6 @@ impl RecordingThread {
         debug!("Begin pre-session phase");
         self.dbus.start_playback()?;
         thread::sleep(TIME_BEFORE_SESSION_START);
-        self.dbus.stop_playback()?;
         debug!("Go to beginning of song");
         self.dbus.previous_song()?;
         thread::sleep(WAIT_TIME_BEFORE_FIRST_SONG);
@@ -100,16 +100,18 @@ impl RecordingThread {
         loop {
             // collect here to make borrow checker happy
             let new_events: Vec<_> = self.dbus.get_new_events().collect();
-            for event in new_events.iter() {
-                match event {
-                    DbusEvent::PlaybackStopped => {
-                        return Ok(RecordingStatus::FinishedOrInterrupted);
+            if !new_events.is_empty() {
+                self.dbus_events.extend(new_events.clone());
+                for event in new_events {
+                    match event {
+                        DbusEvent::StatusChanged(PlaybackStatus::Paused) => {
+                            return Ok(RecordingStatus::FinishedOrInterrupted);
+                        }
+                        _ => {}
                     }
-                    _ => {}
                 }
+                self.log_new_songs();
             }
-            self.dbus_events.extend(new_events);
-            self.log_new_songs();
         }
     }
 
@@ -140,5 +142,6 @@ impl RecordingThread {
 
     fn log_new_song(&mut self, song: &Song) {
         self.song_sender.send(song.clone()).unwrap();
+        info!("Now recording song: {}", song);
     }
 }

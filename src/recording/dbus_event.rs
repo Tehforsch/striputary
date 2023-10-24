@@ -1,39 +1,57 @@
 use std::collections::HashMap;
 
+use dbus::arg::PropMap;
 use dbus::arg::RefArg;
 use dbus::ffidisp::stdintf::org_freedesktop_dbus::PropertiesPropertiesChanged as PC;
+use log::error;
 
 use crate::song::Song;
 
 #[derive(Clone, Debug)]
+pub enum PlaybackStatus {
+    Playing,
+    Paused,
+}
+
+#[derive(Clone, Debug)]
 pub enum DbusEvent {
     NewSong(Song),
-    PlaybackStopped,
+    StatusChanged(PlaybackStatus),
 }
 
 impl From<PC> for DbusEvent {
     fn from(properties: PC) -> DbusEvent {
-        let playback_stopped = is_playback_stopped(&properties);
-        if playback_stopped {
-            DbusEvent::PlaybackStopped
+        assert!(properties.invalidated_properties.is_empty(), "Invalidated properties not empty, but contains: {:?}. Check if this contains relevant information.", &properties.invalidated_properties);
+        let status_changed = get_status_changed(&properties.changed_properties);
+        if let Some(status) = status_changed {
+            DbusEvent::StatusChanged(status)
         } else {
-            DbusEvent::NewSong(get_song_from_dbus_properties(properties).unwrap())
+            DbusEvent::NewSong(
+                get_song_from_dbus_properties(properties.changed_properties).unwrap(),
+            )
         }
     }
 }
 
-fn is_playback_stopped(properties: &PC) -> bool {
-    let has_playback_status_entry = properties.changed_properties.contains_key("PlaybackStatus");
+fn get_status_changed(properties: &PropMap) -> Option<PlaybackStatus> {
+    let has_playback_status_entry = properties.contains_key("PlaybackStatus");
     if has_playback_status_entry {
-        let variant = &properties.changed_properties["PlaybackStatus"];
-        (variant.0).as_str().unwrap() == "Paused"
+        let variant = &properties["PlaybackStatus"];
+        match variant.0.as_str().unwrap() {
+            "Paused" => Some(PlaybackStatus::Paused),
+            "Playing" => Some(PlaybackStatus::Playing),
+            x => {
+                error!("Unknown playback status variant: {}", x);
+                None
+            }
+        }
     } else {
-        false
+        None
     }
 }
 
-fn get_song_from_dbus_properties(properties: PC) -> Option<Song> {
-    let metadata = &properties.changed_properties.get("Metadata")?.0;
+fn get_song_from_dbus_properties(properties: PropMap) -> Option<Song> {
+    let metadata = &properties.get("Metadata")?.0;
 
     let mut iter = metadata.as_iter().unwrap();
     let mut dict = Metadata(HashMap::<&str, Box<dyn RefArg>>::new());

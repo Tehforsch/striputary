@@ -20,10 +20,15 @@ pub struct RecordingSession {
 
 impl RecordingSession {
     pub fn from_events(events: &[DbusEvent]) -> RecordingSession {
-        dbg!(&events);
         RecordingSession {
             estimated_time_first_song: Some(0.0),
-            songs: vec![],
+            songs: events
+                .iter()
+                .filter_map(|event| match event {
+                    DbusEvent::NewSong(song) => Some(song.clone()),
+                    DbusEvent::StatusChanged(_) => None,
+                })
+                .collect(),
         }
     }
 
