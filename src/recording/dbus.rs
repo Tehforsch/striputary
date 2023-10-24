@@ -37,39 +37,23 @@ impl DbusConnection {
         }
     }
 
-    pub fn get_new_events<'a>(
-        &'a self,
-        last_song: Option<&'a Song>,
-    ) -> impl Iterator<Item = DbusEvent> + 'a {
+    pub fn get_new_events<'a>(&'a self) -> impl Iterator<Item = DbusEvent> + 'a {
         // We could collect the dbus timestamps but they are basically useless
         // for cutting the songs since they fluctuate way too much to be precise.
         self.connection
             .incoming(100)
-            .filter_map(|msg| PC::from_message(&msg))
-            .filter_map(move |pc| self.handle_dbus_properties_changed_signal(last_song, pc))
+            .filter_map(|msg| PC::from_message(&dbg!(msg)))
+            .filter_map(move |pc| self.handle_dbus_properties_changed_signal(pc))
     }
 
-    pub fn handle_dbus_properties_changed_signal(
-        &self,
-        last_song: Option<&Song>,
-        properties: PC,
-    ) -> Option<DbusEvent> {
+    pub fn handle_dbus_properties_changed_signal(&self, properties: PC) -> Option<DbusEvent> {
         let playback_stopped = is_playback_stopped(&properties);
         if playback_stopped {
             Some(DbusEvent::PlaybackStopped)
         } else {
             let song = get_song_from_dbus_properties(properties);
-            // We get multiple dbus messages on every song change for every property that changes.
-            // Find out whether the song actually changed (or whether we havent recorded anything so far)
             if let Some(song) = song {
-                let is_different_song = last_song
-                    .map(|last_song| last_song != &song)
-                    .unwrap_or(true);
-                if is_different_song {
-                    Some(DbusEvent::NewSong(song))
-                } else {
-                    None
-                }
+                Some(DbusEvent::NewSong(song))
             } else {
                 None
             }

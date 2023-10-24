@@ -92,14 +92,21 @@ impl RecordingThread {
         self.session.estimated_time_first_song = Some(self.recorder.time_since_start_secs());
         loop {
             // collect here to make borrow checker happy
-            let new_events: Vec<_> = self
-                .dbus
-                .get_new_events(self.session.songs.last())
-                .collect();
+            let new_events: Vec<_> = self.dbus.get_new_events().collect();
             for event in new_events {
                 match event {
                     DbusEvent::NewSong(song) => {
-                        self.add_new_song(song)?;
+                        // We get multiple dbus messages on every song change for every property that changes.
+                        // Find out whether the song actually changed (or whether we havent recorded anything so far)
+                        let is_different_song = self
+                            .session
+                            .songs
+                            .last()
+                            .map(|last_song| last_song != &song)
+                            .unwrap_or(true);
+                        if is_different_song {
+                            self.add_new_song(song)?;
+                        }
                     }
                     DbusEvent::PlaybackStopped => {
                         return Ok(RecordingStatus::FinishedOrInterrupted);
