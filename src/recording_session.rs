@@ -26,7 +26,9 @@ impl RecordingSession {
                 .iter()
                 .filter_map(|event| match event {
                     DbusEvent::NewSong(song) => Some(song.clone()),
+                    DbusEvent::NewInvalidSong(_) => None,
                     DbusEvent::StatusChanged(_) => None,
+                    DbusEvent::PlayerInformation(_) => None,
                 })
                 .collect(),
         }

@@ -14,29 +14,34 @@ pub enum PlaybackStatus {
 }
 
 #[derive(Clone, Debug)]
+pub enum PlayerInformation {
+    CanGoPrevious(bool),
+    CanGoNext(bool),
+}
+
+#[derive(Clone, Debug)]
 pub enum DbusEvent {
     NewSong(Song),
+    NewInvalidSong(Song),
     StatusChanged(PlaybackStatus),
+    PlayerInformation(PlayerInformation),
 }
 
 impl From<PC> for DbusEvent {
     fn from(properties: PC) -> DbusEvent {
         assert!(properties.invalidated_properties.is_empty(), "Invalidated properties not empty, but contains: {:?}. Check if this contains relevant information.", &properties.invalidated_properties);
-        let status_changed = get_status_changed(&properties.changed_properties);
-        if let Some(status) = status_changed {
-            DbusEvent::StatusChanged(status)
-        } else {
-            DbusEvent::NewSong(
-                get_song_from_dbus_properties(&properties.changed_properties).unwrap_or_else(
-                    || {
-                        panic!(
-                            "Failed to get song from changed properties: {:?}",
-                            &properties.changed_properties
-                        );
-                    },
-                ),
-            )
-        }
+        let properties = &properties.changed_properties;
+        get_status_changed(properties)
+            .map(|status| DbusEvent::StatusChanged(status))
+            .or(get_player_information(properties).map(|info| DbusEvent::PlayerInformation(info)))
+            .unwrap_or_else(|| {
+                let (song, is_valid) = get_song_from_dbus_properties(properties);
+                if is_valid {
+                    DbusEvent::NewSong(song)
+                } else {
+                    DbusEvent::NewInvalidSong(song)
+                }
+            })
     }
 }
 
@@ -57,8 +62,19 @@ fn get_status_changed(properties: &PropMap) -> Option<PlaybackStatus> {
     }
 }
 
-fn get_song_from_dbus_properties(properties: &PropMap) -> Option<Song> {
-    let metadata = &properties.get("Metadata")?.0;
+fn get_player_information(properties: &PropMap) -> Option<PlayerInformation> {
+    if properties.contains_key("CanGoPrevious") {
+        Some(PlayerInformation::CanGoPrevious(
+            properties["CanGoPrevious"].as_u64().unwrap() != 0,
+        ))
+    } else {
+        None
+    }
+}
+
+fn get_song_from_dbus_properties(properties: &PropMap) -> (Song, bool) {
+    dbg!(properties);
+    let metadata = &properties.get("Metadata").unwrap().0;
 
     let mut iter = metadata.as_iter().unwrap();
     let mut dict = Metadata(HashMap::<&str, Box<dyn RefArg>>::new());
@@ -66,7 +82,9 @@ fn get_song_from_dbus_properties(properties: &PropMap) -> Option<Song> {
         let value = iter.next().unwrap();
         dict.0.insert(key.as_str().unwrap(), Box::new(value));
     }
-    Some(dict.into()).filter(is_valid_song)
+    let song = dict.into();
+    let is_valid = is_valid_song(&song);
+    (song, is_valid)
 }
 
 struct Metadata<'a>(HashMap<&'a str, Box<dyn RefArg + 'a>>);
