@@ -7,10 +7,8 @@ use anyhow::Result;
 use chrono::Local;
 use log::error;
 
-use crate::config;
 use crate::cut::get_excerpt_collection;
 use crate::excerpt_collection::ExcerptCollection;
-use crate::recording_session::RecordingSession;
 use crate::recording_session::RecordingSessionWithPath;
 use crate::recording_session::SessionPath;
 

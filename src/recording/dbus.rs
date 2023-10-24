@@ -19,6 +19,7 @@ pub struct DbusConnection {
     connection: Connection,
 }
 
+#[derive(Clone, Debug)]
 pub enum DbusEvent {
     NewSong(Song),
     PlaybackStopped,

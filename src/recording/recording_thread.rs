@@ -1,4 +1,3 @@
-use std::path::Path;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
 use std::sync::mpsc::Sender;
@@ -29,6 +28,7 @@ pub struct RecordingThread {
     recorder: Recorder,
     dbus: DbusConnection,
     session_dir: SessionPath,
+    num_songs: usize,
 }
 
 impl RecordingThread {
@@ -46,6 +46,7 @@ impl RecordingThread {
             recorder,
             dbus: DbusConnection::new(&opts.service),
             session_dir: session_dir.clone(),
+            num_songs: 0,
         };
         recorder
     }
@@ -53,9 +54,13 @@ impl RecordingThread {
     pub fn record_new_session(mut self) -> Result<(RecordingStatus, RecordingSession)> {
         let status = self.polling_loop()?;
         self.stop()?;
-        let session = RecordingSession::from_events(self.dbus_events);
-        session.save(&self.session_dir);
+        let session = self.get_session();
+        session.save(&self.session_dir).unwrap();
         Ok((status, session))
+    }
+
+    fn get_session(&self) -> RecordingSession {
+        RecordingSession::from_events(&self.dbus_events)
     }
 
     fn stop(&mut self) -> Result<()> {
@@ -104,7 +109,7 @@ impl RecordingThread {
                 }
             }
             self.dbus_events.extend(new_events);
-            self.check_new_songs();
+            self.log_new_songs();
         }
     }
 
@@ -117,7 +122,23 @@ impl RecordingThread {
         info!("Recording finished.");
     }
 
-    fn check_new_songs(&self) {
-        todo!()
+    fn log_new_songs(&mut self) {
+        // Because we want the [DbusEvent] -> RecordingSession mapping
+        // to be pure, we compute it everytime we get a new dbus event
+        // and then check if any new songs have been recorded in the
+        // dbus events. This is slightly awkwardly but preferable to having
+        // lots of mangled state.
+        let session = self.get_session();
+        if session.songs.len() > self.num_songs {
+            for song in session.songs[self.num_songs..].iter() {
+                self.log_new_song(song);
+            }
+            session.save(&self.session_dir).unwrap();
+        }
+        self.num_songs = session.songs.len();
+    }
+
+    fn log_new_song(&mut self, song: &Song) {
+        self.song_sender.send(song.clone()).unwrap();
     }
 }

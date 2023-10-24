@@ -17,7 +17,6 @@ use crate::config::READ_BUFFER;
 use crate::config::{self};
 use crate::excerpt_collection::ExcerptCollection;
 use crate::excerpt_collection::NamedExcerpt;
-use crate::recording_session::RecordingSession;
 use crate::recording_session::RecordingSessionWithPath;
 use crate::song::Song;
 use crate::wav::extract_audio;
