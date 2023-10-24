@@ -125,7 +125,10 @@ impl RecordingThread {
     }
 
     fn final_buffer_phase(&self) {
-        debug!("Record final buffer for a few seconds");
+        info!(
+            "Recording stopped. Recording final buffer for {} seconds.",
+            TIME_AFTER_SESSION_END.as_secs()
+        );
         thread::sleep(TIME_AFTER_SESSION_END);
         info!("Recording finished.");
     }
