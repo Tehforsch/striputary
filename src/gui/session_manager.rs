@@ -11,24 +11,13 @@ use crate::config;
 use crate::cut::get_excerpt_collection;
 use crate::excerpt_collection::ExcerptCollection;
 use crate::recording_session::RecordingSession;
+use crate::recording_session::RecordingSessionWithPath;
+use crate::recording_session::SessionPath;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum SessionIdentifier {
     Old(usize),
     New,
-}
-
-#[derive(Clone)]
-pub struct SessionPath(pub PathBuf);
-
-impl SessionPath {
-    pub fn get_yaml_file(&self) -> PathBuf {
-        self.0.join(config::DEFAULT_SESSION_FILE)
-    }
-
-    pub fn get_buffer_file(&self) -> PathBuf {
-        self.0.join(config::DEFAULT_BUFFER_FILE)
-    }
 }
 
 pub struct SessionManager {
@@ -86,7 +75,7 @@ impl SessionManager {
     pub fn get_currently_selected_collection(&self) -> Option<ExcerptCollection> {
         let session_dir = self.get_currently_selected()?.0;
         if session_dir.is_dir() {
-            RecordingSession::from_parent_dir(&session_dir)
+            RecordingSessionWithPath::load_from_dir(&session_dir)
                 .map(get_excerpt_collection)
                 .map_err(|x| {
                     error!("{}", x);

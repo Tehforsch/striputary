@@ -18,6 +18,7 @@ use crate::config::{self};
 use crate::excerpt_collection::ExcerptCollection;
 use crate::excerpt_collection::NamedExcerpt;
 use crate::recording_session::RecordingSession;
+use crate::recording_session::RecordingSessionWithPath;
 use crate::song::Song;
 use crate::wav::extract_audio;
 
@@ -32,14 +33,14 @@ pub struct CutInfo {
 
 impl CutInfo {
     pub fn new(
-        session: &RecordingSession,
+        session: &RecordingSessionWithPath,
         song: Song,
         start_time: AudioTime,
         end_time: AudioTime,
         num_in_recording: usize,
     ) -> Self {
-        let buffer_file = session.get_buffer_file();
-        let music_dir = session.get_music_dir();
+        let buffer_file = session.path.get_buffer_file();
+        let music_dir = session.path.get_music_dir();
         CutInfo {
             song,
             buffer_file,
@@ -98,10 +99,10 @@ fn determine_cut_offset(audio_excerpts: &[AudioExcerpt], cut_timestamps: &[f64])
     min.unwrap().1
 }
 
-pub fn get_excerpt_collection(session: RecordingSession) -> ExcerptCollection {
+pub fn get_excerpt_collection(session: RecordingSessionWithPath) -> ExcerptCollection {
     let (excerpts, songs) = get_all_valid_excerpts_and_songs(&session);
     let timestamps =
-        get_cut_timestamps_from_song_lengths(&songs, session.estimated_time_first_song.unwrap());
+        get_cut_timestamps_from_song_lengths(&songs, session.estimated_time_first_song());
     let offset_guess = determine_cut_offset(&excerpts, &timestamps);
     let excerpts: Vec<NamedExcerpt> = excerpts
         .into_iter()
@@ -123,12 +124,14 @@ pub fn get_excerpt_collection(session: RecordingSession) -> ExcerptCollection {
     }
 }
 
-fn get_all_valid_excerpts_and_songs(session: &RecordingSession) -> (Vec<AudioExcerpt>, Vec<Song>) {
+fn get_all_valid_excerpts_and_songs(
+    session: &RecordingSessionWithPath,
+) -> (Vec<AudioExcerpt>, Vec<Song>) {
     let mut audio_excerpts = Vec::new();
     let mut valid_songs = Vec::new();
-    let mut cut_time = session.estimated_time_first_song.unwrap();
-    for song in session.songs.iter() {
-        let audio_excerpt = get_excerpt(&session.get_buffer_file(), cut_time);
+    let mut cut_time = session.estimated_time_first_song();
+    for song in session.session.songs.iter() {
+        let audio_excerpt = get_excerpt(&session.path.get_buffer_file(), cut_time);
         if let Some(excerpt) = audio_excerpt {
             audio_excerpts.push(excerpt);
             valid_songs.push(song.clone());
@@ -137,7 +140,7 @@ fn get_all_valid_excerpts_and_songs(session: &RecordingSession) -> (Vec<AudioExc
         }
         cut_time += song.length;
     }
-    let audio_excerpt_after_last_song = get_excerpt(&session.get_buffer_file(), cut_time);
+    let audio_excerpt_after_last_song = get_excerpt(&session.path.get_buffer_file(), cut_time);
     if let Some(audio_excerpt_after_last_song) = audio_excerpt_after_last_song {
         audio_excerpts.push(audio_excerpt_after_last_song);
     }

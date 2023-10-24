@@ -1,5 +1,5 @@
 use crate::audio_excerpt::AudioExcerpt;
-use crate::recording_session::RecordingSession;
+use crate::recording_session::RecordingSessionWithPath;
 use crate::song::Song;
 
 #[derive(Clone)]
@@ -12,7 +12,7 @@ pub struct NamedExcerpt {
 
 #[derive(Clone)]
 pub struct ExcerptCollection {
-    pub session: RecordingSession,
+    pub session: RecordingSessionWithPath,
     pub excerpts: Vec<NamedExcerpt>,
     pub offset_guess: f64,
 }
@@ -27,7 +27,7 @@ impl ExcerptCollection {
     }
 
     pub fn name(&self) -> String {
-        let first_song = self.session.songs.first();
+        let first_song = self.session.session.songs.first();
         match first_song {
             Some(first_song) => format!("{:?} - {:?}", first_song.artist, first_song.album),
             None => "".into(),

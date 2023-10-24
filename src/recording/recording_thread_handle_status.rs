@@ -1,5 +1,5 @@
 use super::recording_thread_handle::AsyncRecorder;
-use crate::gui::session_manager::SessionPath;
+use crate::recording_session::SessionPath;
 use crate::song::Song;
 use crate::Opts;
 

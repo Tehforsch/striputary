@@ -11,8 +11,8 @@ use super::recording_status::RecordingStatus;
 use super::recording_thread::RecordingThread;
 use crate::config;
 use crate::data_stream::DataStream;
-use crate::gui::session_manager::SessionPath;
 use crate::recording_session::RecordingSession;
+use crate::recording_session::SessionPath;
 use crate::song::Song;
 use crate::Opts;
 
