@@ -7,3 +7,4 @@ mod recording_thread_handle;
 pub mod recording_thread_handle_status;
 
 pub use recorder::Recorder;
+pub use recorder::SoundServer;

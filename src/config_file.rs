@@ -8,12 +8,14 @@ use anyhow::Result;
 use serde::Deserialize;
 
 use crate::config;
+use crate::recording::SoundServer;
 use crate::service::Service;
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct ConfigFile {
     pub output_dir: PathBuf,
     pub service: Option<Service>,
+    pub sound_server: Option<SoundServer>,
 }
 
 impl ConfigFile {

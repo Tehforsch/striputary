@@ -21,6 +21,7 @@ use log::error;
 use log::info;
 use log::LevelFilter;
 use recording::dbus::DbusConnection;
+use recording::SoundServer;
 use service::Service;
 use simplelog::ColorChoice;
 use simplelog::ConfigBuilder;
@@ -36,6 +37,7 @@ use crate::gui::StriputaryGui;
 struct ParseOpts {
     pub output_dir: Option<PathBuf>,
     service: Option<Service>,
+    sound_server: Option<SoundServer>,
     #[clap(short, parse(from_occurrences))]
     pub verbosity: usize,
     #[clap(long)]
@@ -46,6 +48,7 @@ struct ParseOpts {
 pub struct Opts {
     pub output_dir: PathBuf,
     service: Service,
+    sound_server: SoundServer,
     pub listen_dbus: bool,
 }
 
@@ -57,7 +60,17 @@ impl Opts {
             .unwrap_or_else(|| {
                 let service = Service::default();
                 info!(
-                    "No service specified in command line options or config file. Using default."
+                    "No service specified in command line options or config file. Using default: {:?}.", service
+                );
+                service
+            });
+        let sound_server = opts
+            .sound_server
+            .or(config_file.as_ref().and_then(|file| file.sound_server))
+            .unwrap_or_else(|| {
+                let service = SoundServer::default();
+                info!(
+                    "No sound server specified in command line options or config file. Using default: {:?}.", service
                 );
                 service
             });
@@ -71,6 +84,7 @@ panic!("Need an output folder - either pass it as a command line argument or spe
         Opts {
             output_dir,
             service,
+            sound_server,
             listen_dbus: opts.listen_dbus,
         }
     }
@@ -136,6 +150,7 @@ mod tests {
         ParseOpts {
             output_dir: Some("".into()),
             service: None,
+            sound_server: None,
             verbosity: 0,
             listen_dbus: false,
         }
@@ -145,6 +160,7 @@ mod tests {
         ConfigFile {
             output_dir: "from_config_file".into(),
             service: None,
+            sound_server: None,
         }
     }
 
@@ -201,6 +217,7 @@ mod tests {
         let p_opts = ParseOpts {
             output_dir: None,
             service: None,
+            sound_server: None,
             verbosity: 0,
             listen_dbus: false,
         };
