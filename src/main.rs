@@ -22,7 +22,7 @@ use log::error;
 use log::info;
 use log::LevelFilter;
 use recording::dbus::DbusConnection;
-use recording::recording_thread_handle_status::RecordingThreadHandleStatus;
+use recording::recorder::Recorder;
 use recording::SoundServer;
 use recording_session::SessionPath;
 use service::Service;
@@ -127,12 +127,7 @@ fn main() {
 
 fn record(opts: &Opts) {
     let path = SessionPath(get_new_name(&opts.output_dir));
-    let recorder = RecordingThreadHandleStatus::new_running(&opts, &path);
-    loop {
-        if !recorder.is_running() {
-            return;
-        }
-    }
+    let (_, _) = Recorder::new(&opts, &path).record_new_session().unwrap();
 }
 
 fn listen_dbus(opts: &Opts) {
@@ -182,6 +177,7 @@ mod tests {
             sound_server: None,
             verbosity: 0,
             listen_dbus: false,
+            record: false,
         }
     }
 
@@ -249,6 +245,7 @@ mod tests {
             sound_server: None,
             verbosity: 0,
             listen_dbus: false,
+            record: false,
         };
         let _opts = Opts::new(p_opts.clone(), None);
     }

@@ -27,7 +27,6 @@ use crate::cut::CutInfo;
 use crate::excerpt_collection::ExcerptCollection;
 use crate::gui::session_manager::SessionIdentifier;
 use crate::gui::session_manager::SessionManager;
-use crate::recording::recording_thread_handle_status::RecordingThreadHandleStatus;
 use crate::song::format_title;
 use crate::song::Song;
 use crate::Opts;
@@ -38,12 +37,10 @@ struct SongIdentifier {
 }
 
 pub struct StriputaryGui {
-    opts: Opts,
     collection: Option<ExcerptCollection>,
     plots: Vec<ExcerptPlot>,
     scroll_position: usize,
     cut_thread: CuttingThreadHandle,
-    record_thread: RecordingThreadHandleStatus,
     current_playback: Option<(SongIdentifier, PlaybackThreadHandle)>,
     last_touched_song: Option<SongIdentifier>,
     should_repaint: bool,
@@ -54,12 +51,10 @@ impl StriputaryGui {
     pub fn new(opts: &Opts) -> Self {
         let session_manager = SessionManager::new(&opts.output_dir);
         let mut gui = Self {
-            opts: opts.clone(),
             collection: None,
             plots: vec![],
             scroll_position: 0,
             cut_thread: CuttingThreadHandle::default(),
-            record_thread: RecordingThreadHandleStatus::new_stopped(),
             current_playback: None,
             last_touched_song: None,
             should_repaint: false,
@@ -115,15 +110,6 @@ impl StriputaryGui {
         }
     }
 
-    fn start_recording(&mut self) {
-        self.session_manager.select_new();
-        self.load_selected_session();
-        let path = self.session_manager.get_currently_selected().unwrap();
-        if !self.record_thread.is_running() {
-            self.record_thread = RecordingThreadHandleStatus::new_running(&self.opts, &path);
-        }
-    }
-
     fn select_session(&mut self, identifier: SessionIdentifier) {
         self.session_manager.select(identifier);
         self.load_selected_session();
@@ -168,7 +154,6 @@ impl StriputaryGui {
     }
 
     fn add_dir_selection_bar(&mut self, ui: &mut Ui) {
-        self.add_record_button_or_error_message(ui);
         ui.add(Label::new(
             RichText::new("Previous sessions:").text_style(TextStyle::Heading),
         ));
@@ -187,35 +172,6 @@ impl StriputaryGui {
             if ui.add(button).clicked() {
                 self.select_session(*i);
             }
-        }
-    }
-
-    fn add_record_button_or_error_message(&mut self, ui: &mut Ui) {
-        if !self.record_thread.is_running() {
-            self.add_record_button(ui);
-        }
-        if let RecordingThreadHandleStatus::Failed(ref error) = self.record_thread {
-            self.add_recording_thread_error_message(ui, error);
-        }
-    }
-
-    fn add_record_button(&mut self, ui: &mut Ui) {
-        let record_button = self.add_large_button(ui, "Record new session");
-        if record_button.clicked() {
-            self.start_recording();
-        }
-    }
-
-    fn add_recording_thread_error_message(&self, ui: &mut Ui, error: &anyhow::Error) {
-        let label = Label::new(RichText::new(error.to_string()).color(Color32::RED));
-        ui.add(label);
-    }
-
-    fn add_labels_for_recorded_songs(&self, ui: &mut Ui) {
-        let songs = self.record_thread.get_songs();
-        for song in songs.iter().rev() {
-            let label = Label::new(RichText::new(song.to_string()));
-            ui.add(label);
         }
     }
 
@@ -277,19 +233,15 @@ impl StriputaryGui {
         let panel_height = ctx.used_size().y;
         let num_plots_shown = (panel_height / config::PLOT_HEIGHT).ceil() as i32;
         egui::CentralPanel::default().show(ctx, |ui| {
-            if self.record_thread.is_running() {
-                self.add_labels_for_recorded_songs(ui);
-            } else {
-                for (plot_song, plot) in self
-                    .enumerate_visible_plots(num_plots_shown)
-                    .map(|(song_index, plot)| (SongIdentifier { song_index }, plot))
-                {
-                    Self::add_plot_labels(ui, plot);
-                    let offset = plot.show_and_get_offset(plot_song.song_index, ui, mouse_pos);
-                    if let Some(offset) = offset {
-                        clicked_song_and_offset = Some((plot_song, offset));
-                    };
-                }
+            for (plot_song, plot) in self
+                .enumerate_visible_plots(num_plots_shown)
+                .map(|(song_index, plot)| (SongIdentifier { song_index }, plot))
+            {
+                Self::add_plot_labels(ui, plot);
+                let offset = plot.show_and_get_offset(plot_song.song_index, ui, mouse_pos);
+                if let Some(offset) = offset {
+                    clicked_song_and_offset = Some((plot_song, offset));
+                };
             }
         });
         if let Some((clicked_song, offset)) = clicked_song_and_offset {
@@ -342,7 +294,6 @@ impl StriputaryGui {
 
 impl App for StriputaryGui {
     fn update(&mut self, ctx: &egui::Context, _: &mut Frame) {
-        self.record_thread.update();
         self.add_side_panel(ctx);
         self.handle_playback_markers();
         self.add_central_panel(ctx);

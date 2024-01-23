@@ -1,184 +1,118 @@
-use std::fmt::Display;
-use std::fs::create_dir_all;
-use std::path::Path;
-use std::process::Command;
-use std::str::FromStr;
+use std::thread::{self};
 use std::time::Instant;
 
-use anyhow::anyhow;
-use anyhow::Context;
 use anyhow::Result;
-use log::debug;
-use regex::Captures;
-use regex::Regex;
-use serde::Deserialize;
-use serde::Serialize;
-use subprocess::Exec;
-use subprocess::Popen;
+use log::info;
 
-use crate::config::STRIPUTARY_SINK_NAME;
+use super::dbus::DbusConnection;
+use super::dbus_event::DbusEvent;
+use super::dbus_event::TimedDbusEvent;
+use super::dbus_event::Timestamp;
+use super::AudioRecorder;
+use super::RecordingStatus;
+use crate::config::TIME_AFTER_SESSION_END;
+use crate::recording::dbus_event::PlaybackStatus;
+use crate::recording_session::RecordingSession;
 use crate::recording_session::SessionPath;
-use crate::service::Service;
+use crate::song::Song;
 use crate::Opts;
 
-#[derive(Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
-#[serde(rename_all = "snake_case")]
-pub enum SoundServer {
-    #[default]
-    Pulseaudio,
-    Pipewire,
-}
-
-impl FromStr for SoundServer {
-    type Err = serde_yaml::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // This is quite ugly, but ensures that the config file string representation
-        // is the same as in the command line options (which uses the FromStr impl),
-        // without adding any additional dependencies
-        serde_yaml::from_str(s)
-    }
-}
-
-impl Display for SoundServer {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // Similar to the from_str implementation, this is ugly but consistent.
-        write!(f, "{}", serde_yaml::to_string(self).unwrap())
-    }
-}
-
 pub struct Recorder {
-    process: Popen,
-    start_time: Instant,
+    dbus_events: Vec<TimedDbusEvent>,
+    recorder: AudioRecorder,
+    dbus: DbusConnection,
+    session_dir: SessionPath,
+    num_songs: usize,
+    recording_start_time: Instant,
 }
 
 impl Recorder {
-    pub fn start(opts: &Opts, session_path: &SessionPath) -> Result<Self> {
-        opts.sound_server.setup_recording(&opts, session_path)?;
-        Ok(Self {
-            process: opts
-                .sound_server
-                .start_recording_process(&session_path.get_buffer_file())?,
-            start_time: Instant::now(),
-        })
+    pub fn new(opts: &Opts, session_dir: &SessionPath) -> Self {
+        let recorder = AudioRecorder::start(opts, session_dir).unwrap();
+        let recorder = Self {
+            dbus_events: vec![],
+            recorder,
+            dbus: DbusConnection::new(&opts.service),
+            session_dir: session_dir.clone(),
+            num_songs: 0,
+            recording_start_time: Instant::now(),
+        };
+        recorder
     }
 
-    pub fn stop(&mut self) -> Result<()> {
-        self.process
-            .terminate()
-            .context("Failed to terminate parec while recording")?;
-        Ok(())
+    pub fn record_new_session(mut self) -> Result<(RecordingStatus, RecordingSession)> {
+        let status = self.polling_loop()?;
+        let session = self.get_session();
+        session.save(&self.session_dir).unwrap();
+        self.recorder.stop().unwrap();
+        Ok((status, session))
     }
 
-    pub fn time_since_start_secs(&self) -> f64 {
-        Instant::now().duration_since(self.start_time).as_millis() as f64 / 1000.0
-    }
-}
-
-impl SoundServer {
-    fn start_recording_process(&self, buffer_file: &Path) -> Result<Popen> {
-        let parec_cmd = Exec::cmd("parec")
-            .arg("-d")
-            .arg(format!("{}.monitor", STRIPUTARY_SINK_NAME))
-            .arg("--file-format=wav")
-            .arg(buffer_file.to_str().unwrap());
-        parec_cmd
-            .popen()
-            .context("Failed to execute record command - is parec installed?")
+    fn get_session(&self) -> RecordingSession {
+        RecordingSession::from_events(&self.dbus_events)
     }
 
-    fn setup_recording(&self, opts: &Opts, session_path: &SessionPath) -> Result<()> {
-        create_dir_all(&session_path.0).context("Failed to create session directory")?;
-        if session_path.get_buffer_file().exists() {
-            return Err(anyhow!(
-                "Buffer file already exists, not recording a new session."
-            ));
-        }
-        if !self.check_sink_exists()? {
-            debug!("Creating sink");
-            self.create_sink()?;
-        } else {
-            debug!("Sink already exists. Not creating sink");
-        }
-        let index = self.get_sink_input_index(&opts.service)?;
-        self.redirect_sink(index)
+    fn polling_loop(&mut self) -> Result<RecordingStatus> {
+        let status = self.recording_loop()?;
+        self.record_final_buffer();
+        Ok(status)
     }
 
-    fn redirect_sink(&self, index: i32) -> Result<()> {
-        Command::new("pactl")
-            .arg("move-sink-input")
-            .arg(format!("{}", index))
-            .arg(STRIPUTARY_SINK_NAME)
-            .output()
-            .context(
-                "Failed to execute sink redirection via pactl move-sink-input - is pactl installed?",
-            )?;
-        Ok(())
-    }
-
-    fn check_sink_exists(&self) -> Result<bool> {
-        let output = Command::new("pactl")
-            .arg("list")
-            .arg("sinks")
-            .output()
-            .context(
-                "Failed to execute sink list command (pacmd list-sinks) - is pacmd installed?.",
-            )?;
-        assert!(output.status.success());
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        Ok(stdout.contains(STRIPUTARY_SINK_NAME))
-    }
-
-    fn create_sink(&self) -> Result<()> {
-        let output = Command::new("pactl")
-            .arg("load-module")
-            .arg("module-null-sink")
-            .arg(format!("sink_name={}", STRIPUTARY_SINK_NAME))
-            .output()
-            .context("Failed to execute sink creation command.")?;
-        assert!(output.status.success());
-        Ok(())
-    }
-
-    fn get_sink_input_regex(&self) -> Regex {
-        match self {
-            SoundServer::Pipewire => {
-                Regex::new("Sink Input #([0-9]*).*?media.name = \"(.*?)\"").unwrap()
-            }
-            SoundServer::Pulseaudio => {
-                Regex::new("index: ([0-9]*).*?media.name = \"(.*?)\"").unwrap()
-            }
-        }
-    }
-
-    fn get_sink_input_index(&self, service: &Service) -> Result<i32> {
-        let output = Command::new("pactl")
-            .arg("list")
-            .arg("sink-inputs")
-            .output()
-            .context("Failed to execute list sink inputs command.")?;
-        assert!(output.status.success());
-        let stdout = String::from_utf8_lossy(&output.stdout).replace('\n', "");
-        let re = self.get_sink_input_regex();
-        for capture in re.captures_iter(&stdout) {
-            let name = self.get_sink_source_name_from_capture(&capture);
-            if let Ok(name) = name {
-                if name == service.sink_name() {
-                    return self.get_sink_index_from_capture(&capture);
+    fn recording_loop(&mut self) -> Result<RecordingStatus> {
+        loop {
+            // collect here to make borrow checker happy
+            let new_events: Vec<_> = self
+                .dbus
+                .get_new_events()
+                .map(|(event, instant)| {
+                    let duration = instant.duration_since(self.recording_start_time);
+                    TimedDbusEvent {
+                        event,
+                        timestamp: Timestamp::from_duration(duration),
+                    }
+                })
+                .collect();
+            if !new_events.is_empty() {
+                self.dbus_events.extend(new_events.clone());
+                for event in new_events {
+                    match event.event {
+                        DbusEvent::StatusChanged(PlaybackStatus::Paused) => {
+                            return Ok(RecordingStatus::FinishedOrInterrupted);
+                        }
+                        _ => {}
+                    }
                 }
+                self.log_new_songs();
             }
         }
-        Err(anyhow!("Failed to get sink input index"))
     }
 
-    fn get_sink_index_from_capture(&self, capture: &Captures) -> Result<i32> {
-        let sink_source_index = capture.get(1).context("Invalid line")?.as_str();
-        sink_source_index
-            .parse::<i32>()
-            .context("Integer conversion failed for sink index")
+    fn record_final_buffer(&self) {
+        info!(
+            "Recording stopped. Recording final buffer for {} seconds.",
+            TIME_AFTER_SESSION_END.as_secs()
+        );
+        thread::sleep(TIME_AFTER_SESSION_END);
+        info!("Recording finished.");
     }
 
-    fn get_sink_source_name_from_capture<'a>(&self, capture: &'a Captures) -> Result<&'a str> {
-        Ok(capture.get(2).context("Invalid line")?.as_str())
+    fn log_new_songs(&mut self) {
+        // Because we want the [DbusEvent] -> RecordingSession mapping
+        // to be pure, we compute it everytime we get a new dbus event
+        // and then check if any new songs have been recorded in the
+        // dbus events. This is slightly awkward but preferable to having
+        // lots of mangled state.
+        let session = self.get_session();
+        if session.songs.len() > self.num_songs {
+            for song in session.songs[self.num_songs..].iter() {
+                self.log_new_song(song);
+            }
+            session.save(&self.session_dir).unwrap();
+        }
+        self.num_songs = session.songs.len();
+    }
+
+    fn log_new_song(&mut self, song: &Song) {
+        info!("Now recording song: {}", song);
     }
 }
