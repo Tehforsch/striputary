@@ -22,7 +22,6 @@ use crate::service::Service;
 use crate::Opts;
 
 #[derive(Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
-#[serde(rename_all = "snake_case")]
 pub enum SoundServer {
     #[default]
     Pulseaudio,
@@ -168,7 +167,7 @@ impl SoundServer {
                 }
             }
         }
-        Err(anyhow!("Failed to get sink input index"))
+        Err(anyhow!("Failed to get sink input index. Make sure that the service `{}` is already running and playing audio.", service))
     }
 
     fn get_sink_index_from_capture(&self, capture: &Captures) -> Result<i32> {

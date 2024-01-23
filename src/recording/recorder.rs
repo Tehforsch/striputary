@@ -27,8 +27,8 @@ pub struct Recorder {
 }
 
 impl Recorder {
-    pub fn new(opts: &Opts, session_dir: &SessionPath) -> Self {
-        let recorder = AudioRecorder::start(opts, session_dir).unwrap();
+    pub fn new(opts: &Opts, session_dir: &SessionPath) -> Result<Self> {
+        let recorder = AudioRecorder::start(opts, session_dir)?;
         let recorder = Self {
             dbus_events: vec![],
             recorder,
@@ -37,7 +37,7 @@ impl Recorder {
             num_songs: 0,
             recording_start_time: Instant::now(),
         };
-        recorder
+        Ok(recorder)
     }
 
     pub fn record_new_session(mut self) -> Result<(RecordingStatus, RecordingSession)> {

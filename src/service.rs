@@ -8,7 +8,6 @@ use serde::Serialize;
 use crate::recording::dbus::get_instance_of_service;
 
 #[derive(Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
-#[serde(rename_all = "snake_case")]
 pub enum Service {
     #[default]
     SpotifyNative,
@@ -29,7 +28,9 @@ impl FromStr for Service {
 impl Display for Service {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Similar to the from_str implementation, this is ugly but consistent.
-        write!(f, "{}", serde_yaml::to_string(self).unwrap())
+        let s = serde_yaml::to_string(self).unwrap();
+        let s = s.trim();
+        write!(f, "{}", s)
     }
 }
 

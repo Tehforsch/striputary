@@ -32,8 +32,9 @@ impl ConfigFile {
     fn from_file(file: &Path) -> Result<ConfigFile> {
         let data =
             fs::read_to_string(file).context(format!("While reading config file at {:?}", file))?;
-        let mut config_file: ConfigFile =
-            serde_yaml::from_str(&data).context("Reading config file contents")?;
+        let mut config_file: ConfigFile = serde_yaml::from_str(&data)
+            .context("Reading config file contents")
+            .unwrap();
         config_file.output_dir = expanduser(&config_file.output_dir)?;
         Ok(config_file)
     }

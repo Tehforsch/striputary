@@ -15,6 +15,7 @@ pub mod wav;
 
 use std::path::PathBuf;
 
+use anyhow::Result;
 use clap::Parser;
 use config_file::ConfigFile;
 use gui::session_manager::get_new_name;
@@ -35,6 +36,13 @@ use time::UtcOffset;
 
 use crate::gui::StriputaryGui;
 
+#[derive(Parser, Debug, Clone)]
+pub enum Command {
+    Record,
+    Cut,
+    MonitorDbus,
+}
+
 #[derive(clap::StructOpt, Clone)]
 #[clap(version)]
 struct CliOpts {
@@ -50,22 +58,16 @@ struct CliOpts {
     sound_server: Option<SoundServer>,
     #[clap(short, parse(from_occurrences))]
     pub verbosity: usize,
-    /// Do not open the GUI and print out Dbus events instead.
-    /// Mainly used for debugging.
-    #[clap(long)]
-    pub listen_dbus: bool,
-    /// Do not open the GUI and record a new session directly.
-    #[clap(long)]
-    pub record: bool,
+    #[clap(subcommand)]
+    command: Command,
 }
 
 #[derive(Clone)]
 pub struct Opts {
     pub output_dir: PathBuf,
-    service: Service,
-    sound_server: SoundServer,
-    pub listen_dbus: bool,
-    pub record: bool,
+    pub service: Service,
+    pub sound_server: SoundServer,
+    pub command: Command,
 }
 
 impl Opts {
@@ -101,13 +103,12 @@ panic!("Need an output folder - either pass it as a command line argument or spe
             output_dir,
             service,
             sound_server,
-            listen_dbus: opts.listen_dbus,
-            record: opts.record,
+            command: opts.command,
         }
     }
 }
 
-fn main() {
+fn main() -> Result<()> {
     let opts = CliOpts::parse();
     let config_file = ConfigFile::read();
     if let Err(ref e) = config_file {
@@ -115,22 +116,23 @@ fn main() {
     }
     init_logging(opts.verbosity);
     let opts = Opts::new(opts, config_file.ok());
-    if opts.listen_dbus {
-        listen_dbus(&opts);
-    } else if opts.record {
-        record(&opts);
-    } else {
-        info!("Using service: {}", opts.service);
-        run_gui(&opts);
+    match opts.command {
+        Command::Record => record(&opts)?,
+        Command::Cut => run_gui(&opts),
+        Command::MonitorDbus => monitor_dbus(&opts),
     }
+    Ok(())
 }
 
-fn record(opts: &Opts) {
+fn record(opts: &Opts) -> Result<()> {
+    info!("Using service: {}", opts.service);
     let path = SessionPath(get_new_name(&opts.output_dir));
-    let (_, _) = Recorder::new(&opts, &path).record_new_session().unwrap();
+    let recorder = Recorder::new(&opts, &path)?;
+    let (_, _) = recorder.record_new_session()?;
+    Ok(())
 }
 
-fn listen_dbus(opts: &Opts) {
+fn monitor_dbus(opts: &Opts) {
     let conn = DbusConnection::new(&opts.service);
     loop {
         for ev in conn.get_new_events() {
@@ -168,6 +170,7 @@ mod tests {
     use crate::config_file::ConfigFile;
     use crate::service::Service;
     use crate::CliOpts;
+    use crate::Command;
     use crate::Opts;
 
     fn test_opts() -> CliOpts {
@@ -176,8 +179,7 @@ mod tests {
             service: None,
             sound_server: None,
             verbosity: 0,
-            listen_dbus: false,
-            record: false,
+            command: Command::Record,
         }
     }
 
@@ -244,8 +246,7 @@ mod tests {
             service: None,
             sound_server: None,
             verbosity: 0,
-            listen_dbus: false,
-            record: false,
+            command: Command::Record,
         };
         let _opts = Opts::new(p_opts.clone(), None);
     }
