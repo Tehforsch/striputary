@@ -1,4 +1,5 @@
 use std::process::Command;
+use std::time::Instant;
 
 use anyhow::anyhow;
 use anyhow::Context;
@@ -10,6 +11,8 @@ use log::trace;
 
 use super::dbus_event::DbusEvent;
 use crate::service::Service;
+
+pub const DBUS_LISTEN_TIMEOUT_MS: u32 = 2;
 
 pub struct DbusConnection {
     service: Service,
@@ -29,19 +32,18 @@ impl DbusConnection {
         }
     }
 
-    pub fn get_new_events<'a>(&'a self) -> impl Iterator<Item = DbusEvent> + 'a {
-        // We could collect the dbus timestamps but they are basically useless
-        // for cutting the songs since they fluctuate way too much to be precise.
+    pub fn get_new_events<'a>(&'a self) -> impl Iterator<Item = (DbusEvent, Instant)> + 'a {
         self.connection
-            .incoming(100)
+            .incoming(DBUS_LISTEN_TIMEOUT_MS)
             .filter_map(|msg| {
+                let instant = Instant::now();
                 trace!("Received dbus msg: {:?}", msg);
-                PC::from_message(&msg)
+                PC::from_message(&msg).map(|pc| (instant, pc))
             })
-            .map(move |pc| {
-                let ev = pc.into();
-                trace!("Received dbus event: {:?}", ev);
-                ev
+            .map(move |(instant, pc)| {
+                let event = pc.into();
+                trace!("Received dbus event: {:?}", event);
+                (event, instant)
             })
     }
 

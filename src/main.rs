@@ -110,7 +110,7 @@ fn listen_dbus(opts: &Opts) {
     let conn = DbusConnection::new(&opts.service);
     loop {
         for ev in conn.get_new_events() {
-            dbg!(ev);
+            println!("{:?}", ev);
         }
     }
 }

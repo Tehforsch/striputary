@@ -3,19 +3,18 @@ use std::sync::atomic::Ordering;
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::thread::{self};
+use std::time::Instant;
 
 use anyhow::Result;
-use log::debug;
 use log::info;
 
 use super::dbus::DbusConnection;
 use super::dbus_event::DbusEvent;
+use super::dbus_event::TimedDbusEvent;
+use super::dbus_event::Timestamp;
 use super::recording_status::RecordingStatus;
 use super::Recorder;
 use crate::config::TIME_AFTER_SESSION_END;
-use crate::config::TIME_BEFORE_SESSION_START;
-use crate::config::TIME_BETWEEN_SUBSEQUENT_DBUS_COMMANDS;
-use crate::config::WAIT_TIME_BEFORE_FIRST_SONG;
 use crate::recording::dbus_event::PlaybackStatus;
 use crate::recording_session::RecordingSession;
 use crate::recording_session::SessionPath;
@@ -25,11 +24,12 @@ use crate::Opts;
 pub struct RecordingThread {
     is_running: Arc<AtomicBool>,
     song_sender: Sender<Song>,
-    dbus_events: Vec<DbusEvent>,
+    dbus_events: Vec<TimedDbusEvent>,
     recorder: Recorder,
     dbus: DbusConnection,
     session_dir: SessionPath,
     num_songs: usize,
+    recording_start_time: Instant,
 }
 
 impl RecordingThread {
@@ -48,6 +48,7 @@ impl RecordingThread {
             dbus: DbusConnection::new(&opts.service),
             session_dir: session_dir.clone(),
             num_songs: 0,
+            recording_start_time: Instant::now(),
         };
         recorder
     }
@@ -70,40 +71,29 @@ impl RecordingThread {
     }
 
     fn polling_loop(&mut self) -> Result<RecordingStatus> {
-        self.initial_buffer_phase()?;
-        let status = self.recording_phase()?;
-        self.final_buffer_phase();
+        let status = self.recording_loop()?;
+        self.record_final_buffer();
         Ok(status)
     }
 
-    fn initial_buffer_phase(&self) -> Result<()> {
-        // Go to next song and back. This helps with missing metadata
-        // for the first track in some configurations.
-        self.dbus.next_song()?;
-        thread::sleep(TIME_BETWEEN_SUBSEQUENT_DBUS_COMMANDS);
-        self.dbus.previous_song()?;
-        // Add a small time buffer before starting the playback properly.
-        // This ensures that something starts playing, thus registering the
-        // pulse audio sink. Also it avoids overflows when calculating the offset
-        debug!("Begin pre-session phase");
-        self.dbus.start_playback()?;
-        thread::sleep(TIME_BEFORE_SESSION_START);
-        debug!("Go to beginning of song");
-        self.dbus.previous_song()?;
-        thread::sleep(WAIT_TIME_BEFORE_FIRST_SONG);
-        Ok(())
-    }
-
-    fn recording_phase(&mut self) -> Result<RecordingStatus> {
-        info!("Starting playback.");
-        self.dbus.start_playback()?;
+    fn recording_loop(&mut self) -> Result<RecordingStatus> {
         loop {
             // collect here to make borrow checker happy
-            let new_events: Vec<_> = self.dbus.get_new_events().collect();
+            let new_events: Vec<_> = self
+                .dbus
+                .get_new_events()
+                .map(|(event, instant)| {
+                    let duration = instant.duration_since(self.recording_start_time);
+                    TimedDbusEvent {
+                        event,
+                        timestamp: Timestamp::from_duration(duration),
+                    }
+                })
+                .collect();
             if !new_events.is_empty() {
                 self.dbus_events.extend(new_events.clone());
                 for event in new_events {
-                    match event {
+                    match event.event {
                         DbusEvent::StatusChanged(PlaybackStatus::Paused) => {
                             return Ok(RecordingStatus::FinishedOrInterrupted);
                         }
@@ -115,7 +105,7 @@ impl RecordingThread {
         }
     }
 
-    fn final_buffer_phase(&self) {
+    fn record_final_buffer(&self) {
         info!(
             "Recording stopped. Recording final buffer for {} seconds.",
             TIME_AFTER_SESSION_END.as_secs()
@@ -128,7 +118,7 @@ impl RecordingThread {
         // Because we want the [DbusEvent] -> RecordingSession mapping
         // to be pure, we compute it everytime we get a new dbus event
         // and then check if any new songs have been recorded in the
-        // dbus events. This is slightly awkwardly but preferable to having
+        // dbus events. This is slightly awkward but preferable to having
         // lots of mangled state.
         let session = self.get_session();
         if session.songs.len() > self.num_songs {

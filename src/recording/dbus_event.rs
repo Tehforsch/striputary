@@ -1,9 +1,12 @@
 use std::collections::HashMap;
+use std::time::Duration;
 
 use dbus::arg::PropMap;
 use dbus::arg::RefArg;
 use dbus::ffidisp::stdintf::org_freedesktop_dbus::PropertiesPropertiesChanged as PC;
 use log::error;
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::song::Song;
 
@@ -25,6 +28,24 @@ pub enum DbusEvent {
     NewInvalidSong(Song),
     StatusChanged(PlaybackStatus),
     PlayerInformation(PlayerInformation),
+}
+
+#[derive(Serialize, Deserialize, Copy, Debug, Clone)]
+pub struct Timestamp {
+    time_since_start_micros: u128,
+}
+impl Timestamp {
+    pub fn from_duration(timestamp: Duration) -> Timestamp {
+        Self {
+            time_since_start_micros: timestamp.as_micros(),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct TimedDbusEvent {
+    pub event: DbusEvent,
+    pub timestamp: Timestamp,
 }
 
 impl From<PC> for DbusEvent {
@@ -73,7 +94,6 @@ fn get_player_information(properties: &PropMap) -> Option<PlayerInformation> {
 }
 
 fn get_song_from_dbus_properties(properties: &PropMap) -> (Song, bool) {
-    dbg!(properties);
     let metadata = &properties.get("Metadata").unwrap().0;
 
     let mut iter = metadata.as_iter().unwrap();

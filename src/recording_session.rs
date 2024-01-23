@@ -10,24 +10,34 @@ use serde::Serialize;
 
 use crate::config;
 use crate::recording::dbus_event::DbusEvent;
+use crate::recording::dbus_event::TimedDbusEvent;
+use crate::recording::dbus_event::Timestamp;
 use crate::song::Song;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RecordingSession {
     pub songs: Vec<Song>,
-    pub estimated_time_first_song: Option<f64>,
+    pub timestamps: Vec<Timestamp>,
 }
 
 impl RecordingSession {
-    pub fn from_events(events: &[DbusEvent]) -> RecordingSession {
+    pub fn from_events(events: &[TimedDbusEvent]) -> RecordingSession {
         RecordingSession {
-            estimated_time_first_song: Some(0.0),
             songs: events
                 .iter()
-                .filter_map(|event| match event {
+                .filter_map(|event| match &event.event {
                     DbusEvent::NewSong(song) => Some(song.clone()),
                     DbusEvent::NewInvalidSong(_) => None,
                     DbusEvent::StatusChanged(_) => None,
+                    DbusEvent::PlayerInformation(_) => None,
+                })
+                .collect(),
+            timestamps: events
+                .iter()
+                .filter_map(|event| match &event.event {
+                    DbusEvent::NewSong(_) => Some(event.timestamp),
+                    DbusEvent::NewInvalidSong(_) => None,
+                    DbusEvent::StatusChanged(_) => Some(event.timestamp),
                     DbusEvent::PlayerInformation(_) => None,
                 })
                 .collect(),
