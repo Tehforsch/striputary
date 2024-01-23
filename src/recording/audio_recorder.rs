@@ -48,7 +48,7 @@ impl Display for SoundServer {
 
 pub struct AudioRecorder {
     process: Popen,
-    start_time: Instant,
+    pub start_time: Instant,
 }
 
 impl AudioRecorder {
@@ -67,10 +67,6 @@ impl AudioRecorder {
             .terminate()
             .context("Failed to terminate parec while recording")?;
         Ok(())
-    }
-
-    pub fn time_since_start_secs(&self) -> f64 {
-        Instant::now().duration_since(self.start_time).as_millis() as f64 / 1000.0
     }
 }
 

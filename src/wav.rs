@@ -4,13 +4,6 @@ use crate::audio_excerpt::AudioExcerpt;
 use crate::audio_time::AudioTime;
 use crate::errors::MissingSongError;
 
-pub fn get_volume_average_over_channels(samples: Vec<i16>) -> Vec<i16> {
-    samples
-        .chunks_exact(2)
-        .map(|c| (c[0] / 2) + (c[1] / 2))
-        .collect()
-}
-
 pub fn extract_audio(
     file_path: &Path,
     start_time: f64,

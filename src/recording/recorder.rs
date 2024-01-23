@@ -1,5 +1,4 @@
 use std::thread::{self};
-use std::time::Instant;
 
 use anyhow::Result;
 use log::info;
@@ -9,7 +8,6 @@ use super::dbus_event::DbusEvent;
 use super::dbus_event::TimedDbusEvent;
 use super::dbus_event::Timestamp;
 use super::AudioRecorder;
-use super::RecordingStatus;
 use crate::config::TIME_AFTER_SESSION_END;
 use crate::recording::dbus_event::PlaybackStatus;
 use crate::recording_session::RecordingSession;
@@ -23,7 +21,6 @@ pub struct Recorder {
     dbus: DbusConnection,
     session_dir: SessionPath,
     num_songs: usize,
-    recording_start_time: Instant,
 }
 
 impl Recorder {
@@ -35,37 +32,36 @@ impl Recorder {
             dbus: DbusConnection::new(&opts.service),
             session_dir: session_dir.clone(),
             num_songs: 0,
-            recording_start_time: Instant::now(),
         };
         Ok(recorder)
     }
 
-    pub fn record_new_session(mut self) -> Result<(RecordingStatus, RecordingSession)> {
-        let status = self.polling_loop()?;
+    pub fn record_new_session(mut self) -> Result<RecordingSession> {
+        self.polling_loop()?;
         let session = self.get_session();
         session.save(&self.session_dir).unwrap();
         self.recorder.stop().unwrap();
-        Ok((status, session))
+        Ok(session)
     }
 
     fn get_session(&self) -> RecordingSession {
         RecordingSession::from_events(&self.dbus_events)
     }
 
-    fn polling_loop(&mut self) -> Result<RecordingStatus> {
-        let status = self.recording_loop()?;
+    fn polling_loop(&mut self) -> Result<()> {
+        self.recording_loop()?;
         self.record_final_buffer();
-        Ok(status)
+        Ok(())
     }
 
-    fn recording_loop(&mut self) -> Result<RecordingStatus> {
+    fn recording_loop(&mut self) -> Result<()> {
         loop {
             // collect here to make borrow checker happy
             let new_events: Vec<_> = self
                 .dbus
                 .get_new_events()
                 .map(|(event, instant)| {
-                    let duration = instant.duration_since(self.recording_start_time);
+                    let duration = instant.duration_since(self.recorder.start_time);
                     TimedDbusEvent {
                         event,
                         timestamp: Timestamp::from_duration(duration),
@@ -77,7 +73,7 @@ impl Recorder {
                 for event in new_events {
                     match event.event {
                         DbusEvent::StatusChanged(PlaybackStatus::Paused) => {
-                            return Ok(RecordingStatus::FinishedOrInterrupted);
+                            return Ok(());
                         }
                         _ => {}
                     }

@@ -1,17 +1,17 @@
-pub mod audio_excerpt;
-pub mod audio_time;
-pub mod config;
-pub mod config_file;
-pub mod cut;
-pub mod data_stream;
-pub mod errors;
-pub mod excerpt_collection;
-pub mod gui;
-pub mod recording;
-pub mod recording_session;
-pub mod service;
-pub mod song;
-pub mod wav;
+pub(crate) mod audio_excerpt;
+pub(crate) mod audio_time;
+pub(crate) mod config;
+pub(crate) mod config_file;
+pub(crate) mod cut;
+pub(crate) mod data_stream;
+pub(crate) mod errors;
+pub(crate) mod excerpt_collection;
+pub(crate) mod gui;
+pub(crate) mod recording;
+pub(crate) mod recording_session;
+pub(crate) mod service;
+pub(crate) mod song;
+pub(crate) mod wav;
 
 use std::path::PathBuf;
 
@@ -128,7 +128,7 @@ fn record(opts: &Opts) -> Result<()> {
     info!("Using service: {}", opts.service);
     let path = SessionPath(get_new_name(&opts.output_dir));
     let recorder = Recorder::new(&opts, &path)?;
-    let (_, _) = recorder.record_new_session()?;
+    let _session = recorder.record_new_session()?;
     Ok(())
 }
 

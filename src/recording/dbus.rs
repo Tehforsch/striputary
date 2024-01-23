@@ -15,7 +15,6 @@ use crate::service::Service;
 pub const DBUS_LISTEN_TIMEOUT_MS: u32 = 2;
 
 pub struct DbusConnection {
-    service: Service,
     connection: Connection,
 }
 
@@ -26,10 +25,7 @@ impl DbusConnection {
         let bus_name = service.dbus_bus_name();
         let mstr = PC::match_str(Some(&bus_name.into()), None);
         connection.add_match(&mstr).unwrap();
-        Self {
-            service: service.clone(),
-            connection,
-        }
+        Self { connection }
     }
 
     pub fn get_new_events<'a>(&'a self) -> impl Iterator<Item = (DbusEvent, Instant)> + 'a {
@@ -46,33 +42,6 @@ impl DbusConnection {
                 (event, instant)
             })
     }
-
-    pub fn previous_song(&self) -> Result<()> {
-        dbus_set_playback_status_command(&self.service, "Previous")
-    }
-
-    pub fn next_song(&self) -> Result<()> {
-        dbus_set_playback_status_command(&self.service, "Next")
-    }
-
-    pub fn start_playback(&self) -> Result<()> {
-        dbus_set_playback_status_command(&self.service, "Play")
-    }
-
-    pub fn stop_playback(&self) -> Result<()> {
-        dbus_set_playback_status_command(&self.service, "Pause")
-    }
-}
-
-pub fn dbus_set_playback_status_command(service: &Service, command: &str) -> Result<()> {
-    Command::new("dbus-send")
-        .arg("--print-reply")
-        .arg(format!("--dest={}", &service.dbus_bus_name()))
-        .arg("/org/mpris/MediaPlayer2")
-        .arg(format!("org.mpris.MediaPlayer2.Player.{}", command))
-        .output()
-        .context("Failed to send dbus command to control playback")
-        .map(|_| ()) // We do not need the output, let's not suggest that it is useful for the caller
 }
 
 /// For some mpris services, the name is not constant

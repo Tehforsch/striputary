@@ -88,6 +88,10 @@ fn get_player_information(properties: &PropMap) -> Option<PlayerInformation> {
         Some(PlayerInformation::CanGoPrevious(
             properties["CanGoPrevious"].as_u64().unwrap() != 0,
         ))
+    } else if properties.contains_key("CanGoNext") {
+        Some(PlayerInformation::CanGoNext(
+            properties["CanGoNext"].as_u64().unwrap() != 0,
+        ))
     } else {
         None
     }

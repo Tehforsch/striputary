@@ -61,10 +61,6 @@ impl AudioExcerpt {
         )
     }
 
-    pub fn get_relative_time_by_relative_progress(&self, pos: f64) -> AudioTime {
-        AudioTime::from_time_and_spec((self.end.time - self.start.time) * pos, self.spec)
-    }
-
     pub fn get_relative_time(&self, absolute_time: AudioTime) -> AudioTime {
         absolute_time - self.start
     }

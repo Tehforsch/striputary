@@ -13,15 +13,11 @@ use crate::recording_session::RecordingSessionWithPath;
 use crate::recording_session::SessionPath;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub enum SessionIdentifier {
-    Old(usize),
-    New,
-}
+pub struct SessionIdentifier(usize);
 
 pub struct SessionManager {
     output_dir: PathBuf,
     dirs: Vec<PathBuf>,
-    new_dir: PathBuf,
     selected: Option<SessionIdentifier>,
 }
 
@@ -33,7 +29,6 @@ impl SessionManager {
         let mut manager = Self {
             output_dir: dir.into(),
             dirs,
-            new_dir: get_new_name(dir),
             selected: None,
         };
         manager.select_latest();
@@ -50,11 +45,7 @@ impl SessionManager {
             .into_iter()
             .enumerate()
             .max_by_key(|(_, dir)| dir.metadata().unwrap().modified().unwrap())
-            .map(|(index, _)| SessionIdentifier::Old(index));
-    }
-
-    pub fn select_new(&mut self) {
-        self.selected = Some(SessionIdentifier::New);
+            .map(|(index, _)| SessionIdentifier(index));
     }
 
     pub fn is_currently_selected(&self, identifier: &SessionIdentifier) -> bool {
@@ -64,10 +55,8 @@ impl SessionManager {
     }
 
     pub fn get_currently_selected(&self) -> Option<SessionPath> {
-        Some(match self.selected? {
-            SessionIdentifier::Old(index) => SessionPath(self.dirs[index].clone()),
-            SessionIdentifier::New => SessionPath(self.new_dir.clone()),
-        })
+        self.selected
+            .map(|index| SessionPath(self.dirs[index.0].clone()))
     }
 
     pub fn get_currently_selected_collection(&self) -> Option<ExcerptCollection> {
@@ -98,7 +87,7 @@ impl SessionManager {
         self.dirs
             .iter()
             .enumerate()
-            .map(|(index, dir)| (SessionIdentifier::Old(index), dir))
+            .map(|(index, dir)| (SessionIdentifier(index), dir))
     }
 }
 

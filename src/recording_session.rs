@@ -50,8 +50,12 @@ impl RecordingSession {
     }
 
     pub fn from_file(filename: &Path) -> Result<Self> {
-        let data = fs::read_to_string(filename).context("Unable to read session file")?;
-        serde_yaml::from_str(&data).context("Unable to load session file content.")
+        let data = fs::read_to_string(filename)
+            .context(format!("Unable to read session file at {:?}", filename))?;
+        serde_yaml::from_str(&data).context(format!(
+            "Unable to load session file content of file at {:?}.",
+            filename
+        ))
     }
 }
 
