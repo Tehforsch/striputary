@@ -17,11 +17,14 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use config_file::ConfigFile;
+use gui::session_manager::get_new_name;
 use log::error;
 use log::info;
 use log::LevelFilter;
 use recording::dbus::DbusConnection;
+use recording::recording_thread_handle_status::RecordingThreadHandleStatus;
 use recording::SoundServer;
+use recording_session::SessionPath;
 use service::Service;
 use simplelog::ColorChoice;
 use simplelog::ConfigBuilder;
@@ -34,14 +37,26 @@ use crate::gui::StriputaryGui;
 
 #[derive(clap::StructOpt, Clone)]
 #[clap(version)]
-struct ParseOpts {
+struct CliOpts {
+    /// The output directory to record to.
+    /// Passing this argument will override the setting
+    /// in the config file.
     pub output_dir: Option<PathBuf>,
+    /// The service to record.  Passing this argument will override
+    /// the setting in the config file.
     service: Option<Service>,
+    /// The sound server to use.  Passing this argument will override
+    /// the setting in the config file.
     sound_server: Option<SoundServer>,
     #[clap(short, parse(from_occurrences))]
     pub verbosity: usize,
+    /// Do not open the GUI and print out Dbus events instead.
+    /// Mainly used for debugging.
     #[clap(long)]
     pub listen_dbus: bool,
+    /// Do not open the GUI and record a new session directly.
+    #[clap(long)]
+    pub record: bool,
 }
 
 #[derive(Clone)]
@@ -50,10 +65,11 @@ pub struct Opts {
     service: Service,
     sound_server: SoundServer,
     pub listen_dbus: bool,
+    pub record: bool,
 }
 
 impl Opts {
-    fn new(opts: ParseOpts, config_file: Option<ConfigFile>) -> Opts {
+    fn new(opts: CliOpts, config_file: Option<ConfigFile>) -> Opts {
         let service = opts
             .service
             .or(config_file.as_ref().and_then(|file| file.service))
@@ -86,12 +102,13 @@ panic!("Need an output folder - either pass it as a command line argument or spe
             service,
             sound_server,
             listen_dbus: opts.listen_dbus,
+            record: opts.record,
         }
     }
 }
 
 fn main() {
-    let opts = ParseOpts::parse();
+    let opts = CliOpts::parse();
     let config_file = ConfigFile::read();
     if let Err(ref e) = config_file {
         error!("{}", e);
@@ -100,9 +117,21 @@ fn main() {
     let opts = Opts::new(opts, config_file.ok());
     if opts.listen_dbus {
         listen_dbus(&opts);
+    } else if opts.record {
+        record(&opts);
     } else {
         info!("Using service: {}", opts.service);
         run_gui(&opts);
+    }
+}
+
+fn record(opts: &Opts) {
+    let path = SessionPath(get_new_name(&opts.output_dir));
+    let recorder = RecordingThreadHandleStatus::new_running(&opts, &path);
+    loop {
+        if !recorder.is_running() {
+            return;
+        }
     }
 }
 
@@ -143,11 +172,11 @@ mod tests {
 
     use crate::config_file::ConfigFile;
     use crate::service::Service;
+    use crate::CliOpts;
     use crate::Opts;
-    use crate::ParseOpts;
 
-    fn test_opts() -> ParseOpts {
-        ParseOpts {
+    fn test_opts() -> CliOpts {
+        CliOpts {
             output_dir: Some("".into()),
             service: None,
             sound_server: None,
@@ -167,7 +196,7 @@ mod tests {
     #[test]
     fn service_set_properly() {
         use Service::*;
-        let mut p_opts = ParseOpts {
+        let mut p_opts = CliOpts {
             service: Some(SpotifyChromium),
             ..test_opts()
         };
@@ -194,7 +223,7 @@ mod tests {
 
     #[test]
     fn output_dir_set_properly() {
-        let mut p_opts = ParseOpts {
+        let mut p_opts = CliOpts {
             output_dir: Some("from_cli".into()),
             ..test_opts()
         };
@@ -214,7 +243,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Need an output folder")]
     fn panic_if_output_dir_not_set() {
-        let p_opts = ParseOpts {
+        let p_opts = CliOpts {
             output_dir: None,
             service: None,
             sound_server: None,

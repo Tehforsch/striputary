@@ -122,7 +122,7 @@ pub fn get_dirs(dir: &Path) -> Result<Vec<PathBuf>> {
     Ok(iter_dirs(dir)?.collect())
 }
 
-fn get_new_name(output_dir: &Path) -> PathBuf {
+pub fn get_new_name(output_dir: &Path) -> PathBuf {
     let date_string = Local::now().format("%Y-%m-%d-%H-%M-%S").to_string();
     output_dir.join(date_string)
 }
