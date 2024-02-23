@@ -73,8 +73,6 @@ impl SessionPath {
 
     pub fn get_music_dir(&self) -> PathBuf {
         self.0
-            .parent()
-            .unwrap()
             .join(Path::new(config::DEFAULT_MUSIC_DIR))
     }
 }
