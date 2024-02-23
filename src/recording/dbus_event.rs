@@ -32,8 +32,9 @@ pub enum DbusEvent {
 
 #[derive(Serialize, Deserialize, Copy, Debug, Clone)]
 pub struct Timestamp {
-    time_since_start_micros: u128,
+    pub time_since_start_micros: u128,
 }
+
 impl Timestamp {
     pub fn from_duration(timestamp: Duration) -> Timestamp {
         Self {
