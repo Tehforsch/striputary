@@ -184,22 +184,22 @@ pub fn cut_song(info: &CutInfo) -> Result<()> {
         .arg(format!("{}", config::BITRATE));
     add_metadata_arg_if_present(
         &mut command,
-        |title| format!("title={}", title),
+        |title| format!("title='{}'", title),
         info.song.title.as_ref(),
     );
     add_metadata_arg_if_present(
         &mut command,
-        |album| format!("album={}", album),
+        |album| format!("album='{}'", album),
         info.song.album.as_ref(),
     );
     add_metadata_arg_if_present(
         &mut command,
-        |artist| format!("artist={}", artist),
+        |artist| format!("artist='{}'", artist),
         info.song.artist.as_ref(),
     );
     add_metadata_arg_if_present(
         &mut command,
-        |artist| format!("albumartist={}", artist),
+        |artist| format!("albumartist='{}'", artist),
         info.song.artist.as_ref(),
     );
     add_metadata_arg_if_present(

@@ -72,6 +72,7 @@ impl AudioRecorder {
 
 impl SoundServer {
     fn start_recording_process(&self, buffer_file: &Path) -> Result<Popen> {
+        debug!("Starting recording to {:?}", buffer_file);
         let parec_cmd = Exec::cmd("parec")
             .arg("-d")
             .arg(format!("{}.monitor", STRIPUTARY_SINK_NAME))
