@@ -23,6 +23,7 @@ use self::playback::play_excerpt;
 use self::playback::PlaybackThreadHandle;
 use self::plot::ExcerptPlot;
 use crate::audio_time::AudioTime;
+use crate::cut::make_test;
 use crate::cut::CutInfo;
 use crate::excerpt_collection::ExcerptCollection;
 use crate::gui::session_manager::SessionIdentifier;
@@ -67,24 +68,23 @@ impl StriputaryGui {
     fn cut_songs(&self) {
         if let Some(ref collection) = self.collection {
             let cut_info = self.get_cut_info(collection);
+            make_test(&cut_info);
             self.cut_thread.send_cut_infos(cut_info);
         }
     }
 
     fn get_cut_info(&self, collection: &ExcerptCollection) -> Vec<CutInfo> {
         let mut cut_info: Vec<CutInfo> = vec![];
-        for (i, (plot_start, plot_end)) in self.plots.iter().zip(self.plots[1..].iter()).enumerate()
-        {
+        for (plot_start, plot_end) in self.plots.iter().zip(self.plots[1..].iter()) {
             let song = plot_start.excerpt.song_after.as_ref().unwrap();
             cut_info.push(CutInfo::new(
                 &collection.session,
                 song.clone(),
                 plot_start.cut_time,
                 plot_end.cut_time,
-                i,
             ));
         }
-        cut_info
+        dbg!(cut_info)
     }
 
     fn mark_cut_songs(&mut self) {

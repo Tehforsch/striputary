@@ -1,4 +1,5 @@
 use std::fmt::Display;
+use std::fs;
 use std::fs::create_dir_all;
 use std::path::Path;
 use std::path::PathBuf;
@@ -8,6 +9,8 @@ use anyhow::Context;
 use anyhow::Result;
 use log::debug;
 use log::info;
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::audio_excerpt::AudioExcerpt;
 use crate::audio_time::AudioTime;
@@ -22,13 +25,18 @@ use crate::recording_session::RecordingSessionWithPath;
 use crate::song::Song;
 use crate::wav::extract_audio;
 
-pub struct CutInfo {
+#[derive(Deserialize, Serialize, Debug)]
+pub struct Cut {
+    pub start_time_secs: f64,
+    pub end_time_secs: f64,
     pub song: Song,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct CutInfo {
     buffer_file: PathBuf,
     music_dir: PathBuf,
-    start_time: AudioTime,
-    end_time: AudioTime,
-    num_in_recording: usize,
+    pub cut: Cut,
 }
 
 impl CutInfo {
@@ -37,19 +45,28 @@ impl CutInfo {
         song: Song,
         start_time: AudioTime,
         end_time: AudioTime,
-        num_in_recording: usize,
     ) -> Self {
         let buffer_file = session.path.get_buffer_file();
         let music_dir = session.path.get_music_dir();
         CutInfo {
-            song,
             buffer_file,
             music_dir,
-            start_time,
-            end_time,
-            num_in_recording,
+            cut: Cut {
+                start_time_secs: start_time.time,
+                song,
+                end_time_secs: end_time.time,
+            },
         }
     }
+}
+
+pub fn make_test(cut_info: &[CutInfo]) {
+    let contents = serde_yaml::to_string(&cut_info).unwrap();
+    fs::write(
+        "/home/toni/projects/striputary/cut_tests/current.yml",
+        &contents,
+    )
+    .unwrap();
 }
 
 fn get_excerpt(buffer_file_name: &Path, cut_time: f64) -> Option<AudioExcerpt> {
@@ -147,6 +164,25 @@ fn get_all_valid_excerpts_and_songs(
     (audio_excerpts, valid_songs)
 }
 
+fn get_offsets_auto(session: &RecordingSessionWithPath) -> Vec<Cut> {
+    let timestamps = get_cut_timestamps_from_song_lengths(
+        &session.session.songs,
+        session.estimated_time_first_song_secs(),
+    );
+    session
+        .session
+        .songs
+        .iter()
+        .zip(timestamps.iter())
+        .zip(timestamps[1..].iter())
+        .map(|((song, start), end)| Cut {
+            song: song.clone(),
+            start_time_secs: *start,
+            end_time_secs: *end,
+        })
+        .collect()
+}
+
 fn add_metadata_arg_if_present<T: Display>(
     command: &mut Command,
     get_str: fn(&T) -> String,
@@ -158,23 +194,21 @@ fn add_metadata_arg_if_present<T: Display>(
 }
 
 pub fn cut_song(info: &CutInfo) -> Result<()> {
-    let difference = info.end_time.time - info.start_time.time;
-    let target_file = info
-        .song
-        .get_target_file(&info.music_dir, info.num_in_recording);
+    let difference = info.cut.end_time_secs - info.cut.start_time_secs;
+    let target_file = info.cut.song.get_target_file(&info.music_dir);
     create_dir_all(target_file.parent().unwrap())
         .context("Failed to create subfolders of target file")?;
     info!(
         "Cutting song: {:.2}+{:.2}: {} to {}",
-        info.start_time.time,
+        info.cut.start_time_secs,
         difference,
-        info.song,
+        info.cut.song,
         target_file.to_str().unwrap()
     );
     let mut command = Command::new("ffmpeg");
     command
         .arg("-ss")
-        .arg(format!("{}", info.start_time.time))
+        .arg(format!("{}", info.cut.start_time_secs))
         .arg("-t")
         .arg(format!("{}", difference))
         .arg("-i")
@@ -186,27 +220,27 @@ pub fn cut_song(info: &CutInfo) -> Result<()> {
     add_metadata_arg_if_present(
         &mut command,
         |title| format!("title='{}'", title),
-        info.song.title.as_ref(),
+        info.cut.song.title.as_ref(),
     );
     add_metadata_arg_if_present(
         &mut command,
         |album| format!("album='{}'", album),
-        info.song.album.as_ref(),
+        info.cut.song.album.as_ref(),
     );
     add_metadata_arg_if_present(
         &mut command,
         |artist| format!("artist='{}'", artist),
-        info.song.artist.as_ref(),
+        info.cut.song.artist.as_ref(),
     );
     add_metadata_arg_if_present(
         &mut command,
         |artist| format!("albumartist='{}'", artist),
-        info.song.artist.as_ref(),
+        info.cut.song.artist.as_ref(),
     );
     add_metadata_arg_if_present(
         &mut command,
         |track_number| format!("track={}", track_number),
-        info.song.track_number.as_ref(),
+        info.cut.song.track_number.as_ref(),
     );
     let out = command
         .arg("-y")
@@ -214,6 +248,51 @@ pub fn cut_song(info: &CutInfo) -> Result<()> {
         .output();
     out.map(|_| ()).context(format!(
         "Failed to cut song: {:?} {:?} {:?} ({:?}+{:?}) (is ffmpeg installed?)",
-        &info.song.title, &info.song.album, &info.song.artist, info.start_time.time, difference,
+        &info.cut.song.title,
+        &info.cut.song.album,
+        &info.cut.song.artist,
+        info.cut.start_time_secs,
+        difference,
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+    use std::path::Path;
+
+    use serde::de::DeserializeOwned;
+
+    use super::get_offsets_auto;
+    use super::CutInfo;
+    use crate::recording_session::RecordingSessionWithPath;
+
+    fn read_yaml<T: DeserializeOwned>(path: &Path) -> T {
+        let contents = fs::read_to_string(path).unwrap();
+        serde_yaml::from_str::<T>(&contents).unwrap()
+    }
+
+    #[test]
+    fn auto_offset() {
+        // Define the directory path
+        let dir_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("cut_tests");
+        for entry in fs::read_dir(dir_path).unwrap() {
+            let entry = entry.unwrap();
+            if entry.metadata().unwrap().is_dir() {
+                compare_result(&entry.path());
+            }
+        }
+    }
+
+    fn compare_result(path: &Path) {
+        let truth: Vec<CutInfo> = read_yaml(&path.join("truth.yml"));
+        let session = RecordingSessionWithPath::load_from_dir(path).unwrap();
+        let result = get_offsets_auto(&session);
+        assert_eq!(truth.len(), result.len());
+        for (truth, result) in truth.iter().zip(result.iter()) {
+            assert_eq!(truth.cut.start_time_secs, result.start_time_secs);
+            assert_eq!(truth.cut.end_time_secs, result.end_time_secs);
+            assert_eq!(truth.cut.song, result.song);
+        }
+    }
 }

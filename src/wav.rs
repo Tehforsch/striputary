@@ -14,7 +14,7 @@ pub fn extract_audio(
     let start = AudioTime::from_time_and_spec(start_time, spec);
     let end = AudioTime::from_time_and_spec(end_time, spec);
     let num_samples = (end - start).interleaved_sample_num;
-    reader.seek(start.frame_num)?;
+    reader.seek(start.frame_num())?;
     let samples_interleaved: Vec<i16> = reader
         .samples::<i16>()
         .take(num_samples as usize)

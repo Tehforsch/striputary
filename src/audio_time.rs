@@ -1,12 +1,13 @@
 use std::ops;
 
 use hound::WavSpec;
+use serde::Deserialize;
+use serde::Serialize;
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Deserialize, Serialize)]
 pub struct AudioTime {
     pub time: f64,
     pub interleaved_sample_num: u32,
-    pub frame_num: u32,
     pub channels: u16,
     pub sample_rate: u32,
 }
@@ -19,7 +20,6 @@ impl AudioTime {
             sample_rate: spec.sample_rate,
             interleaved_sample_num: (time * (spec.channels as u32 * spec.sample_rate) as f64)
                 as u32,
-            frame_num: (time * spec.sample_rate as f64) as u32,
         }
     }
     pub fn from_time_same_spec(time: f64, audiotime: AudioTime) -> AudioTime {
@@ -30,8 +30,12 @@ impl AudioTime {
             interleaved_sample_num: (time
                 * (audiotime.channels as u32 * audiotime.sample_rate) as f64)
                 as u32,
-            frame_num: (time * audiotime.sample_rate as f64) as u32,
         }
+    }
+
+    pub fn frame_num(&self) -> u32 {
+        // TODO(major): does this not overflow?
+        (self.time * self.sample_rate as f64) as u32
     }
 }
 

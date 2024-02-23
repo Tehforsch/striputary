@@ -72,8 +72,7 @@ impl SessionPath {
     }
 
     pub fn get_music_dir(&self) -> PathBuf {
-        self.0
-            .join(Path::new(config::DEFAULT_MUSIC_DIR))
+        self.0.join(Path::new(config::DEFAULT_MUSIC_DIR))
     }
 }
 
@@ -85,7 +84,7 @@ pub struct RecordingSessionWithPath {
 
 impl RecordingSessionWithPath {
     pub(crate) fn estimated_time_first_song_secs(&self) -> f64 {
-        self.session.timestamps[0].time_since_start_micros as f64 * 1e-6
+        self.session.timestamps[0].in_secs()
     }
 
     pub fn load_from_dir(path: &Path) -> Result<Self> {

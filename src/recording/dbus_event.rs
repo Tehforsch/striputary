@@ -41,6 +41,10 @@ impl Timestamp {
             time_since_start_micros: timestamp.as_micros(),
         }
     }
+
+    pub fn in_secs(&self) -> f64 {
+        self.time_since_start_micros as f64 * 1e-6
+    }
 }
 
 #[derive(Clone, Debug)]
