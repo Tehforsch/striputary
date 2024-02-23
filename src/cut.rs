@@ -7,6 +7,7 @@ use std::process::Command;
 use anyhow::Context;
 use anyhow::Result;
 use log::debug;
+use log::info;
 
 use crate::audio_excerpt::AudioExcerpt;
 use crate::audio_time::AudioTime;
@@ -163,7 +164,7 @@ pub fn cut_song(info: &CutInfo) -> Result<()> {
         .get_target_file(&info.music_dir, info.num_in_recording);
     create_dir_all(target_file.parent().unwrap())
         .context("Failed to create subfolders of target file")?;
-    debug!(
+    info!(
         "Cutting song: {:.2}+{:.2}: {} to {}",
         info.start_time.time,
         difference,
