@@ -70,7 +70,7 @@ pub fn make_test(cut_info: &[CutInfo]) {
 }
 
 fn get_excerpt(buffer_file_name: &Path, cut_time: f64) -> Option<AudioExcerpt> {
-    let listen_start_time = cut_time + MIN_OFFSET - READ_BUFFER;
+    let listen_start_time = (cut_time + MIN_OFFSET - READ_BUFFER).max(0.0);
     let listen_end_time = cut_time + MAX_OFFSET + READ_BUFFER;
     extract_audio(buffer_file_name, listen_start_time, listen_end_time).ok()
 }
