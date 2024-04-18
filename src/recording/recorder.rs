@@ -78,8 +78,8 @@ fn redirect_sink(index: i32, output_sink_name: &str) -> Result<()> {
 }
 
 fn check_sink_exists() -> Result<bool> {
-    let output = run_command_and_assert_success(Command::new("pacmd").arg("list-sinks"))
-        .context("Failed to execute sink list command (pacmd list-sinks) - is pacmd installed?.")?;
+    let output = run_command_and_assert_success(Command::new("pactl").arg("list").arg("sinks"))
+        .context("Failed to execute sink list command (pactl list sinks) - is pactl installed?.")?;
     let stdout = String::from_utf8_lossy(&output.stdout);
     Ok(stdout.contains(STRIPUTARY_SINK_NAME))
 }
@@ -95,7 +95,7 @@ fn get_default_sink_for_monitor() -> String {
 
 fn remove_sink() -> Result<()> {
     run_command_and_assert_success(
-        Command::new("pacmd")
+        Command::new("pactl")
             .arg("unload-module")
             .arg("module-null-sink"),
     )
@@ -103,7 +103,7 @@ fn remove_sink() -> Result<()> {
 }
 
 fn create_sink(sink_type: SinkType) -> Result<&'static str> {
-    let output = Command::new("pacmd")
+    let output = Command::new("pactl")
         .arg("load-module")
         .arg("module-null-sink")
         .arg(format!("sink_name={}", STRIPUTARY_SINK_NAME))
@@ -123,7 +123,7 @@ fn create_sink(sink_type: SinkType) -> Result<&'static str> {
 }
 
 fn create_monitor_sink() -> Result<()> {
-    let output = Command::new("pacmd")
+    let output = Command::new("pactl")
         .arg("load-module")
         .arg("module-combine-sink")
         .arg(format!("sink_name={}", STRIPUTARY_MONITOR_SINK_NAME))
@@ -143,14 +143,15 @@ fn create_monitor_sink() -> Result<()> {
 }
 
 fn get_sink_input_index(service_config: &ServiceConfig) -> Result<Option<i32>> {
-    let output = Command::new("pacmd")
-        .arg("list-sink-inputs")
+    let output = Command::new("pactl")
+        .arg("list")
+	.arg("sink-inputs")
         .output()
         .context("Failed to execute list sink inputs command.")?;
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stdout_without_newlines = stdout.replace("\n", "");
-    let re = Regex::new("index: ([0-9]*).*?media.name = \"(.*?)\"").unwrap();
+    let re = Regex::new("Sink Input #([0-9]*).*?media.name = \"(.*?)\"").unwrap();
     let captures = re.captures_iter(&stdout_without_newlines);
     let mut temp = captures.filter(|capture| {
         get_sink_source_name_from_pacmd_output_capture(capture)
