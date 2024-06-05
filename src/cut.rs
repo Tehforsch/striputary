@@ -9,6 +9,7 @@ use anyhow::Context;
 use anyhow::Result;
 use log::debug;
 use log::info;
+use log::warn;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -153,6 +154,7 @@ fn get_all_valid_excerpts_and_songs(
             audio_excerpts.push(excerpt);
             valid_songs.push(song.clone());
         } else {
+            warn!("Could not extract audio for song: {}. Stopping", song);
             break;
         }
         cut_time += song.length;
