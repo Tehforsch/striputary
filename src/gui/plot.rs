@@ -61,8 +61,6 @@ pub struct Plot {
     volume_data: Vec<Data>,
     song_before: Option<Song>,
     song_after: Option<Song>,
-    start: AudioTime,
-    end: AudioTime,
     cut_time: AudioTime,
     finished_cut_before: bool,
     finished_cut_after: bool,
@@ -103,15 +101,13 @@ impl Plot {
             volume_data,
             song_before,
             song_after,
-            start,
-            end,
             cut_time,
             finished_cut_before: false,
             finished_cut_after: false,
         }
     }
 
-    pub fn get_plot_path(&self, data: &[Data], bounds: &Bounds) -> Path {
+    fn get_plot_path(&self, data: &[Data], bounds: &Bounds) -> Path {
         let mut path = Builder::new();
 
         if data.len() > 0 {
@@ -125,7 +121,7 @@ impl Plot {
 
     /// Return the path left of the marker and the path right
     /// of the marker, so they can be colored individually.
-    pub fn get_plot_paths(&self, bounds: &Bounds) -> (Path, Path) {
+    fn get_plot_paths(&self, bounds: &Bounds) -> (Path, Path) {
         let cutoff = self
             .volume_data
             .iter()
@@ -139,7 +135,7 @@ impl Plot {
         )
     }
 
-    pub fn get_marker_path(&self, bounds: &Bounds) -> Path {
+    fn get_marker_path(&self, bounds: &Bounds) -> Path {
         let mut path = Builder::new();
         path.move_to(bounds.data_to_point(&Data {
             time: self.cut_time,
@@ -179,9 +175,21 @@ impl Plot {
         Bounds {
             width: bounds.width,
             height: bounds.height,
-            min_time: self.volume_data.first().unwrap().time,
-            max_time: self.volume_data.last().unwrap().time,
+            min_time: self.min_time(),
+            max_time: self.max_time(),
         }
+    }
+
+    pub fn max_time(&self) -> AudioTime {
+        self.volume_data.last().unwrap().time
+    }
+
+    fn min_time(&self) -> AudioTime {
+        self.volume_data.first().unwrap().time
+    }
+
+    pub fn cut_time(&self) -> AudioTime {
+        self.cut_time
     }
 }
 

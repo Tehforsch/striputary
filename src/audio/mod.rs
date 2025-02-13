@@ -2,7 +2,7 @@ mod cut;
 mod cutter;
 mod cutting_strategy;
 mod excerpt;
-mod playback;
+pub mod playback;
 mod sample_reader;
 mod time;
 

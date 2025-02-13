@@ -1,15 +1,19 @@
+use std::sync::Mutex;
+
 use crate::audio::{
-    AudioTime, CutInfo, Cutter, CuttingStrategy, DbusLengthsStrategy, Manual, WavFileReader,
+    playback::play_audio, playback::Progress, playback::WavSource, AudioTime, CutInfo, Cutter,
+    CuttingStrategy, DbusLengthsStrategy, Manual, WavFileReader,
 };
 use crate::recording_session::{RecordingSession, RecordingSessionWithPath, SessionPath};
 use crate::song::Song;
 use anyhow::Result;
 use futures::StreamExt;
 use iced::alignment::Horizontal;
+use iced::keyboard::key;
 use iced::stream::channel;
 use iced::widget::{column, horizontal_space, text, Canvas, Column, Row};
 use iced::Length::Fill;
-use iced::{Element, Subscription};
+use iced::{keyboard, Element, Subscription};
 use log::debug;
 
 use super::plot::{Plot, PlotMarkerMoved};
@@ -17,10 +21,19 @@ use super::plot::{Plot, PlotMarkerMoved};
 pub const CANVAS_HEIGHT: f32 = 80.0;
 
 #[derive(Clone, Debug)]
+pub enum Direction {
+    Up,
+    Down,
+}
+
+#[derive(Clone, Debug)]
 pub enum SessionMessage {
     SetCutPosition(SetCutPosition),
     CutSongs,
     FinishedCutting(CutInfo),
+    PlaybackSong,
+    UpdateProgress(Progress),
+    Scroll(Direction),
 }
 
 #[derive(Clone, Debug)]
@@ -31,16 +44,32 @@ pub struct SetCutPosition {
 
 pub struct SessionGui {
     plots: Vec<Plot>,
-    reader: WavFileReader,
+    reader: Mutex<WavFileReader>,
     session: RecordingSession,
     path: SessionPath,
     cuts: Manual,
     cutting_state: CuttingState,
+    playback_state: PlaybackState,
+    last_touched_song: usize,
+    playback_index: usize,
+    scroll_pos: i32,
 }
 
 enum CuttingState {
     Waiting,
     Cutting,
+}
+
+enum PlaybackState {
+    Waiting,
+    Playback(PlaybackInfo),
+}
+
+#[derive(Clone, Debug)]
+struct PlaybackInfo {
+    start: AudioTime,
+    end: AudioTime,
+    index: usize,
 }
 
 fn load_plots(reader: &mut WavFileReader, session: &RecordingSession) -> Vec<Plot> {
@@ -75,13 +104,18 @@ impl SessionGui {
         let mut reader = hound::WavReader::open(session.path.get_buffer_file())?;
         let plots = load_plots(&mut reader, &session.session);
         let cuts = Manual::new(&mut reader, &session.session, DbusLengthsStrategy);
+        let playback_state = PlaybackState::Waiting;
         Ok(Self {
-            reader,
             session: session.session,
+            reader: Mutex::new(reader),
             plots,
             cuts,
             path,
             cutting_state: CuttingState::Waiting,
+            last_touched_song: 0,
+            playback_state,
+            playback_index: 0,
+            scroll_pos: 0,
         })
     }
 
@@ -99,6 +133,9 @@ impl SessionGui {
                 }
                 debug!("Finished {}", cut.cut.song);
             }
+            SessionMessage::PlaybackSong => self.playback_song(),
+            SessionMessage::UpdateProgress(_) => todo!(),
+            SessionMessage::Scroll(dir) => self.scroll(dir),
         }
     }
 
@@ -129,25 +166,78 @@ impl SessionGui {
         Column::with_children(canvases).into()
     }
 
+    fn playback_song(&mut self) {
+        let info = PlaybackInfo {
+            start: self.plots[self.last_touched_song].cut_time(),
+            end: self.plots[self.last_touched_song].max_time(),
+            index: self.next_playback_index(),
+        };
+        self.playback_state = PlaybackState::Playback(info);
+    }
+
     pub fn set_cut_position(&mut self, pos: SetCutPosition) {
         self.cuts.0[pos.cut_index] = pos.time;
         self.plots[pos.cut_index].set_cut_position(pos.time);
+        self.last_touched_song = pos.cut_index;
     }
 
     pub fn cut_current_session(&mut self) {
         self.cutting_state = CuttingState::Cutting;
     }
 
+    fn keyboard_listener(&self) -> Subscription<SessionMessage> {
+        keyboard::on_key_press(|key, _| {
+            let keyboard::Key::Named(key) = key else {
+                return None;
+            };
+
+            match key {
+                key::Named::Space => Some(SessionMessage::PlaybackSong),
+                key::Named::ArrowDown => Some(SessionMessage::Scroll(Direction::Down)),
+                key::Named::ArrowUp => Some(SessionMessage::Scroll(Direction::Up)),
+                _ => None,
+            }
+        })
+    }
+
     pub fn subscription(&self) -> Subscription<SessionMessage> {
         let path = self.path.0.clone();
         let cuts = self.cuts.clone();
-        match self.cutting_state {
-            CuttingState::Cutting => Subscription::run_with_id(
+        let mut subscriptions = vec![];
+        if let CuttingState::Cutting = self.cutting_state {
+            subscriptions.push(Subscription::run_with_id(
                 "cut",
                 channel(5, move |sender| Cutter::run(path, cuts, sender))
                     .map(|m| SessionMessage::FinishedCutting(m)),
-            ),
-            CuttingState::Waiting => Subscription::none(),
+            ))
         }
+        if let PlaybackState::Playback(ref info) = self.playback_state {
+            let source = self.get_wav_source(info);
+            let index = info.index;
+            subscriptions.push(Subscription::run_with_id(
+                format!("playback_{index}"),
+                channel(5, move |sender| play_audio(source, sender))
+                    .map(|m| SessionMessage::UpdateProgress(m)),
+            ))
+        }
+        subscriptions.push(self.keyboard_listener());
+        Subscription::batch(subscriptions)
+    }
+
+    fn next_playback_index(&mut self) -> usize {
+        self.playback_index += 1;
+        self.playback_index
+    }
+
+    fn get_wav_source(&self, info: &PlaybackInfo) -> WavSource {
+        WavSource::new(&mut self.reader.lock().unwrap(), info.start, info.end)
+    }
+
+    fn scroll(&mut self, dir: Direction) {
+        self.scroll_pos += match dir {
+            Direction::Up => 1,
+            Direction::Down => -1,
+        };
+        self.scroll_pos = self.scroll_pos.max(0);
     }
 }

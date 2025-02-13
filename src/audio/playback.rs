@@ -1,10 +1,8 @@
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
-use std::thread;
-use std::time::Duration;
-use std::time::SystemTime;
 
+use futures::channel::mpsc::Sender;
 use hound::WavSpec;
 use rodio::OutputStream;
 use rodio::Sink;
@@ -15,6 +13,7 @@ use crate::audio::AudioTime;
 use super::sample_reader::WavFileReader;
 use super::SampleReader;
 
+#[derive(Clone)]
 pub struct WavSource {
     spec: WavSpec,
     samples: Vec<i16>,
@@ -61,51 +60,16 @@ impl Iterator for WavSource {
     }
 }
 
-pub fn play_audio(
-    buffer: &mut WavFileReader,
-    start_time: AudioTime,
-    end_time: AudioTime,
-) -> PlaybackThreadHandle {
-    let source = WavSource::new(buffer, start_time, end_time);
+#[derive(Clone, Debug)]
+pub struct Progress {}
+
+pub async fn play_audio(source: WavSource, _: Sender<Progress>) {
     let stop = Arc::new(AtomicBool::new(false));
-    thread::spawn({
-        let stop = stop.clone();
-        move || {
-            let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-            let sink = Sink::try_new(&stream_handle).unwrap();
-            sink.append(source);
-            sink.play();
-            while !stop.load(Ordering::SeqCst) {
-                thread::sleep(Duration::from_millis(1));
-            }
-        }
-    });
-    PlaybackThreadHandle {
-        stop,
-        start_system_time: SystemTime::now(),
-        start_audio_time: start_time,
-    }
-}
-
-pub struct PlaybackThreadHandle {
-    stop: Arc<AtomicBool>,
-    start_system_time: SystemTime,
-    start_audio_time: AudioTime,
-}
-
-impl PlaybackThreadHandle {
-    pub fn shut_down(&self) {
-        self.stop.store(true, Ordering::SeqCst);
-    }
-
-    pub fn get_current_audio_time(&self) -> AudioTime {
-        let time_expired = SystemTime::now().duration_since(self.start_system_time);
-        let time_expired_secs = time_expired
-            .unwrap_or(Duration::from_millis(0))
-            .as_secs_f64();
-        AudioTime::from_time_same_spec(
-            self.start_audio_time.time + time_expired_secs,
-            self.start_audio_time,
-        )
+    let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+    let sink = Sink::try_new(&stream_handle).unwrap();
+    sink.append(source);
+    sink.play();
+    while !stop.load(Ordering::SeqCst) {
+        // async_std::task::sleep(std::time::Duration::from_millis(20)).await;
     }
 }

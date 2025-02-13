@@ -13,8 +13,6 @@ pub trait SampleReader {
         end: AudioTime,
     ) -> Result<Vec<i16>, OutOfBoundsError>;
 
-    fn start(&self) -> AudioTime;
-    fn end(&self) -> AudioTime;
     fn spec(&self) -> WavSpec;
 }
 
@@ -66,14 +64,6 @@ impl SampleReader for WavReader<BufReader<File>> {
         } else {
             Ok(samples_interleaved)
         }
-    }
-
-    fn start(&self) -> AudioTime {
-        AudioTime::from_time_and_spec(0.0, self.spec())
-    }
-
-    fn end(&self) -> AudioTime {
-        AudioTime::from_sample_and_spec(self.len(), self.spec())
     }
 
     fn spec(&self) -> WavSpec {

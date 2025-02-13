@@ -36,24 +36,6 @@ impl Gui {
     }
 }
 
-// impl Application for Gui {
-//     type Executor = executor::Default;
-
-//     type Message = Message;
-
-//     type Theme = Theme;
-
-//     type Flags = Config;
-
-//     fn title(&self) -> String {
-//         "Striputary".to_string()
-//     }
-
-//     fn theme(&self) -> Theme {
-//         Theme::GruvboxDark
-//     }
-// }
-
 impl Gui {
     fn new(config: &Config) -> (Self, Task<Message>) {
         (
@@ -94,11 +76,11 @@ impl Gui {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        Subscription::batch(
-            self.session
-                .iter()
-                .map(|s| s.subscription().map(|m| Message::SessionMessage(m))),
-        )
+        if let Some(ref session) = self.session {
+            session.subscription().map(|m| Message::SessionMessage(m))
+        } else {
+            Subscription::none()
+        }
     }
 }
 
