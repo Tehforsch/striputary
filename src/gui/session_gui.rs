@@ -3,9 +3,10 @@ use crate::audio::{
 };
 use crate::recording_session::{RecordingSession, RecordingSessionWithPath, SessionPath};
 use anyhow::Result;
-use iced::command::channel;
+use futures::StreamExt;
+use iced::stream::channel;
 use iced::widget::{row, Canvas, Column};
-use iced::{Command, Element};
+use iced::{Element, Subscription, Task};
 use log::debug;
 
 use super::plot::{Plot, PlotMarkerMoved};
@@ -32,6 +33,12 @@ pub struct SessionGui {
     session: RecordingSession,
     path: SessionPath,
     cuts: Manual,
+    cutting_state: CuttingState,
+}
+
+enum CuttingState {
+    Waiting,
+    Cutting,
 }
 
 fn load_plots(reader: &mut WavFileReader, session: &RecordingSession) -> Vec<Plot> {
@@ -72,10 +79,11 @@ impl SessionGui {
             plots,
             cuts,
             path,
+            cutting_state: CuttingState::Waiting,
         })
     }
 
-    pub fn update(&mut self, m: SessionMessage) -> Command<SessionMessage> {
+    pub fn update(&mut self, m: SessionMessage) {
         match m {
             SessionMessage::SetCutPosition(pos) => {
                 self.set_cut_position(pos);
@@ -90,7 +98,6 @@ impl SessionGui {
                 debug!("Finished {}", cut.cut.song);
             }
         }
-        Command::none()
     }
 
     pub fn view(&self) -> Element<SessionMessage> {
@@ -120,10 +127,20 @@ impl SessionGui {
         self.plots[pos.cut_index].set_cut_position(pos.time);
     }
 
-    pub fn cut_current_session(&self) -> Command<SessionMessage> {
+    pub fn cut_current_session(&mut self) {
+        self.cutting_state = CuttingState::Cutting;
+    }
+
+    pub fn subscription(&self) -> Subscription<SessionMessage> {
         let path = self.path.0.clone();
         let cuts = self.cuts.clone();
-        channel(5, move |sender| Cutter::run(path, cuts, sender))
-            .map(|m| SessionMessage::FinishedCutting(m))
+        match self.cutting_state {
+            CuttingState::Cutting => Subscription::run_with_id(
+                "asd",
+                channel(5, move |sender| Cutter::run(path, cuts, sender))
+                    .map(|m| SessionMessage::FinishedCutting(m)),
+            ),
+            CuttingState::Waiting => Subscription::none(),
+        }
     }
 }

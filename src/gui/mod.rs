@@ -5,9 +5,9 @@ mod session_selector;
 use crate::config::Config;
 use crate::recording_session::SessionPath;
 use anyhow::Result;
-use iced::application::Application;
+use iced::application::application;
 use iced::widget::{button, row};
-use iced::{executor, Command, Element, Settings, Theme};
+use iced::{Element, Subscription, Task, Theme};
 use log::error;
 
 use self::session_gui::{SessionGui, SessionMessage};
@@ -25,21 +25,47 @@ impl Gui {
     }
 
     pub fn start(config: &Config) {
-        let settings = Settings::with_flags(config.clone());
-        Gui::run(settings).unwrap()
+        application("Striputary", Gui::update, Gui::view)
+            .subscription(Gui::subscription)
+            .theme(|_| Theme::GruvboxDark)
+            .run_with({
+                let config = config.clone();
+                move || Gui::new(&config)
+            })
+            .unwrap()
     }
 }
 
-impl Application for Gui {
-    type Executor = executor::Default;
+// impl Application for Gui {
+//     type Executor = executor::Default;
 
-    type Message = Message;
+//     type Message = Message;
 
-    type Theme = Theme;
+//     type Theme = Theme;
 
-    type Flags = Config;
+//     type Flags = Config;
 
-    fn update(&mut self, m: Message) -> Command<Message> {
+//     fn title(&self) -> String {
+//         "Striputary".to_string()
+//     }
+
+//     fn theme(&self) -> Theme {
+//         Theme::GruvboxDark
+//     }
+// }
+
+impl Gui {
+    fn new(config: &Config) -> (Self, Task<Message>) {
+        (
+            Self {
+                session_selector: SessionSelector::new(&config),
+                session: None,
+            },
+            Task::none(),
+        )
+    }
+
+    fn update(&mut self, m: Message) {
         match m {
             Message::SelectSession(path) => {
                 if let Err(e) = self.select_session(path) {
@@ -48,11 +74,10 @@ impl Application for Gui {
             }
             Message::SessionMessage(m) => {
                 if let Some(ref mut session) = self.session {
-                    return session.update(m).map(|mess| Message::SessionMessage(mess));
+                    session.update(m)
                 }
             }
         }
-        Command::none()
     }
 
     fn view(&self) -> Element<Message> {
@@ -68,22 +93,12 @@ impl Application for Gui {
         row![session_view, cut_songs, selector].into()
     }
 
-    fn new(config: Self::Flags) -> (Self, iced::Command<Self::Message>) {
-        (
-            Self {
-                session_selector: SessionSelector::new(&config),
-                session: None,
-            },
-            Command::none(),
+    fn subscription(&self) -> Subscription<Message> {
+        Subscription::batch(
+            self.session
+                .iter()
+                .map(|s| s.subscription().map(|m| Message::SessionMessage(m))),
         )
-    }
-
-    fn title(&self) -> String {
-        "Striputary".to_string()
-    }
-
-    fn theme(&self) -> Theme {
-        Theme::GruvboxDark
     }
 }
 

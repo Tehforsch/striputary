@@ -22,11 +22,14 @@ impl SessionSelector {
     }
 
     pub fn view(&self) -> Element<Message> {
-        error!("Taking only 20 elements since iced crashes otherwise?");
-        Column::with_children(self.sessions.iter().take(20).map(|path| {
-            button("+")
-                .on_press(Message::SelectSession(path.into()))
-                .into()
+        Column::with_children(self.sessions.iter().map(|path| {
+            button(
+                path.file_name()
+                    .and_then(|x| x.to_str())
+                    .unwrap_or("<invalid path>"),
+            )
+            .on_press(Message::SelectSession(path.into()))
+            .into()
         }))
         .into()
     }

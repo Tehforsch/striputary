@@ -33,6 +33,11 @@ pub fn get_volume_at<R: SampleReader>(r: &mut R, time: AudioTime) -> Result<f64,
         - AudioTime::from_sample_and_spec((NUM_SAMPLES_PER_AVERAGE_VOLUME / 2) as u32, r.spec());
     let end = time
         + AudioTime::from_sample_and_spec((NUM_SAMPLES_PER_AVERAGE_VOLUME / 2) as u32, r.spec());
+    if end.interleaved_sample_num == start.interleaved_sample_num {
+        // This can happen if we underflow to 0 or negative positions.
+        // Zero volume is the correct assumption for these positions
+        return Ok(0.0);
+    }
     let inv_len = 1.0 / ((end.interleaved_sample_num - start.interleaved_sample_num) as f64);
     let inv_i16 = 1.0 / (i16::MAX as f64);
     let samples = r.extract_audio(start, end)?;
