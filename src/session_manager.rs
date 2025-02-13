@@ -23,13 +23,6 @@ impl SessionManager {
     pub fn iter(&self) -> impl Iterator<Item = &PathBuf> + '_ {
         self.dirs.iter()
     }
-
-    fn enumerate(&self) -> impl Iterator<Item = (SessionIdentifier, &PathBuf)> {
-        self.dirs
-            .iter()
-            .enumerate()
-            .map(|(index, dir)| (SessionIdentifier(index), dir))
-    }
 }
 
 fn get_entries_with_predicate<F>(dir: &Path, predicate: F) -> Result<impl Iterator<Item = PathBuf>>

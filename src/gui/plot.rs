@@ -3,7 +3,7 @@ use iced::{
     mouse::{self, Button},
     theme::Palette,
     widget::canvas::{path::Builder, Event, Frame, Geometry, Path, Program, Stroke},
-    Color, Point, Rectangle, Renderer, Theme,
+    Color, Point, Rectangle, Renderer, Theme, Vector,
 };
 
 use crate::{
@@ -118,6 +118,14 @@ impl Plot {
             self.finished_cut_after = true;
         }
     }
+
+    pub fn song_after(&self) -> Option<&Song> {
+        self.song_after.as_ref()
+    }
+
+    pub fn song_before(&self) -> Option<&Song> {
+        self.song_before.as_ref()
+    }
 }
 
 pub struct PlotMarkerMoved {
@@ -187,7 +195,6 @@ impl Program<PlotMarkerMoved> for Plot {
                 .with_color(MARKER_COLOR),
         );
 
-        // Finally, we produce the geometry
         vec![frame.into_geometry()]
     }
 }

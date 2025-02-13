@@ -4,7 +4,6 @@ use iced::{
     widget::{button, Column},
     Element,
 };
-use log::error;
 
 use crate::{config::Config, session_manager::SessionManager};
 

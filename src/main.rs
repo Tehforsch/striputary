@@ -49,7 +49,7 @@ fn run_gui(config: &Config) {
     Gui::start(config);
 }
 
-fn cut(_: &Config, session_path: &Path) {
+fn cut(_: &Config, _: &Path) {
     todo!()
 }
 

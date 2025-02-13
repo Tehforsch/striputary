@@ -2,16 +2,18 @@ use crate::audio::{
     AudioTime, CutInfo, Cutter, CuttingStrategy, DbusLengthsStrategy, Manual, WavFileReader,
 };
 use crate::recording_session::{RecordingSession, RecordingSessionWithPath, SessionPath};
+use crate::song::Song;
 use anyhow::Result;
 use futures::StreamExt;
+use iced::alignment::Horizontal;
 use iced::stream::channel;
-use iced::widget::{row, Canvas, Column};
+use iced::widget::{column, horizontal_space, text, Canvas, Column, Row};
+use iced::Length::Fill;
 use iced::{Element, Subscription, Task};
 use log::debug;
 
 use super::plot::{Plot, PlotMarkerMoved};
 
-const CANVAS_WIDTH: f32 = 800.0;
 const CANVAS_HEIGHT: f32 = 80.0;
 
 #[derive(Clone, Debug)]
@@ -106,20 +108,25 @@ impl SessionGui {
             .iter()
             .enumerate()
             .map(|(i, plot)| {
-                let c: Element<PlotMarkerMoved> = Canvas::new(plot)
-                    .width(CANVAS_WIDTH)
-                    .height(CANVAS_HEIGHT)
-                    .into();
-                c.map(move |message| {
+                let c: Element<PlotMarkerMoved> =
+                    Canvas::new(plot).width(Fill).height(CANVAS_HEIGHT).into();
+                let canvas = c.map(move |message| {
                     SessionMessage::SetCutPosition(SetCutPosition {
                         cut_index: i,
                         time: message.time,
                     })
-                })
+                });
+                let make_title = |song: &Song| {
+                    text(song.to_string_short().to_string()).align_x(Horizontal::Left)
+                };
+                let titles = Row::new()
+                    .push_maybe(plot.song_before().map(make_title))
+                    .push(horizontal_space())
+                    .push_maybe(plot.song_after().map(make_title));
+                column![titles, canvas].into()
             })
             .collect();
-        let x: Element<SessionMessage> = Column::with_children(canvases).into();
-        row![x].into()
+        Column::with_children(canvases).into()
     }
 
     pub fn set_cut_position(&mut self, pos: SetCutPosition) {
@@ -136,7 +143,7 @@ impl SessionGui {
         let cuts = self.cuts.clone();
         match self.cutting_state {
             CuttingState::Cutting => Subscription::run_with_id(
-                "asd",
+                "cut",
                 channel(5, move |sender| Cutter::run(path, cuts, sender))
                     .map(|m| SessionMessage::FinishedCutting(m)),
             ),

@@ -30,6 +30,10 @@ impl Song {
             .join(Path::new(&format_artist(&self.artist)))
             .join(Path::new(&format_album(&self.album)))
     }
+
+    pub(crate) fn to_string_short(&self) -> &str {
+        self.title.as_deref().unwrap_or("unknown title")
+    }
 }
 
 impl fmt::Display for Song {
