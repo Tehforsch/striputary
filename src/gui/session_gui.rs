@@ -9,12 +9,12 @@ use iced::alignment::Horizontal;
 use iced::stream::channel;
 use iced::widget::{column, horizontal_space, text, Canvas, Column, Row};
 use iced::Length::Fill;
-use iced::{Element, Subscription, Task};
+use iced::{Element, Subscription};
 use log::debug;
 
 use super::plot::{Plot, PlotMarkerMoved};
 
-const CANVAS_HEIGHT: f32 = 80.0;
+pub const CANVAS_HEIGHT: f32 = 80.0;
 
 #[derive(Clone, Debug)]
 pub enum SessionMessage {

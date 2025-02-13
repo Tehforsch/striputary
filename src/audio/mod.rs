@@ -12,4 +12,4 @@ pub use cutting_strategy::*;
 pub use sample_reader::get_volume_at;
 pub use sample_reader::SampleReader;
 pub use sample_reader::WavFileReader;
-pub use time::{interpolate, interpolation_factor, AudioTime};
+pub use time::AudioTime;

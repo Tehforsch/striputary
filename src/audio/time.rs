@@ -51,14 +51,6 @@ impl AudioTime {
     }
 }
 
-pub fn interpolate(start: AudioTime, end: AudioTime, factor: f64) -> AudioTime {
-    start + (end - start) * factor
-}
-
-pub fn interpolation_factor(start: AudioTime, end: AudioTime, x: AudioTime) -> f64 {
-    (x.time - start.time) / (end.time - start.time)
-}
-
 impl ops::Sub<AudioTime> for AudioTime {
     type Output = AudioTime;
 
