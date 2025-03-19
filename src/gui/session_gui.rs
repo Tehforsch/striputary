@@ -73,9 +73,9 @@ fn load_plots(reader: &mut WavFileReader, session: &RecordingSession) -> Vec<Plo
             let before = if i == 0 {
                 None
             } else {
-                Some(&session.songs[i])
+                Some(&session.songs[i - 1])
             };
-            let after = session.songs.get(i + 1);
+            let after = session.songs.get(i);
             let timing = timestamps[i];
             Plot::new(reader, before.cloned(), after.cloned(), timing)
         })

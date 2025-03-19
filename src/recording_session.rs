@@ -63,7 +63,14 @@ pub struct SessionPath(pub PathBuf);
 
 impl std::fmt::Display for SessionPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0.to_string_lossy())
+        write!(
+            f,
+            "{}",
+            self.0
+                .file_name()
+                .map(|fname| fname.to_string_lossy())
+                .unwrap_or("".into())
+        )
     }
 }
 

@@ -5,7 +5,7 @@ mod session_selector;
 use crate::config::Config;
 use crate::recording_session::SessionPath;
 use iced::application::application;
-use iced::widget::{button, column, row, scrollable, Space};
+use iced::widget::{button, column, row, scrollable, text, Space};
 use iced::{Element, Subscription, Task, Theme};
 use log::error;
 
@@ -82,10 +82,11 @@ impl Gui {
         .direction(scrollable::Direction::Vertical(
             scrollable::Scrollbar::new().width(SCROLLBAR_WIDTH),
         ));
+        let label = text("Select session:");
         let cut_songs =
             button("Cut songs").on_press(Message::SessionMessage(SessionMessage::CutSongs));
         row![
-            column![cut_songs, Space::with_height(50.0), selector],
+            column![label, selector, Space::with_height(50.0), cut_songs],
             session_view
         ]
         .into()
