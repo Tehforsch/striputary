@@ -58,8 +58,14 @@ impl RecordingSession {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionPath(pub PathBuf);
+
+impl std::fmt::Display for SessionPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0.to_string_lossy())
+    }
+}
 
 impl<P: AsRef<Path>> From<P> for SessionPath {
     fn from(value: P) -> Self {

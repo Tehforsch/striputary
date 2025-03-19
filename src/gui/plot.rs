@@ -1,9 +1,8 @@
 use iced::{
     event::Status,
     mouse::{self, Button},
-    theme::Palette,
     widget::canvas::{path::Builder, Event, Frame, Geometry, Path, Program, Stroke},
-    Color, Point, Rectangle, Renderer, Theme,
+    Point, Rectangle, Renderer, Theme,
 };
 use ordered_float::OrderedFloat;
 
@@ -12,11 +11,9 @@ use crate::{
     song::Song,
 };
 
-const NUM_PLOT_POINTS: usize = 100;
+const NUM_PLOT_POINTS: usize = 200;
 const PLOT_STROKE_WIDTH: f32 = 1.5;
-const PLOT_COLOR: Color = Palette::GRUVBOX_DARK.primary;
 const MARKER_STROKE_WIDTH: f32 = 2.5;
-const MARKER_COLOR: Color = Palette::GRUVBOX_DARK.danger;
 
 type Volume = f32;
 
@@ -227,7 +224,7 @@ impl Program<PlotMarkerMoved> for Plot {
         &self,
         _state: &(),
         renderer: &Renderer,
-        _theme: &Theme,
+        theme: &Theme,
         rect: Rectangle,
         _cursor: mouse::Cursor,
     ) -> Vec<Geometry> {
@@ -237,9 +234,9 @@ impl Program<PlotMarkerMoved> for Plot {
         let (plot_before, plot_after) = self.get_plot_paths(&bounds);
         let color = |finished_cutting| {
             if finished_cutting {
-                Color::from_rgb(0.0, 0.8, 0.0)
+                theme.palette().success
             } else {
-                PLOT_COLOR
+                theme.palette().primary
             }
         };
         frame.stroke(
@@ -259,7 +256,7 @@ impl Program<PlotMarkerMoved> for Plot {
             &marker,
             Stroke::default()
                 .with_width(MARKER_STROKE_WIDTH)
-                .with_color(MARKER_COLOR),
+                .with_color(theme.palette().background),
         );
 
         vec![frame.into_geometry()]

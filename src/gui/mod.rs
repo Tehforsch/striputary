@@ -4,9 +4,8 @@ mod session_selector;
 
 use crate::config::Config;
 use crate::recording_session::SessionPath;
-use anyhow::Result;
 use iced::application::application;
-use iced::widget::{button, row, scrollable};
+use iced::widget::{button, column, row, scrollable, Space};
 use iced::{Element, Subscription, Task, Theme};
 use log::error;
 
@@ -21,15 +20,21 @@ pub struct Gui {
 }
 
 impl Gui {
-    fn select_session(&mut self, path: SessionPath) -> Result<()> {
-        self.session = Some(SessionGui::new(path)?);
-        Ok(())
+    fn select_session(&mut self, path: SessionPath) {
+        let session_gui = match SessionGui::new(path) {
+            Err(e) => {
+                error!("{}", e);
+                return;
+            }
+            Ok(session_gui) => session_gui,
+        };
+        self.session = Some(session_gui);
     }
 
     pub fn start(config: &Config) {
         application("Striputary", Gui::update, Gui::view)
             .subscription(Gui::subscription)
-            .theme(|_| Theme::GruvboxDark)
+            .theme(|_| Theme::CatppuccinFrappe)
             .run_with({
                 let config = config.clone();
                 move || Gui::new(&config)
@@ -40,21 +45,22 @@ impl Gui {
 
 impl Gui {
     fn new(config: &Config) -> (Self, Task<Message>) {
-        (
-            Self {
-                session_selector: SessionSelector::new(&config),
-                session: None,
-            },
-            Task::none(),
-        )
+        let session_selector = SessionSelector::new(&config);
+        let session = session_selector.selected().clone();
+        let mut gui = Self {
+            session_selector,
+            session: None,
+        };
+        if let Some(session) = session {
+            gui.select_session(session.clone());
+        }
+        (gui, Task::none())
     }
 
     fn update(&mut self, m: Message) {
         match m {
             Message::SelectSession(path) => {
-                if let Err(e) = self.select_session(path) {
-                    error!("{}", e);
-                }
+                self.select_session(path);
             }
             Message::SessionMessage(m) => {
                 if let Some(ref mut session) = self.session {
@@ -78,7 +84,11 @@ impl Gui {
         ));
         let cut_songs =
             button("Cut songs").on_press(Message::SessionMessage(SessionMessage::CutSongs));
-        row![selector, cut_songs, session_view].into()
+        row![
+            column![cut_songs, Space::with_height(50.0), selector],
+            session_view
+        ]
+        .into()
     }
 
     fn subscription(&self) -> Subscription<Message> {

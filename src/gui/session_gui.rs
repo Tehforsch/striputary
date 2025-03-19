@@ -11,7 +11,7 @@ use futures::StreamExt;
 use iced::alignment::Horizontal;
 use iced::keyboard::key;
 use iced::stream::channel;
-use iced::widget::{column, horizontal_space, text, Canvas, Column, Row};
+use iced::widget::{column, horizontal_space, text, Canvas, Column, Row, Space};
 use iced::Length::Fill;
 use iced::{keyboard, Element, Subscription};
 use log::debug;
@@ -19,6 +19,8 @@ use log::debug;
 use super::plot::{Plot, PlotMarkerMoved};
 
 pub const CANVAS_HEIGHT: f32 = 80.0;
+const LEFT_PLOT_TEXT_MARGIN: f32 = 50.0;
+const RIGHT_PLOT_TEXT_MARGIN: f32 = 50.0;
 
 #[derive(Clone, Debug)]
 pub enum SessionMessage {
@@ -145,11 +147,11 @@ impl SessionGui {
                     text(song.to_string_short().to_string()).align_x(Horizontal::Left)
                 };
                 let titles = Row::new()
-                    .push(horizontal_space())
+                    .push(Space::with_width(LEFT_PLOT_TEXT_MARGIN))
                     .push_maybe(plot.song_before().map(make_title))
                     .push(horizontal_space())
                     .push_maybe(plot.song_after().map(make_title))
-                    .push(horizontal_space());
+                    .push(Space::with_width(RIGHT_PLOT_TEXT_MARGIN));
                 column![titles, canvas].into()
             })
             .collect();
