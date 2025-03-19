@@ -21,19 +21,12 @@ use super::plot::{Plot, PlotMarkerMoved};
 pub const CANVAS_HEIGHT: f32 = 80.0;
 
 #[derive(Clone, Debug)]
-pub enum Direction {
-    Up,
-    Down,
-}
-
-#[derive(Clone, Debug)]
 pub enum SessionMessage {
     SetCutPosition(SetCutPosition),
     CutSongs,
     FinishedCutting(CutInfo),
     PlaybackSong,
     UpdateProgress(Progress),
-    Scroll(Direction),
 }
 
 #[derive(Clone, Debug)]
@@ -45,14 +38,12 @@ pub struct SetCutPosition {
 pub struct SessionGui {
     plots: Vec<Plot>,
     reader: Mutex<WavFileReader>,
-    session: RecordingSession,
     path: SessionPath,
     cuts: Manual,
     cutting_state: CuttingState,
     playback_state: PlaybackState,
     last_touched_song: usize,
     playback_index: usize,
-    scroll_pos: i32,
 }
 
 enum CuttingState {
@@ -106,7 +97,6 @@ impl SessionGui {
         let cuts = Manual::new(&mut reader, &session.session, DbusLengthsStrategy);
         let playback_state = PlaybackState::Waiting;
         Ok(Self {
-            session: session.session,
             reader: Mutex::new(reader),
             plots,
             cuts,
@@ -115,7 +105,6 @@ impl SessionGui {
             last_touched_song: 0,
             playback_state,
             playback_index: 0,
-            scroll_pos: 0,
         })
     }
 
@@ -135,7 +124,6 @@ impl SessionGui {
             }
             SessionMessage::PlaybackSong => self.playback_song(),
             SessionMessage::UpdateProgress(_) => todo!(),
-            SessionMessage::Scroll(dir) => self.scroll(dir),
         }
     }
 
@@ -157,9 +145,11 @@ impl SessionGui {
                     text(song.to_string_short().to_string()).align_x(Horizontal::Left)
                 };
                 let titles = Row::new()
+                    .push(horizontal_space())
                     .push_maybe(plot.song_before().map(make_title))
                     .push(horizontal_space())
-                    .push_maybe(plot.song_after().map(make_title));
+                    .push_maybe(plot.song_after().map(make_title))
+                    .push(horizontal_space());
                 column![titles, canvas].into()
             })
             .collect();
@@ -193,8 +183,6 @@ impl SessionGui {
 
             match key {
                 key::Named::Space => Some(SessionMessage::PlaybackSong),
-                key::Named::ArrowDown => Some(SessionMessage::Scroll(Direction::Down)),
-                key::Named::ArrowUp => Some(SessionMessage::Scroll(Direction::Up)),
                 _ => None,
             }
         })
@@ -231,13 +219,5 @@ impl SessionGui {
 
     fn get_wav_source(&self, info: &PlaybackInfo) -> WavSource {
         WavSource::new(&mut self.reader.lock().unwrap(), info.start, info.end)
-    }
-
-    fn scroll(&mut self, dir: Direction) {
-        self.scroll_pos += match dir {
-            Direction::Up => 1,
-            Direction::Down => -1,
-        };
-        self.scroll_pos = self.scroll_pos.max(0);
     }
 }

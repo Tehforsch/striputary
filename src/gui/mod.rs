@@ -6,12 +6,14 @@ use crate::config::Config;
 use crate::recording_session::SessionPath;
 use anyhow::Result;
 use iced::application::application;
-use iced::widget::{button, row};
+use iced::widget::{button, row, scrollable};
 use iced::{Element, Subscription, Task, Theme};
 use log::error;
 
 use self::session_gui::{SessionGui, SessionMessage};
 use self::session_selector::SessionSelector;
+
+const SCROLLBAR_WIDTH: f32 = 20.0;
 
 pub struct Gui {
     session: Option<SessionGui>,
@@ -64,15 +66,19 @@ impl Gui {
 
     fn view(&self) -> Element<Message> {
         let selector = self.session_selector.view();
-        let session_view = self
-            .session
-            .as_ref()
-            .map(|session| session.view())
-            .unwrap_or(row![].into())
-            .map(|message| Message::SessionMessage(message));
+        let session_view = scrollable(
+            self.session
+                .as_ref()
+                .map(|session| session.view())
+                .unwrap_or(row![].into())
+                .map(|message| Message::SessionMessage(message)),
+        )
+        .direction(scrollable::Direction::Vertical(
+            scrollable::Scrollbar::new().width(SCROLLBAR_WIDTH),
+        ));
         let cut_songs =
             button("Cut songs").on_press(Message::SessionMessage(SessionMessage::CutSongs));
-        row![session_view, cut_songs, selector].into()
+        row![selector, cut_songs, session_view].into()
     }
 
     fn subscription(&self) -> Subscription<Message> {
