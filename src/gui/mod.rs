@@ -2,7 +2,7 @@ mod plot;
 mod session_gui;
 mod session_selector;
 
-use crate::config::Config;
+use crate::config::{Config, OutputFormat};
 use crate::recording_session::SessionPath;
 use iced::application::application;
 use iced::widget::{button, column, row, scrollable, text, Space};
@@ -17,11 +17,12 @@ const SCROLLBAR_WIDTH: f32 = 20.0;
 pub struct Gui {
     session: Option<SessionGui>,
     session_selector: SessionSelector,
+    output_format: OutputFormat,
 }
 
 impl Gui {
     fn select_session(&mut self, path: SessionPath) {
-        let session_gui = match SessionGui::new(path) {
+        let session_gui = match SessionGui::new(path, self.output_format) {
             Err(e) => {
                 error!("{}", e);
                 return;
@@ -50,6 +51,7 @@ impl Gui {
         let mut gui = Self {
             session_selector,
             session: None,
+            output_format: config.output_format,
         };
         if let Some(session) = session {
             gui.select_session(session.clone());

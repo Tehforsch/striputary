@@ -134,7 +134,7 @@ impl SoundServer {
                 }
             }
         }
-        Err(anyhow!("Failed to get sink input index. Make sure that the service `{}` is already running and playing audio.", service))
+        Err(anyhow!("Failed to get sink input index. Make sure that the service `{}` is already running and playing audio or check if it is using a different sound server.", service))
     }
 
     fn get_sink_index_from_capture(&self, capture: &Captures) -> Result<i32> {

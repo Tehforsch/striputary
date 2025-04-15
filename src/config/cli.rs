@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 
-use super::{Service, SoundServer};
+use super::{output_format::OutputFormat, Service, SoundServer};
 
 #[derive(Parser, Debug, Clone)]
 #[command(version, about)]
@@ -21,6 +21,10 @@ pub struct CliOpts {
     /// the setting in the config file.
     #[arg(long)]
     pub sound_server: Option<SoundServer>,
+    /// The output format of cut songs (AAC, mp3, opus(default)). Passing this argument will override
+    /// the setting in the config file.
+    #[arg(long)]
+    pub output_format: Option<OutputFormat>,
     #[arg(short, long, action = clap::ArgAction::Count)]
     pub verbosity: u8,
     #[command(subcommand)]
