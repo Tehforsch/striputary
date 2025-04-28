@@ -6,7 +6,10 @@ use std::{
 use futures::{channel::mpsc::Sender, SinkExt};
 use log::{error, warn};
 
-use crate::recording_session::{RecordingSession, RecordingSessionWithPath};
+use crate::{
+    config::OutputFormat,
+    recording_session::{RecordingSession, RecordingSessionWithPath},
+};
 
 use super::{
     cut::{get_cut_command, CutInfo},
@@ -17,7 +20,11 @@ use super::{
 
 const MAX_NUM_PROCESSES: usize = 10;
 
-fn get_cuts(path: &Path, strategy: impl CuttingStrategy) -> Vec<CutInfo> {
+fn get_cuts(
+    path: &Path,
+    strategy: impl CuttingStrategy,
+    output_format: OutputFormat,
+) -> Vec<CutInfo> {
     let mut session = RecordingSessionWithPath::load_from_dir(path).unwrap();
     let mut reader = hound::WavReader::open(session.path.get_buffer_file()).unwrap();
     filter_invalid_songs(&mut reader, &mut session.session);
@@ -27,7 +34,7 @@ fn get_cuts(path: &Path, strategy: impl CuttingStrategy) -> Vec<CutInfo> {
         .iter()
         .zip(timestamps[1..].iter())
         .zip(session.session.songs.iter())
-        .map(|((start, end), song)| CutInfo::new(&session, song, *start, *end))
+        .map(|((start, end), song)| CutInfo::new(&session, song, *start, *end, output_format))
         .collect();
     cuts
 }
@@ -63,8 +70,13 @@ pub struct Cutter {
 }
 
 impl Cutter {
-    pub async fn run(path: PathBuf, strategy: impl CuttingStrategy, sender: Sender<CutInfo>) {
-        let cuts = get_cuts(&path, strategy);
+    pub async fn run(
+        path: PathBuf,
+        strategy: impl CuttingStrategy,
+        sender: Sender<CutInfo>,
+        output_format: OutputFormat,
+    ) {
+        let cuts = get_cuts(&path, strategy, output_format);
         Self {
             cuts,
             handles: vec![],

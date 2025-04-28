@@ -9,6 +9,7 @@ use serde::Deserialize;
 
 use crate::consts;
 
+use super::output_format::OutputFormat;
 use super::Service;
 use super::SoundServer;
 
@@ -17,6 +18,7 @@ pub struct ConfigFile {
     pub output_dir: PathBuf,
     pub service: Option<Service>,
     pub sound_server: Option<SoundServer>,
+    pub output_format: Option<OutputFormat>,
 }
 
 impl ConfigFile {

@@ -4,6 +4,7 @@ use crate::audio::{
     playback::play_audio, playback::Progress, playback::WavSource, AudioTime, CutInfo, Cutter,
     CuttingStrategy, DbusLengthsStrategy, Manual, WavFileReader,
 };
+use crate::config::OutputFormat;
 use crate::recording_session::{RecordingSession, RecordingSessionWithPath, SessionPath};
 use crate::song::Song;
 use anyhow::Result;
@@ -41,6 +42,7 @@ pub struct SessionGui {
     plots: Vec<Plot>,
     reader: Mutex<WavFileReader>,
     path: SessionPath,
+    output_format: OutputFormat,
     cuts: Manual,
     cutting_state: CuttingState,
     playback_state: PlaybackState,
@@ -92,7 +94,7 @@ fn load_plots(reader: &mut WavFileReader, session: &RecordingSession) -> Vec<Plo
 }
 
 impl SessionGui {
-    pub fn new(path: SessionPath) -> Result<SessionGui> {
+    pub fn new(path: SessionPath, output_format: OutputFormat) -> Result<SessionGui> {
         let session = RecordingSessionWithPath::load_from_dir(&path.0)?;
         let mut reader = hound::WavReader::open(session.path.get_buffer_file())?;
         let plots = load_plots(&mut reader, &session.session);
@@ -103,6 +105,7 @@ impl SessionGui {
             plots,
             cuts,
             path,
+            output_format,
             cutting_state: CuttingState::Waiting,
             last_touched_song: 0,
             playback_state,
@@ -193,12 +196,15 @@ impl SessionGui {
     pub fn subscription(&self) -> Subscription<SessionMessage> {
         let path = self.path.0.clone();
         let cuts = self.cuts.clone();
+        let output_format = self.output_format;
         let mut subscriptions = vec![];
         if let CuttingState::Cutting = self.cutting_state {
             subscriptions.push(Subscription::run_with_id(
                 "cut",
-                channel(5, move |sender| Cutter::run(path, cuts, sender))
-                    .map(|m| SessionMessage::FinishedCutting(m)),
+                channel(5, move |sender| {
+                    Cutter::run(path, cuts, sender, output_format)
+                })
+                .map(|m| SessionMessage::FinishedCutting(m)),
             ))
         }
         if let PlaybackState::Playback(ref info) = self.playback_state {
