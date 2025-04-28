@@ -75,6 +75,8 @@ impl SoundServer {
             .arg("move-sink-input")
             .arg(format!("{}", index))
             .arg(STRIPUTARY_SINK_NAME)
+            .env_clear()
+            .env("LANG", "en_EN.UTF-8")
             .output()
             .context(
                 "Failed to execute sink redirection via pactl move-sink-input - is pactl installed?",
