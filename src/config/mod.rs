@@ -1,5 +1,6 @@
 mod cli;
 mod config_file;
+mod output_format;
 mod service;
 mod sound_server;
 
@@ -8,6 +9,7 @@ use clap::Parser;
 use log::{error, info};
 use std::path::PathBuf;
 
+pub use self::output_format::OutputFormat;
 pub use self::service::Service;
 pub use self::sound_server::SoundServer;
 pub use cli::Command;
@@ -17,6 +19,7 @@ pub struct Config {
     pub output_dir: PathBuf,
     pub service: Service,
     pub sound_server: SoundServer,
+    pub output_format: OutputFormat,
     pub command: Command,
     pub verbosity: u8,
 }
@@ -43,6 +46,16 @@ impl Config {
                 );
                 service
             });
+        let output_format = opts
+            .output_format
+            .or(config_file.as_ref().and_then(|file| file.output_format))
+            .unwrap_or_else(|| {
+                let format = OutputFormat::default();
+                info!(
+                    "No output format specified in command line options or config file. Using default {:?}.", format
+                );
+                format
+            });
         let output_dir = opts
             .output_dir
             .or(config_file.as_ref().map(|file| file.output_dir.clone()))
@@ -54,6 +67,7 @@ panic!("Need an output folder - either pass it as a command line argument or spe
             output_dir,
             service,
             sound_server,
+            output_format,
             command: opts.command,
             verbosity: opts.verbosity,
         }
